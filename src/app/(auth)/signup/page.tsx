@@ -61,8 +61,14 @@ export default function SignupPage() {
         setLoading(false);
         return;
       }
+
+      // Auto-confirm is enabled — go straight to dashboard
+      router.push("/dashboard");
+      router.refresh();
+      return;
     }
 
+    // Fallback if email confirmation is required
     setSuccess(true);
     setLoading(false);
   }
