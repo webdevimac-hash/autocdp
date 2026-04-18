@@ -1,22 +1,26 @@
 import { createClient } from "@/lib/supabase/server";
 import { Header } from "@/components/layout/header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UserPlus, Download, Search } from "lucide-react";
+import { UserPlus, Download, Search, Users } from "lucide-react";
 import { formatRelativeDate, getInitials } from "@/lib/utils";
 import type { LifecycleStage } from "@/types";
 
 export const metadata = { title: "Customers" };
 
-const STAGE_STYLES: Record<LifecycleStage, string> = {
-  vip: "bg-amber-100 text-amber-800",
-  active: "bg-green-100 text-green-800",
-  at_risk: "bg-orange-100 text-orange-800",
-  lapsed: "bg-red-100 text-red-800",
-  prospect: "bg-gray-100 text-gray-700",
+const STAGE_STYLES: Record<LifecycleStage, { badge: string; dot: string }> = {
+  vip:      { badge: "bg-amber-100 text-amber-800",   dot: "bg-amber-500" },
+  active:   { badge: "bg-emerald-100 text-emerald-800", dot: "bg-emerald-500" },
+  at_risk:  { badge: "bg-orange-100 text-orange-800", dot: "bg-orange-500" },
+  lapsed:   { badge: "bg-red-100 text-red-700",       dot: "bg-red-400" },
+  prospect: { badge: "bg-slate-100 text-slate-600",   dot: "bg-slate-400" },
 };
+
+const STAGE_FILTERS = [
+  { key: "all", label: "All" },
+  { key: "vip", label: "VIP" },
+  { key: "active", label: "Active" },
+  { key: "at_risk", label: "At Risk" },
+  { key: "lapsed", label: "Lapsed" },
+] as const;
 
 export default async function CustomersPage() {
   const supabase = await createClient();
@@ -39,97 +43,120 @@ export default async function CustomersPage() {
     <>
       <Header title="Customers" subtitle={`${count ?? 0} total records`} userEmail={user?.email} />
 
-      <main className="flex-1 p-6 space-y-5">
-        <div className="flex items-center justify-between">
-          <div className="flex gap-2">
-            {(["all", "vip", "active", "at_risk", "lapsed"] as const).map((f) => (
-              <Button key={f} variant="outline" size="sm" className="capitalize text-xs h-8">
-                {f === "all" ? "All" : f.replace("_", " ")}
-              </Button>
+      <main className="flex-1 p-6 space-y-5 max-w-[1400px]">
+
+        {/* Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-1.5">
+            {STAGE_FILTERS.map((f, i) => (
+              <button
+                key={f.key}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize ${
+                  i === 0
+                    ? "bg-white border border-slate-200 text-slate-900 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700 hover:bg-white hover:border-slate-200 border border-transparent"
+                }`}
+              >
+                {f.label}
+              </button>
             ))}
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="h-8 text-xs">
-              <Download className="w-3.5 h-3.5 mr-1.5" /> Export
-            </Button>
-            <Button size="sm" className="h-8 text-xs">
-              <UserPlus className="w-3.5 h-3.5 mr-1.5" /> Add Customer
-            </Button>
+          <div className="flex items-center gap-2">
+            <button className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-medium hover:bg-slate-50 transition-colors shadow-sm">
+              <Download className="w-3.5 h-3.5" /> Export
+            </button>
+            <button className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors shadow-sm">
+              <UserPlus className="w-3.5 h-3.5" /> Add Customer
+            </button>
           </div>
         </div>
 
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-3 flex-row items-center justify-between">
-            <CardTitle className="text-base">Customer List</CardTitle>
+        {/* Table card */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
+          {/* Card header */}
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-900">Customer List</h2>
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
               <input
-                className="pl-8 pr-3 py-1.5 text-xs border rounded-md bg-background w-48 focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="Search customers..."
+                className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white w-48 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 transition-colors placeholder:text-slate-400"
+                placeholder="Search customers…"
               />
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-slate-50/50">
-                    {["Customer", "Stage", "Visits", "Total Spend", "Last Visit", "Tags", ""].map((h) => (
-                      <th key={h} className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        {h}
-                      </th>
-                    ))}
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/60">
+                  {["Customer", "Stage", "Visits", "Total Spend", "Last Visit", "Tags", ""].map((h) => (
+                    <th key={h} className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {(customers ?? []).length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-20 text-center">
+                      <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center mx-auto mb-4">
+                        <Users className="w-6 h-6 text-slate-300" />
+                      </div>
+                      <p className="text-sm font-semibold text-slate-700 mb-1">No customers yet</p>
+                      <p className="text-xs text-slate-400">Import your DMS data or add customers manually.</p>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {(customers ?? []).length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center text-muted-foreground text-sm">
-                        No customers yet. Import your DMS data or add customers manually.
-                      </td>
-                    </tr>
-                  ) : (
-                    (customers ?? []).map((customer) => (
-                      <tr key={customer.id} className="hover:bg-slate-50/60 transition-colors cursor-pointer">
-                        <td className="px-6 py-3">
+                ) : (
+                  (customers ?? []).map((customer) => {
+                    const stage = customer.lifecycle_stage as LifecycleStage;
+                    const styleConfig = STAGE_STYLES[stage] ?? STAGE_STYLES.prospect;
+                    const initials = getInitials(customer.first_name, customer.last_name);
+
+                    return (
+                      <tr key={customer.id} className="hover:bg-slate-50/50 transition-colors cursor-pointer">
+                        <td className="px-6 py-3.5">
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="text-xs bg-brand-100 text-brand-700">
-                                {getInitials(customer.first_name, customer.last_name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium text-gray-900">{customer.first_name} {customer.last_name}</p>
-                              <p className="text-xs text-muted-foreground">{customer.email ?? customer.phone ?? "—"}</p>
+                            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-xs font-semibold text-indigo-700 shrink-0">
+                              {initials}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium text-slate-900 truncate">{customer.first_name} {customer.last_name}</p>
+                              <p className="text-xs text-slate-400 truncate">{customer.email ?? customer.phone ?? "—"}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-3">
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${STAGE_STYLES[customer.lifecycle_stage as LifecycleStage] ?? "bg-gray-100"}`}>
+                        <td className="px-6 py-3.5">
+                          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full capitalize ${styleConfig.badge}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${styleConfig.dot}`} />
                             {customer.lifecycle_stage?.replace("_", " ")}
                           </span>
                         </td>
-                        <td className="px-6 py-3 text-muted-foreground">{customer.total_visits}</td>
-                        <td className="px-6 py-3 font-medium">${(customer.total_spend ?? 0).toFixed(0)}</td>
-                        <td className="px-6 py-3 text-muted-foreground text-xs">{formatRelativeDate(customer.last_visit_date)}</td>
-                        <td className="px-6 py-3">
+                        <td className="px-6 py-3.5 text-slate-500 text-xs tabular-nums">{customer.total_visits}</td>
+                        <td className="px-6 py-3.5 font-semibold text-slate-900 tabular-nums">${(customer.total_spend ?? 0).toLocaleString()}</td>
+                        <td className="px-6 py-3.5 text-slate-400 text-xs">{formatRelativeDate(customer.last_visit_date)}</td>
+                        <td className="px-6 py-3.5">
                           <div className="flex gap-1 flex-wrap">
                             {(customer.tags ?? []).slice(0, 2).map((tag: string) => (
-                              <Badge key={tag} variant="secondary" className="text-[10px] px-1.5">{tag}</Badge>
+                              <span key={tag} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                {tag}
+                              </span>
                             ))}
                           </div>
                         </td>
-                        <td className="px-6 py-3">
-                          <Button variant="ghost" size="sm" className="h-7 text-xs">View</Button>
+                        <td className="px-6 py-3.5">
+                          <button className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors">
+                            View →
+                          </button>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </main>
     </>
   );
