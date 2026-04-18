@@ -122,7 +122,7 @@ export default async function DirectMailPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           {stats.map((s) => (
-            <div key={s.title} className="bg-white rounded-xl border border-slate-200 shadow-card p-5 hover:shadow-card-md transition-shadow">
+            <div key={s.title} className="card-lift bg-white rounded-xl border border-slate-200 shadow-card p-5">
               <div className="flex items-start justify-between mb-4">
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${s.iconBg}`}>
                   <s.icon className={`w-4 h-4 ${s.iconColor}`} />

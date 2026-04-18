@@ -135,7 +135,7 @@ export default async function AnalyticsPage() {
         {/* Key metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {keyMetrics.map((m) => (
-            <div key={m.label} className="bg-white rounded-xl border border-slate-200 shadow-card p-5 hover:shadow-card-md transition-shadow">
+            <div key={m.label} className="card-lift bg-white rounded-xl border border-slate-200 shadow-card p-5">
               <div className="flex items-start justify-between mb-4">
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${m.iconBg}`}>
                   <m.icon className={`w-4 h-4 ${m.iconColor}`} />

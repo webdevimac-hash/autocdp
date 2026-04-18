@@ -5,6 +5,7 @@ import { Plus, Mail, MessageSquare, FileText, Layers, BarChart2, Play, Megaphone
 import { formatDate, calcOpenRate } from "@/lib/utils";
 import type { CampaignChannel, CampaignStats } from "@/types";
 import Link from "next/link";
+import { Sparkles } from "lucide-react";
 
 export const metadata = { title: "Campaigns" };
 
@@ -98,7 +99,7 @@ export default async function CampaignsPage() {
               return (
                 <div
                   key={campaign.id}
-                  className="bg-white rounded-xl border border-slate-200 shadow-card hover:shadow-card-md transition-all duration-200 cursor-pointer group"
+                  className="card-lift bg-white rounded-xl border border-slate-200 shadow-card cursor-pointer group"
                 >
                   {/* Card header */}
                   <div className="px-5 pt-5 pb-4 flex items-start justify-between">
@@ -113,9 +114,15 @@ export default async function CampaignsPage() {
                         </p>
                       </div>
                     </div>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize shrink-0 ml-2 ${STATUS_STYLES[campaign.status as keyof typeof STATUS_STYLES] ?? "bg-slate-100"}`}>
-                      {campaign.status}
-                    </span>
+                    <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${STATUS_STYLES[campaign.status as keyof typeof STATUS_STYLES] ?? "bg-slate-100"}`}>
+                        {campaign.status}
+                      </span>
+                      <span className="ai-badge">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        AI Optimized
+                      </span>
+                    </div>
                   </div>
 
                   {/* Divider */}

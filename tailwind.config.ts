@@ -59,17 +59,17 @@ const config: Config = {
           300: "#a5b4fc",
           400: "#818cf8",
           500: "#6366f1",
-          600: "#4f46e5",  // ← primary CTA
+          600: "#4f46e5",
           700: "#4338ca",
           800: "#3730a3",
           900: "#312e81",
         },
 
-        // ── Navy — structural (sidebar, hero panels) ──────────────
+        // ── Navy — structural ─────────────────────────────────────
         navy: {
           700: "#334155",
           800: "#1e293b",
-          900: "#0f172a",  // ← sidebar base
+          900: "#0f172a",
         },
 
         // ── Success — emerald ─────────────────────────────────────
@@ -95,11 +95,12 @@ const config: Config = {
       },
 
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-        xl: "0.75rem",
-        "2xl": "1rem",
+        lg:   "var(--radius)",
+        md:   "calc(var(--radius) - 2px)",
+        sm:   "calc(var(--radius) - 4px)",
+        xl:   "0.75rem",
+        "2xl":"1rem",
+        "3xl":"1.5rem",
       },
 
       fontFamily: {
@@ -108,11 +109,18 @@ const config: Config = {
       },
 
       boxShadow: {
-        card:     "0 1px 3px 0 rgb(15 23 42 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.06)",
-        "card-md":"0 4px 6px -1px rgb(15 23 42 / 0.07), 0 2px 4px -2px rgb(15 23 42 / 0.05)",
-        "card-lg":"0 10px 15px -3px rgb(15 23 42 / 0.08), 0 4px 6px -4px rgb(15 23 42 / 0.05)",
-        modal:    "0 20px 25px -5px rgb(15 23 42 / 0.10), 0 8px 10px -6px rgb(15 23 42 / 0.08)",
-        indigo:   "0 8px 24px -4px rgb(79 70 229 / 0.35)",
+        card:          "0 1px 3px 0 rgb(15 23 42 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.06)",
+        "card-md":     "0 4px 6px -1px rgb(15 23 42 / 0.07), 0 2px 4px -2px rgb(15 23 42 / 0.05)",
+        "card-lg":     "0 10px 15px -3px rgb(15 23 42 / 0.08), 0 4px 6px -4px rgb(15 23 42 / 0.05)",
+        "card-hover":  "0 16px 32px -4px rgb(15 23 42 / 0.12), 0 6px 12px -2px rgb(15 23 42 / 0.07)",
+        modal:         "0 20px 25px -5px rgb(15 23 42 / 0.10), 0 8px 10px -6px rgb(15 23 42 / 0.08)",
+        indigo:        "0 8px 24px -4px rgb(79 70 229 / 0.35)",
+        "glow-indigo": "0 0 0 2px rgb(99 102 241 / 0.15), 0 8px 24px -4px rgb(79 70 229 / 0.20)",
+        "glow-emerald":"0 0 0 2px rgb(16 185 129 / 0.15), 0 8px 24px -4px rgb(5 150 105 / 0.20)",
+        "glow-sky":    "0 0 0 2px rgb(14 165 233 / 0.15), 0 8px 24px -4px rgb(2 132 199 / 0.20)",
+        "glow-amber":  "0 0 0 2px rgb(245 158 11 / 0.15), 0 8px 24px -4px rgb(217 119 6 / 0.20)",
+        "glow-violet": "0 0 0 2px rgb(139 92 246 / 0.15), 0 8px 24px -4px rgb(124 58 237 / 0.20)",
+        "glow-rose":   "0 0 0 2px rgb(244 63 94 / 0.15), 0 8px 24px -4px rgb(225 29 72 / 0.20)",
       },
 
       fontSize: {
@@ -144,13 +152,48 @@ const config: Config = {
           from: { opacity: "0", transform: "translateY(16px)" },
           to:   { opacity: "1", transform: "translateY(0)" },
         },
+        "fade-up-sm": {
+          from: { opacity: "0", transform: "translateY(8px)" },
+          to:   { opacity: "1", transform: "translateY(0)" },
+        },
+        "float": {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%":      { transform: "translateY(-8px)" },
+        },
+        "ping-slow": {
+          "75%, 100%": { transform: "scale(2.2)", opacity: "0" },
+        },
+        "shimmer": {
+          "0%":   { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+        "bar-grow": {
+          from: { width: "0%" },
+          to:   { width: "var(--bar-w, 100%)" },
+        },
+        "count-up": {
+          from: { opacity: "0", transform: "translateY(8px) scale(0.95)" },
+          to:   { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
       },
+
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up":   "accordion-up 0.2s ease-out",
         "pulse-slow":     "pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-        "fade-in":        "fade-in 0.25s ease-out",
-        "fade-up":        "fade-up 0.4s ease-out",
+        "fade-in":        "fade-in 0.25s ease-out both",
+        "fade-up":        "fade-up 0.45s ease-out both",
+        "fade-up-sm":     "fade-up-sm 0.3s ease-out both",
+        "float":          "float 3.5s ease-in-out infinite",
+        "ping-slow":      "ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite",
+        "shimmer":        "shimmer 2.5s linear infinite",
+        "bar-grow":       "bar-grow 0.8s ease-out forwards",
+        "count-up":       "count-up 0.5s ease-out both",
+      },
+
+      transitionDuration: {
+        "150": "150ms",
+        "250": "250ms",
       },
     },
   },

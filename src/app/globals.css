@@ -78,13 +78,153 @@
 .handwriting-char:nth-child(5n)   { transform: rotate(-1.2deg) translateY(1px); font-size: 0.97em; }
 .handwriting-char:nth-child(7n)   { transform: rotate(0.4deg) translateY(-0.3px); font-size: 1.02em; }
 
-/* ── Landing page smooth scroll ───────────────────────────── */
+/* ── Smooth scroll ────────────────────────────────────────── */
 html { scroll-behavior: smooth; }
 
 /* ── Utility classes ─────────────────────────────────────── */
 @layer components {
-  .stat-value  { @apply text-2xl font-bold text-slate-900 tracking-tight; }
-  .stat-label  { @apply text-xs font-medium text-slate-500 uppercase tracking-wider; }
-  .page-title  { @apply text-2xl font-bold text-slate-900 tracking-tight; }
+  .stat-value    { @apply text-2xl font-bold text-slate-900 tracking-tight; }
+  .stat-label    { @apply text-xs font-medium text-slate-500 uppercase tracking-wider; }
+  .page-title    { @apply text-2xl font-bold text-slate-900 tracking-tight; }
   .section-title { @apply text-base font-semibold text-slate-900; }
+}
+
+/* ── Card hover lift ──────────────────────────────────────── */
+/* Add .card-lift to any card you want to "pop" on hover */
+.card-lift {
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+  will-change: transform;
+}
+.card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 32px -4px rgb(15 23 42 / 0.12), 0 6px 12px -2px rgb(15 23 42 / 0.07);
+}
+
+/* ── Feature card colored border-glow on hover ────────────── */
+.feature-card {
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out;
+  will-change: transform;
+}
+.feature-card:hover { transform: translateY(-3px); }
+
+.feature-card-indigo:hover  { box-shadow: 0 0 0 1.5px #818cf8, 0 12px 28px -4px rgb(99 102 241 / 0.18); border-color: #c7d2fe; }
+.feature-card-emerald:hover { box-shadow: 0 0 0 1.5px #34d399, 0 12px 28px -4px rgb(16 185 129 / 0.18); border-color: #a7f3d0; }
+.feature-card-sky:hover     { box-shadow: 0 0 0 1.5px #38bdf8, 0 12px 28px -4px rgb(14 165 233 / 0.18); border-color: #bae6fd; }
+.feature-card-amber:hover   { box-shadow: 0 0 0 1.5px #fbbf24, 0 12px 28px -4px rgb(245 158 11 / 0.18); border-color: #fde68a; }
+.feature-card-violet:hover  { box-shadow: 0 0 0 1.5px #c084fc, 0 12px 28px -4px rgb(168 85 247 / 0.18); border-color: #e9d5ff; }
+.feature-card-rose:hover    { box-shadow: 0 0 0 1.5px #fb7185, 0 12px 28px -4px rgb(244 63 94 / 0.18); border-color: #fecdd3; }
+
+/* ── Stagger entrance animations (CSS-only, no JS) ────────── */
+/* Apply these to siblings to get sequential fade-in on page load */
+.stagger-1 { animation: fade-up-in 0.5s ease-out 0.05s both; }
+.stagger-2 { animation: fade-up-in 0.5s ease-out 0.15s both; }
+.stagger-3 { animation: fade-up-in 0.5s ease-out 0.25s both; }
+.stagger-4 { animation: fade-up-in 0.5s ease-out 0.35s both; }
+.stagger-5 { animation: fade-up-in 0.5s ease-out 0.45s both; }
+.stagger-6 { animation: fade-up-in 0.5s ease-out 0.55s both; }
+
+@keyframes fade-up-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Page section entrance ────────────────────────────────── */
+.section-enter { animation: section-enter 0.6s ease-out both; }
+
+@keyframes section-enter {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Ping ring (active agent indicator) ──────────────────── */
+/* Usage: wrap a dot in .ping-ring > <dot> + <ping-circle> */
+.ping-ring {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Progress bar animated fill ──────────────────────────── */
+.bar-animated {
+  animation: bar-grow 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes bar-grow {
+  from { width: 0%; }
+  to   { width: var(--bar-w, 60%); }
+}
+
+/* ── Shimmer (skeleton / active state) ───────────────────── */
+.shimmer-bg {
+  background: linear-gradient(
+    90deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.18) 50%,
+    transparent 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-move 2.5s linear infinite;
+}
+
+@keyframes shimmer-move {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Button press feedback ────────────────────────────────── */
+.btn-press {
+  transition: transform 0.1s ease-out;
+}
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+/* ── AI badge glow ────────────────────────────────────────── */
+.ai-badge {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border: 1px solid #a7f3d0;
+  color: #047857;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Hero grid overlay ────────────────────────────────────── */
+.hero-grid {
+  background-image:
+    linear-gradient(rgba(99, 102, 241, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── Dark section grid ────────────────────────────────────── */
+.dark-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── Gradient text ────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Stat card number animation ───────────────────────────── */
+.stat-number {
+  animation: count-up 0.5s ease-out both;
+}
+
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(8px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
