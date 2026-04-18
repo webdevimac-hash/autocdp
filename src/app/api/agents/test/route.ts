@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       .from("user_dealerships")
       .select("dealership_id")
       .eq("user_id", user.id)
-      .single();
+      .single() as { data: { dealership_id: string } | null };
 
     if (!ud?.dealership_id) {
       return NextResponse.json({ error: "No dealership found for this user" }, { status: 400 });
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       .from("dealerships")
       .select("name")
       .eq("id", ud.dealership_id)
-      .single();
+      .single() as { data: { name: string } | null };
 
     const body = await req.json();
     const { goal, channel = "direct_mail", maxCustomers = 3 } = body;
