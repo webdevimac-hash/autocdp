@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     .from("user_dealerships")
     .select("dealership_id")
     .eq("user_id", user.id)
-    .single();
+    .single() as { data: { dealership_id: string } | null };
 
   if (!ud?.dealership_id) {
     return NextResponse.json({ error: "Dealership not found" }, { status: 404 });

@@ -22,7 +22,7 @@ async function resolveAuth(req: NextRequest) {
     .from("user_dealerships")
     .select("dealership_id")
     .eq("user_id", user.id)
-    .single();
+    .single() as { data: { dealership_id: string } | null };
 
   if (!ud?.dealership_id) return { error: "Dealership not found" as const, status: 404 as const };
 

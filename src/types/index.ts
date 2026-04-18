@@ -2,7 +2,7 @@
 // AutoCDP — Shared TypeScript Types
 // ============================================================
 
-export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
+export type { Json } from "./supabase";
 
 // ── Database row types ────────────────────────────────────────
 
@@ -420,25 +420,5 @@ export interface SyncLog {
   created_at: string;
 }
 
-// ── Supabase Database type ────────────────────────────────────
-
-export interface Database {
-  public: {
-    Tables: {
-      dealerships: { Row: Dealership; Insert: Partial<Dealership>; Update: Partial<Dealership> };
-      user_dealerships: { Row: UserDealership; Insert: Partial<UserDealership>; Update: Partial<UserDealership> };
-      customers: { Row: Customer; Insert: Partial<Customer>; Update: Partial<Customer> };
-      visits: { Row: Visit; Insert: Partial<Visit>; Update: Partial<Visit> };
-      campaigns: { Row: Campaign; Insert: Partial<Campaign>; Update: Partial<Campaign> };
-      communications: { Row: Communication; Insert: Partial<Communication>; Update: Partial<Communication> };
-      agent_runs: { Row: AgentRun; Insert: Partial<AgentRun>; Update: Partial<AgentRun> };
-      global_learnings: { Row: GlobalLearning; Insert: Partial<GlobalLearning>; Update: Partial<GlobalLearning> };
-      billing_events: { Row: BillingEvent; Insert: Partial<BillingEvent>; Update: Partial<BillingEvent> };
-      mail_pieces: { Row: MailPiece; Insert: Partial<MailPiece>; Update: Partial<MailPiece> };
-      mail_scans: { Row: MailScan; Insert: Partial<MailScan>; Update: Partial<MailScan> };
-      dms_connections: { Row: DmsConnection; Insert: Partial<DmsConnection>; Update: Partial<DmsConnection> };
-      sync_jobs: { Row: SyncJob; Insert: Partial<SyncJob>; Update: Partial<SyncJob> };
-      sync_logs: { Row: SyncLog; Insert: Partial<SyncLog>; Update: Partial<SyncLog> };
-    };
-  };
-}
+// ── Supabase Database type (generated) ───────────────────────
+export type { Database } from "./supabase";

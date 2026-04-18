@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     .from("dealerships")
     .select("id")
     .eq("slug", dealershipSlug)
-    .single();
+    .single() as { data: Record<string, string | null> | null };
 
   const slug = existing
     ? `${dealershipSlug}-${Math.random().toString(36).slice(2, 6)}`
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     .from("dealerships")
     .insert({ name: dealershipName, slug })
     .select()
-    .single();
+    .single() as { data: Record<string, string | null> | null };
 
   if (dealershipError) {
     console.error("[provision] dealership create error:", dealershipError);
