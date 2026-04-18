@@ -1,0 +1,131 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { runCreativeAgent } from "@/lib/anthropic/agents/creative-agent";
+import { buildPreviewQRImageUrl } from "@/lib/qrcode-gen";
+import type { Customer, Visit, CommunicationChannel, MailTemplateType } from "@/types";
+
+/**
+ * POST /api/mail/preview
+ *
+ * Generates AI-personalized copy for one customer without sending.
+ * Supports all channels — direct_mail (default), sms, email.
+ *
+ * Body:
+ *   customerId    string
+ *   templateType  MailTemplateType    (direct_mail only)
+ *   campaignGoal  string
+ *   channel?      CommunicationChannel  (default: "direct_mail")
+ *   tone?         string
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: ud } = await supabase
+      .from("user_dealerships")
+      .select("dealership_id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!ud?.dealership_id) {
+      return NextResponse.json({ error: "No dealership" }, { status: 400 });
+    }
+
+    const { data: dealership } = await supabase
+      .from("dealerships")
+      .select("name")
+      .eq("id", ud.dealership_id)
+      .single();
+
+    const body = await req.json();
+    const { customerId, templateType, campaignGoal, channel = "direct_mail", tone } = body;
+
+    if (!customerId || !campaignGoal) {
+      return NextResponse.json({ error: "customerId and campaignGoal are required" }, { status: 400 });
+    }
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json({ error: "ANTHROPIC_API_KEY not configured" }, { status: 503 });
+    }
+
+    const [{ data: customer }, { data: visits }] = await Promise.all([
+      supabase
+        .from("customers")
+        .select("*")
+        .eq("id", customerId)
+        .eq("dealership_id", ud.dealership_id)
+        .single(),
+      supabase
+        .from("visits")
+        .select("*")
+        .eq("customer_id", customerId)
+        .eq("dealership_id", ud.dealership_id)
+        .order("visit_date", { ascending: false })
+        .limit(1),
+    ]);
+
+    if (!customer) {
+      return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+    }
+
+    const resolvedChannel = (channel as CommunicationChannel) || "direct_mail";
+
+    // Channel-specific template hint
+    let templateHint: string | undefined;
+    if (resolvedChannel === "direct_mail") {
+      templateHint = templateType === "postcard_6x9"
+        ? "Write a short, warm postcard message (50–100 words). Very personal, handwritten feel."
+        : "Write a business letter (150–250 words). Formal but warm, include offer details.";
+    } else if (resolvedChannel === "sms") {
+      templateHint = "Write an SMS message. Max 160 characters. Include the customer's first name and a clear call-to-action with the dealership phone number or reply STOP to opt out.";
+    } else if (resolvedChannel === "email") {
+      templateHint = "Write a full HTML email. Subject line + personalized body (2–3 paragraphs). Include a clear CTA button linking to 'tel:{{phone}}'. Keep it warm and specific. Return subject and body_html as separate fields.";
+    }
+
+    const creative = await runCreativeAgent({
+      context: {
+        dealershipId: ud.dealership_id,
+        dealershipName: dealership?.name ?? "Your Dealership",
+      },
+      customer: customer as Customer,
+      recentVisit: (visits?.[0] as Visit | undefined) ?? null,
+      channel: resolvedChannel,
+      campaignGoal,
+      dealershipTone: tone,
+      template: templateHint,
+    });
+
+    // QR preview URL — only relevant for direct mail
+    const previewTrackingUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/track/preview`;
+    const previewQrUrl = resolvedChannel === "direct_mail"
+      ? buildPreviewQRImageUrl(previewTrackingUrl, 120)
+      : null;
+
+    return NextResponse.json({
+      customerId,
+      customerName: `${customer.first_name} ${customer.last_name}`,
+      templateType: (templateType as MailTemplateType) ?? null,
+      channel: resolvedChannel,
+      content: creative.content,
+      subject: creative.subject ?? null,
+      reasoning: creative.reasoning,
+      confidence: creative.confidence,
+      previewQrUrl,
+      vehicle: visits?.[0]
+        ? [visits[0].year, visits[0].make, visits[0].model].filter(Boolean).join(" ")
+        : null,
+      lastVisitDate: visits?.[0]?.visit_date ?? null,
+      // Convenience — cleaned SMS body (strip HTML if any)
+      smsBody: resolvedChannel === "sms" ? creative.content.replace(/<[^>]+>/g, "").slice(0, 160) : null,
+    });
+  } catch (error) {
+    console.error("[/api/mail/preview]", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
