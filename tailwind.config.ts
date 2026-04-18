@@ -16,7 +16,7 @@ const config: Config = {
     },
     extend: {
       colors: {
-        // ── shadcn/ui semantic tokens (mapped from CSS variables) ──────
+        // ── shadcn/ui semantic tokens ─────────────────────────────
         border:     "hsl(var(--border))",
         input:      "hsl(var(--input))",
         ring:       "hsl(var(--ring))",
@@ -51,41 +51,40 @@ const config: Config = {
           foreground: "hsl(var(--card-foreground))",
         },
 
-        // ── AutoCDP brand — deep indigo (primary actions) ──────────────
-        // Replaces previous bright blue. Pairs with the dark navy sidebar.
+        // ── Brand — deep indigo ───────────────────────────────────
         brand: {
-          50:  "#eef2ff",  // indigo-50
-          100: "#e0e7ff",  // indigo-100
-          200: "#c7d2fe",  // indigo-200
-          300: "#a5b4fc",  // indigo-300
-          400: "#818cf8",  // indigo-400
-          500: "#6366f1",  // indigo-500
-          600: "#4f46e5",  // indigo-600  ← primary CTA
-          700: "#4338ca",  // indigo-700
-          800: "#3730a3",  // indigo-800
-          900: "#312e81",  // indigo-900
+          50:  "#eef2ff",
+          100: "#e0e7ff",
+          200: "#c7d2fe",
+          300: "#a5b4fc",
+          400: "#818cf8",
+          500: "#6366f1",
+          600: "#4f46e5",  // ← primary CTA
+          700: "#4338ca",
+          800: "#3730a3",
+          900: "#312e81",
         },
 
-        // ── Navy — structural dark elements (sidebar, deep headings) ───
+        // ── Navy — structural (sidebar, hero panels) ──────────────
         navy: {
-          700: "#334155",  // slate-700
-          800: "#1e293b",  // slate-800
-          900: "#0f172a",  // slate-900  ← sidebar base
+          700: "#334155",
+          800: "#1e293b",
+          900: "#0f172a",  // ← sidebar base
         },
 
-        // ── Success — emerald (positive KPIs, scan rates, connected) ──
+        // ── Success — emerald ─────────────────────────────────────
         success: {
           50:  "#ecfdf5",
           100: "#d1fae5",
           200: "#a7f3d0",
           400: "#34d399",
-          500: "#10b981",  // emerald-500  ← primary success
+          500: "#10b981",
           600: "#059669",
           700: "#047857",
           900: "#064e3b",
         },
 
-        // ── Warning — amber (kept for existing warning badges) ─────────
+        // ── Warning — amber ───────────────────────────────────────
         warning: {
           50:  "#fffbeb",
           100: "#fef3c7",
@@ -99,6 +98,8 @@ const config: Config = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        xl: "0.75rem",
+        "2xl": "1rem",
       },
 
       fontFamily: {
@@ -107,19 +108,19 @@ const config: Config = {
       },
 
       boxShadow: {
-        // Institutional card shadow — very subtle depth, no bloom
-        card:  "0 1px 3px 0 rgb(15 23 42 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.06)",
-        "card-md": "0 4px 6px -1px rgb(15 23 42 / 0.07), 0 2px 4px -2px rgb(15 23 42 / 0.05)",
-        "card-lg": "0 10px 15px -3px rgb(15 23 42 / 0.08), 0 4px 6px -4px rgb(15 23 42 / 0.05)",
-        // For modals / popovers
-        modal: "0 20px 25px -5px rgb(15 23 42 / 0.10), 0 8px 10px -6px rgb(15 23 42 / 0.08)",
+        card:     "0 1px 3px 0 rgb(15 23 42 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.06)",
+        "card-md":"0 4px 6px -1px rgb(15 23 42 / 0.07), 0 2px 4px -2px rgb(15 23 42 / 0.05)",
+        "card-lg":"0 10px 15px -3px rgb(15 23 42 / 0.08), 0 4px 6px -4px rgb(15 23 42 / 0.05)",
+        modal:    "0 20px 25px -5px rgb(15 23 42 / 0.10), 0 8px 10px -6px rgb(15 23 42 / 0.08)",
+        indigo:   "0 8px 24px -4px rgb(79 70 229 / 0.35)",
       },
 
       fontSize: {
-        // Tighter tracking at larger sizes for institutional headings
-        "2xl": ["1.5rem",   { lineHeight: "2rem",   letterSpacing: "-0.015em" }],
-        "3xl": ["1.875rem", { lineHeight: "2.25rem", letterSpacing: "-0.02em" }],
+        "2xl": ["1.5rem",   { lineHeight: "2rem",    letterSpacing: "-0.015em" }],
+        "3xl": ["1.875rem", { lineHeight: "2.25rem", letterSpacing: "-0.02em"  }],
         "4xl": ["2.25rem",  { lineHeight: "2.5rem",  letterSpacing: "-0.025em" }],
+        "5xl": ["3rem",     { lineHeight: "1",       letterSpacing: "-0.03em"  }],
+        "6xl": ["3.75rem",  { lineHeight: "1",       letterSpacing: "-0.04em"  }],
       },
 
       keyframes: {
@@ -136,7 +137,11 @@ const config: Config = {
           "50%":      { opacity: "0.5" },
         },
         "fade-in": {
-          from: { opacity: "0", transform: "translateY(4px)" },
+          from: { opacity: "0", transform: "translateY(6px)" },
+          to:   { opacity: "1", transform: "translateY(0)" },
+        },
+        "fade-up": {
+          from: { opacity: "0", transform: "translateY(16px)" },
           to:   { opacity: "1", transform: "translateY(0)" },
         },
       },
@@ -144,7 +149,8 @@ const config: Config = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up":   "accordion-up 0.2s ease-out",
         "pulse-slow":     "pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-        "fade-in":        "fade-in 0.2s ease-out",
+        "fade-in":        "fade-in 0.25s ease-out",
+        "fade-up":        "fade-up 0.4s ease-out",
       },
     },
   },

@@ -2,46 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Google Fonts — Caveat for handwriting preview */
 @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    /* ── Backgrounds ─────────────────────────────────────────────── */
-    --background: 210 40% 98%;        /* slate-50  #F8FAFC */
-    --foreground: 222 47% 11%;        /* slate-900 #0F172A */
-
-    /* ── Cards / Popovers ────────────────────────────────────────── */
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
     --card:            0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover:            0 0% 100%;
     --popover-foreground: 222 47% 11%;
-
-    /* ── Primary — indigo-600 ────────────────────────────────────── */
-    --primary:            243 75% 59%; /* #4F46E5 */
+    --primary:            243 75% 59%;
     --primary-foreground: 210 40% 98%;
-
-    /* ── Secondary — slate-100 ───────────────────────────────────── */
-    --secondary:            214 32% 91%; /* slate-200 #E2E8F0 */
+    --secondary:            214 32% 91%;
     --secondary-foreground: 222 47% 11%;
-
-    /* ── Muted — slate-100 ───────────────────────────────────────── */
     --muted:            214 32% 91%;
-    --muted-foreground: 215 16% 47%;   /* slate-500 */
-
-    /* ── Accent — slate-100 ──────────────────────────────────────── */
+    --muted-foreground: 215 16% 47%;
     --accent:            214 32% 91%;
     --accent-foreground: 222 47% 11%;
-
-    /* ── Destructive — red-500 ───────────────────────────────────── */
     --destructive:            0 84% 60%;
     --destructive-foreground: 210 40% 98%;
-
-    /* ── Border / Input / Ring ───────────────────────────────────── */
-    --border: 214 32% 91%;   /* slate-200 */
+    --border: 214 32% 91%;
     --input:  214 32% 91%;
-    --ring:   243 75% 59%;   /* indigo-600 */
-
+    --ring:   243 75% 59%;
     --radius: 0.5rem;
   }
 
@@ -69,26 +52,22 @@
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  h1, h2, h3, h4, h5, h6 {
-    @apply tracking-tight;
-  }
+  h1, h2, h3, h4, h5, h6 { @apply tracking-tight; }
 }
 
-/* ── Sidebar gradient — deep navy ─────────────────────────────── */
+/* ── Sidebar ──────────────────────────────────────────────── */
 .sidebar-gradient {
   background: linear-gradient(160deg, #0f172a 0%, #1e293b 100%);
 }
 
-/* ── Handwriting character variation ─────────────────────────── */
+/* ── Handwriting ──────────────────────────────────────────── */
 .handwriting-char {
   display: inline-block;
   font-family: 'Caveat', cursive;
@@ -99,18 +78,13 @@
 .handwriting-char:nth-child(5n)   { transform: rotate(-1.2deg) translateY(1px); font-size: 0.97em; }
 .handwriting-char:nth-child(7n)   { transform: rotate(0.4deg) translateY(-0.3px); font-size: 1.02em; }
 
-/* ── Utility: stat card number ───────────────────────────────── */
+/* ── Landing page smooth scroll ───────────────────────────── */
+html { scroll-behavior: smooth; }
+
+/* ── Utility classes ─────────────────────────────────────── */
 @layer components {
-  .stat-value {
-    @apply text-2xl font-bold text-navy-900 tracking-tight;
-  }
-  .stat-label {
-    @apply text-xs font-medium text-slate-500 uppercase tracking-wider;
-  }
-  .page-title {
-    @apply text-2xl font-bold text-slate-900;
-  }
-  .section-title {
-    @apply text-base font-semibold text-slate-900;
-  }
+  .stat-value  { @apply text-2xl font-bold text-slate-900 tracking-tight; }
+  .stat-label  { @apply text-xs font-medium text-slate-500 uppercase tracking-wider; }
+  .page-title  { @apply text-2xl font-bold text-slate-900 tracking-tight; }
+  .section-title { @apply text-base font-semibold text-slate-900; }
 }

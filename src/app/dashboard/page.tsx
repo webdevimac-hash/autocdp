@@ -1,11 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { Header } from "@/components/layout/header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Users, Megaphone, Mail, TrendingUp, ArrowUpRight,
-  Bot, Clock, CheckCircle,
+  Bot, Clock, CheckCircle, Sparkles,
 } from "lucide-react";
 import { formatRelativeDate, formatCurrency } from "@/lib/utils";
 import Link from "next/link";
@@ -16,7 +14,6 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Load dealership
   const { data: userDealership } = await supabase
     .from("user_dealerships")
     .select("dealership_id")
@@ -25,7 +22,6 @@ export default async function DashboardPage() {
 
   const dealershipId = userDealership?.dealership_id;
 
-  // Parallel data fetches
   const [customersRes, campaignsRes, commsRes, agentRunsRes] = await Promise.all([
     supabase.from("customers").select("id, lifecycle_stage, total_spend", { count: "exact" }).eq("dealership_id", dealershipId ?? ""),
     supabase.from("campaigns").select("id, name, status, stats, channel, updated_at").eq("dealership_id", dealershipId ?? "").order("updated_at", { ascending: false }).limit(5),
@@ -39,7 +35,6 @@ export default async function DashboardPage() {
   const comms = commsRes.data ?? [];
   const agentRuns = agentRunsRes.data ?? [];
 
-  // Quick stats
   const vipCount = customers.filter((c) => c.lifecycle_stage === "vip").length;
   const atRiskCount = customers.filter((c) => c.lifecycle_stage === "at_risk").length;
   const totalRevenue = customers.reduce((s, c) => s + (c.total_spend ?? 0), 0);
@@ -47,153 +42,194 @@ export default async function DashboardPage() {
   const sentThisMonth = comms.filter((c) => c.status === "sent" || c.status === "delivered").length;
 
   const stats = [
-    { title: "Total Customers", value: totalCustomers.toLocaleString(), icon: Users, change: "+12%", color: "text-blue-600 bg-blue-50" },
-    { title: "Active Campaigns", value: activeCampaigns, icon: Megaphone, change: "+2 this week", color: "text-purple-600 bg-purple-50" },
-    { title: "Sent This Month", value: sentThisMonth.toLocaleString(), icon: Mail, change: "30-day window", color: "text-green-600 bg-green-50" },
-    { title: "Total Customer Value", value: `$${(totalRevenue / 1000).toFixed(0)}k`, icon: TrendingUp, change: "All time", color: "text-amber-600 bg-amber-50" },
+    {
+      title: "Total Customers",
+      value: totalCustomers.toLocaleString(),
+      change: "+12% vs last month",
+      icon: Users,
+      iconBg: "bg-indigo-50",
+      iconColor: "text-indigo-600",
+      trend: "up",
+    },
+    {
+      title: "Active Campaigns",
+      value: activeCampaigns,
+      change: `${campaigns.length} total`,
+      icon: Megaphone,
+      iconBg: "bg-violet-50",
+      iconColor: "text-violet-600",
+      trend: "neutral",
+    },
+    {
+      title: "Sent This Month",
+      value: sentThisMonth.toLocaleString(),
+      change: "30-day window",
+      icon: Mail,
+      iconBg: "bg-emerald-50",
+      iconColor: "text-emerald-600",
+      trend: "up",
+    },
+    {
+      title: "Customer Value",
+      value: `$${(totalRevenue / 1000).toFixed(0)}k`,
+      change: "All-time total spend",
+      icon: TrendingUp,
+      iconBg: "bg-amber-50",
+      iconColor: "text-amber-600",
+      trend: "up",
+    },
   ];
 
   const agentTypeColors: Record<string, string> = {
-    orchestrator: "bg-purple-100 text-purple-700",
-    data: "bg-blue-100 text-blue-700",
+    orchestrator: "bg-violet-100 text-violet-700",
+    data: "bg-sky-100 text-sky-700",
     targeting: "bg-indigo-100 text-indigo-700",
-    creative: "bg-green-100 text-green-700",
+    creative: "bg-emerald-100 text-emerald-700",
     optimization: "bg-amber-100 text-amber-700",
   };
 
+  const segments = [
+    { label: "VIP", count: vipCount, color: "bg-amber-500", pct: totalCustomers ? vipCount / totalCustomers : 0 },
+    { label: "Active", count: customers.filter((c) => c.lifecycle_stage === "active").length, color: "bg-emerald-500", pct: totalCustomers ? customers.filter((c) => c.lifecycle_stage === "active").length / totalCustomers : 0 },
+    { label: "At Risk", count: atRiskCount, color: "bg-orange-500", pct: totalCustomers ? atRiskCount / totalCustomers : 0 },
+    { label: "Lapsed", count: customers.filter((c) => c.lifecycle_stage === "lapsed").length, color: "bg-red-400", pct: totalCustomers ? customers.filter((c) => c.lifecycle_stage === "lapsed").length / totalCustomers : 0 },
+  ];
+
   return (
     <>
-      <Header
-        title="Dashboard"
-        subtitle="Welcome back — here's what's happening"
-        userEmail={user?.email}
-      />
+      <Header title="Dashboard" subtitle="Your dealership at a glance" userEmail={user?.email} />
 
-      <main className="flex-1 p-6 space-y-6">
+      <main className="flex-1 p-6 space-y-6 max-w-[1400px]">
+
         {/* Stats grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {stats.map((stat) => (
-            <Card key={stat.title} className="border-0 shadow-sm">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{stat.title}</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{stat.change}</p>
-                  </div>
-                  <div className={`p-2.5 rounded-lg ${stat.color}`}>
-                    <stat.icon className="w-5 h-5" />
-                  </div>
+            <div key={stat.title} className="bg-white rounded-xl border border-slate-200 p-5 shadow-card hover:shadow-card-md transition-shadow">
+              <div className="flex items-start justify-between mb-4">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${stat.iconBg}`}>
+                  <stat.icon className={`w-4.5 h-4.5 ${stat.iconColor}`} />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-2xl font-bold text-slate-900 tracking-tight">{stat.value}</p>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{stat.title}</p>
+                <p className="text-xs text-slate-400 pt-1">{stat.change}</p>
+              </div>
+            </div>
           ))}
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* Recent campaigns */}
-          <div className="xl:col-span-2">
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3 flex-row items-center justify-between">
-                <CardTitle className="text-base">Recent Campaigns</CardTitle>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/dashboard/campaigns">View all <ArrowUpRight className="ml-1 w-3.5 h-3.5" /></Link>
-                </Button>
-              </CardHeader>
-              <CardContent className="p-0">
-                {campaigns.length === 0 ? (
-                  <div className="px-6 py-10 text-center text-muted-foreground text-sm">
-                    No campaigns yet. <Link href="/dashboard/campaigns" className="text-primary hover:underline">Create your first</Link>.
+          <div className="xl:col-span-2 bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-900">Recent Campaigns</h2>
+              <Link
+                href="/dashboard/campaigns"
+                className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+              >
+                View all <ArrowUpRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+            {campaigns.length === 0 ? (
+              <div className="px-6 py-14 text-center">
+                <Megaphone className="w-8 h-8 text-slate-200 mx-auto mb-3" />
+                <p className="text-sm text-slate-400">No campaigns yet.</p>
+                <Link href="/dashboard/campaigns" className="text-xs text-indigo-600 hover:underline mt-1 inline-block">
+                  Create your first campaign →
+                </Link>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-50">
+                {campaigns.map((c) => (
+                  <div key={c.id} className="px-6 py-3.5 flex items-center gap-4 hover:bg-slate-50/60 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-900 truncate">{c.name}</p>
+                      <p className="text-xs text-slate-400 capitalize mt-0.5">
+                        {c.channel.replace("_", " ")} · {formatRelativeDate(c.updated_at)}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-semibold text-slate-800">
+                        {(c.stats as { sent?: number })?.sent?.toLocaleString() ?? 0}
+                        <span className="text-xs font-normal text-slate-400 ml-1">sent</span>
+                      </p>
+                      <Badge
+                        variant={c.status === "active" ? "success" : c.status === "draft" ? "secondary" : "outline"}
+                        className="text-[10px] mt-1"
+                      >
+                        {c.status}
+                      </Badge>
+                    </div>
                   </div>
-                ) : (
-                  <div className="divide-y">
-                    {campaigns.map((c) => (
-                      <div key={c.id} className="px-6 py-3.5 flex items-center gap-4 hover:bg-slate-50 transition-colors">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{c.name}</p>
-                          <p className="text-xs text-muted-foreground capitalize">{c.channel.replace("_", " ")} · Updated {formatRelativeDate(c.updated_at)}</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-sm font-semibold">{(c.stats as { sent?: number })?.sent?.toLocaleString() ?? 0} sent</p>
-                          <Badge
-                            variant={c.status === "active" ? "success" : c.status === "draft" ? "secondary" : "outline"}
-                            className="text-[10px] mt-0.5"
-                          >
-                            {c.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Right column */}
           <div className="space-y-4">
             {/* Customer health */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Customer Health</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {[
-                  { label: "VIP", count: vipCount, color: "bg-amber-500", pct: totalCustomers ? vipCount / totalCustomers : 0 },
-                  { label: "Active", count: customers.filter((c) => c.lifecycle_stage === "active").length, color: "bg-green-500", pct: totalCustomers ? customers.filter((c) => c.lifecycle_stage === "active").length / totalCustomers : 0 },
-                  { label: "At Risk", count: atRiskCount, color: "bg-orange-500", pct: totalCustomers ? atRiskCount / totalCustomers : 0 },
-                  { label: "Lapsed", count: customers.filter((c) => c.lifecycle_stage === "lapsed").length, color: "bg-red-500", pct: totalCustomers ? customers.filter((c) => c.lifecycle_stage === "lapsed").length / totalCustomers : 0 },
-                ].map((seg) => (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-card p-5">
+              <h2 className="text-sm font-semibold text-slate-900 mb-4">Customer Health</h2>
+              <div className="space-y-3.5">
+                {segments.map((seg) => (
                   <div key={seg.label}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-muted-foreground">{seg.label}</span>
-                      <span className="font-medium">{seg.count}</span>
+                    <div className="flex justify-between items-center text-xs mb-1.5">
+                      <span className="text-slate-500 font-medium">{seg.label}</span>
+                      <span className="font-semibold text-slate-700 tabular-nums">{seg.count.toLocaleString()}</span>
                     </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div className={`h-full ${seg.color} rounded-full`} style={{ width: `${Math.round(seg.pct * 100)}%` }} />
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${seg.color}`}
+                        style={{ width: `${Math.max(2, Math.round(seg.pct * 100))}%` }}
+                      />
                     </div>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            {/* Recent agent activity */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3 flex-row items-center justify-between">
-                <CardTitle className="text-base">Agent Activity</CardTitle>
-                <Bot className="w-4 h-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent className="space-y-2 p-3 pt-0">
+            {/* Agent activity */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-slate-900">Agent Activity</h2>
+                <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+              </div>
+              <div className="p-3">
                 {agentRuns.length === 0 ? (
-                  <p className="text-xs text-muted-foreground py-4 text-center">No agent runs yet.</p>
+                  <div className="py-8 text-center">
+                    <Bot className="w-7 h-7 text-slate-200 mx-auto mb-2" />
+                    <p className="text-xs text-slate-400">No agent runs yet.</p>
+                  </div>
                 ) : (
                   agentRuns.map((run) => (
-                    <div key={run.id} className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-slate-50">
+                    <div key={run.id} className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-slate-50 transition-colors">
                       <div className="mt-0.5 shrink-0">
                         {run.status === "completed" ? (
-                          <CheckCircle className="w-4 h-4 text-green-500" />
+                          <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
                         ) : run.status === "running" ? (
-                          <Clock className="w-4 h-4 text-blue-500 animate-pulse-slow" />
+                          <Clock className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
                         ) : (
-                          <div className="w-4 h-4 rounded-full bg-red-200" />
+                          <div className="w-3.5 h-3.5 rounded-full bg-red-200 mt-0.5" />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded capitalize ${agentTypeColors[run.agent_type] ?? "bg-gray-100 text-gray-600"}`}>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded capitalize ${agentTypeColors[run.agent_type] ?? "bg-slate-100 text-slate-600"}`}>
                             {run.agent_type}
                           </span>
-                          <span className="text-[10px] text-muted-foreground">{formatRelativeDate(run.created_at)}</span>
+                          <span className="text-[10px] text-slate-400">{formatRelativeDate(run.created_at)}</span>
                         </div>
                         {run.output_summary && (
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{run.output_summary}</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{run.output_summary}</p>
                         )}
                       </div>
                     </div>
                   ))
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
       </main>
