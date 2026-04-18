@@ -28,12 +28,10 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Public routes — no auth required
-  const publicPaths = ["/login", "/signup", "/auth/callback"];
-  const isPublic = publicPaths.some((p) => pathname.startsWith(p));
+  // Only protect authenticated routes — everything else is public
+  const requiresAuth = pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding");
 
-  if (!user && !isPublic) {
-    // Redirect unauthenticated users to login
+  if (!user && requiresAuth) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("redirectTo", pathname);
