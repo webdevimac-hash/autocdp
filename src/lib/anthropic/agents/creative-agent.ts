@@ -127,6 +127,30 @@ function formatInventorySection(ctx: InventoryContext): string {
   return `\n${headers[ctx.type as Exclude<InventoryContext["type"], "none">]}\n${lines.join("\n")}\n`;
 }
 
+// ── Copy post-processing ───────────────────────────────────────
+
+function postProcessMailCopy(text: string, channel: string): string {
+  if (channel !== "direct_mail") return text;
+
+  return text
+    // Fix literal \n strings that weren't decoded (JSON parse edge cases)
+    .replace(/\\n/g, "\n")
+    // Ensure space after sentence-ending punctuation when immediately followed by a letter
+    .replace(/([.!?,;:])([A-Za-z])/g, "$1 $2")
+    // Fix common concatenation: lowercase letter directly touching uppercase mid-sentence
+    // (but NOT at start of string or after a newline — those are fine)
+    .replace(/([a-z])([A-Z][a-z])/g, (_, a, b) => `${a} ${b}`)
+    // Collapse 3+ consecutive newlines to exactly 2
+    .replace(/\n{3,}/g, "\n\n")
+    // Trim trailing whitespace from each line
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .join("\n")
+    // Ensure at least one blank line before the sign-off (Warmly / Best / Thanks)
+    .replace(/\n(Warmly|Best|Sincerely|Thanks|Cheers|With appreciation|Take care),/g, "\n\n$1,")
+    .trim();
+}
+
 // ── Main function ──────────────────────────────────────────────
 
 export async function runCreativeAgent(
@@ -217,7 +241,18 @@ export async function runCreativeAgent(
   const channelGuide = {
     sms:         "SMS (max 160 chars, no HTML, conversational, include opt-out hint)",
     email:       "Email (can be multi-paragraph, include subject line, warm but direct)",
-    direct_mail: "Handwritten note (50–80 words, personal, signed by service advisor, mentions specific car or service)",
+    direct_mail: [
+      "Handwritten note for direct mail.",
+      "STRICT FORMAT RULES:",
+      "  • Write exactly 3-4 short paragraphs. Separate each paragraph with a BLANK LINE (\\n\\n).",
+      "  • Maximum 12 words per sentence. Short, natural phrasing only.",
+      "  • Open with just the first name and a comma on its own line.",
+      "  • End with a warm sign-off on its own line, then the advisor's first name below it.",
+      "  • Total word count: 55–80 words.",
+      "  • NO run-on sentences. NO concatenated words. Every sentence must end with punctuation.",
+      "EXAMPLE STRUCTURE (use \\n\\n between every paragraph/block):",
+      "  Sarah,\\n\\nYour 2019 Pilot is due for its 30k service soon.\\n\\nWe're offering a complimentary multi-point inspection this month — no strings attached.\\n\\nWould love to see you back in. Just call or book online.\\n\\nWarmly,\\nTom",
+    ].join("\n"),
   }[input.channel];
 
   const learningsSection =
@@ -258,7 +293,7 @@ export async function runCreativeAgent(
   // ── 4. Generate copy ───────────────────────────────────────
   const response = await client.messages.create({
     model: MODELS.standard,
-    max_tokens: 512,
+    max_tokens: input.channel === "direct_mail" ? 768 : 512,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
   });
@@ -271,9 +306,12 @@ export async function runCreativeAgent(
 
   const parsed = JSON.parse(jsonMatch[0]);
 
-  // ── 5. Guardrails ──────────────────────────────────────────
+  // ── 5. Post-process copy ───────────────────────────────────
+  const cleanedContent = postProcessMailCopy(parsed.content ?? "", input.channel);
+
+  // ── 6. Guardrails ──────────────────────────────────────────
   const guardrail = await applyGuardrails(
-    parsed.content ?? "",
+    cleanedContent,
     parsed.subject ?? null,
     input.channel
   );

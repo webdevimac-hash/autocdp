@@ -42,6 +42,28 @@ function HandwrittenText({ text }: { text: string }) {
   );
 }
 
+// ── Shared: render content with paragraph + line-break awareness ──
+
+function HandwrittenContent({ text, fontSize = 17, lineHeight = 1.8 }: { text: string; fontSize?: number; lineHeight?: number }) {
+  const paragraphs = text.split(/\n\n+/);
+  return (
+    <div style={{ fontSize: `${fontSize}px`, lineHeight, color: "#1f2937" }}>
+      {paragraphs.map((para, pi) => {
+        const lines = para.split("\n");
+        return (
+          <div key={pi} style={{ marginBottom: pi < paragraphs.length - 1 ? `${fontSize * 0.65}px` : 0 }}>
+            {lines.map((line, li) => (
+              <div key={li}>
+                {line ? <HandwrittenText text={line} /> : null}
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Postcard 6x9 Preview ─────────────────────────────────────
 
 function Postcard6x9Preview({
@@ -55,20 +77,18 @@ function Postcard6x9Preview({
   offer?: string | null;
   qrPreviewUrl: string;
 }) {
-  const lines = content.split("\n");
-
   return (
     <div className="relative" style={{ perspective: "1000px" }}>
       {/* Front */}
       <div
-        className="rounded-xl border-2 border-amber-200 shadow-xl overflow-hidden"
+        className="rounded-xl border border-slate-200 shadow-xl overflow-hidden"
         style={{
           width: "100%",
-          maxWidth: "480px",
-          aspectRatio: "6/9",
-          background: "#fefce8",
-          backgroundImage: "repeating-linear-gradient(transparent, transparent 29px, #e5e7eb 29px, #e5e7eb 30px)",
-          padding: "20px 22px",
+          maxWidth: "420px",
+          background: "#ffffff",
+          backgroundImage: "repeating-linear-gradient(transparent, transparent 30px, #f1f5f9 30px, #f1f5f9 31px)",
+          backgroundPositionY: "46px",
+          padding: "18px 22px 76px 22px",
           position: "relative",
         }}
       >
@@ -77,35 +97,29 @@ function Postcard6x9Preview({
           style={{
             fontFamily: "'Inter', sans-serif",
             fontSize: "9px",
-            fontWeight: 600,
-            color: "#2563eb",
-            letterSpacing: "0.07em",
+            fontWeight: 700,
+            color: "#3b82f6",
+            letterSpacing: "0.08em",
             textTransform: "uppercase",
             borderBottom: "1px solid #dbeafe",
             paddingBottom: "6px",
-            marginBottom: "12px",
+            marginBottom: "14px",
           }}
         >
           {dealershipName}
         </div>
 
         {/* Handwritten message */}
-        <div style={{ fontSize: "17px", lineHeight: "1.75", color: "#1f2937" }}>
-          {lines.map((line, i) => (
-            <div key={i} style={{ marginBottom: "2px" }}>
-              {line ? <HandwrittenText text={line} /> : <br />}
-            </div>
-          ))}
-        </div>
+        <HandwrittenContent text={content} fontSize={16} lineHeight={1.8} />
 
         {/* Offer callout */}
         {offer && (
           <div
             style={{
-              marginTop: "10px",
+              marginTop: "12px",
               padding: "6px 10px",
               background: "#eff6ff",
-              borderLeft: "3px solid #2563eb",
+              borderLeft: "3px solid #3b82f6",
               borderRadius: "3px",
               fontSize: "11px",
               color: "#1e40af",
@@ -129,11 +143,11 @@ function Postcard6x9Preview({
           <img
             src={qrPreviewUrl}
             alt="Tracking QR"
-            width={64}
-            height={64}
+            width={56}
+            height={56}
             style={{ display: "block", borderRadius: "4px" }}
           />
-          <div style={{ fontSize: "7px", color: "#6b7280", marginTop: "3px", fontFamily: "'Inter', sans-serif" }}>
+          <div style={{ fontSize: "7px", color: "#94a3b8", marginTop: "3px", fontFamily: "'Inter', sans-serif" }}>
             Scan for offer
           </div>
         </div>
@@ -161,7 +175,6 @@ function LetterPreview({
   templateType: MailTemplateType;
 }) {
   const aspectRatio = templateType === "letter_8.5x11" ? "8.5/11" : "6/9";
-  const lines = content.split("\n");
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
   return (
@@ -195,13 +208,7 @@ function LetterPreview({
       </div>
 
       {/* Body */}
-      <div style={{ fontSize: "14px", lineHeight: "1.8", color: "#1f2937" }}>
-        {lines.map((line, i) => (
-          <div key={i} style={{ marginBottom: "1px" }}>
-            {line ? <HandwrittenText text={line} /> : <br />}
-          </div>
-        ))}
-      </div>
+      <HandwrittenContent text={content} fontSize={14} lineHeight={1.85} />
     </div>
   );
 }
