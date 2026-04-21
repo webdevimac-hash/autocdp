@@ -709,8 +709,8 @@ export default function LandingPage() {
             </div>
 
             {/* ── Right: Dashboard mockup ────────────────── */}
-            {/* pt-8 pb-8 give floating badges at top/bottom room; pr-4 gives right badges room */}
-            <div className="relative hidden xl:block stagger-2 pt-8 pb-8 pr-4">
+            {/* Extra padding gives float badges room on all edges */}
+            <div className="relative hidden xl:block stagger-2 pt-10 pb-10 pr-10 pl-6">
 
               {/* Ambient glow behind mockup */}
               <div
@@ -719,6 +719,9 @@ export default function LandingPage() {
               />
 
               <div className="relative animate-float-slow mockup-container">
+                {/* AI radar rings — subtle activity indicators */}
+                <div className="mockup-radar" />
+                <div className="mockup-radar-2" />
                 {/* Gradient ring hover effect */}
                 <div className="mockup-ring" />
                 {/* Main window */}
@@ -1010,9 +1013,9 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                {/* Floating badge: conversions — bottom-left, inside safe zone */}
-                <div className="absolute -bottom-5 left-4 animate-float-delayed" style={{ zIndex: 30 }}>
-                  <div className="flex items-center gap-3 px-4 py-3 rounded-2xl float-badge">
+                {/* Floating badge: conversions — bottom-left */}
+                <div className="absolute -bottom-8 left-1 animate-float-delayed" style={{ zIndex: 50 }}>
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-2xl float-badge float-badge-emerald">
                     <div
                       className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                       style={{ background: "rgba(16,185,129,0.10)", border: "1px solid rgba(16,185,129,0.20)" }}
@@ -1026,9 +1029,9 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                {/* Floating badge: QR scan — top-right, clear of content */}
-                <div className="absolute -top-5 right-6 animate-float-slow" style={{ zIndex: 30 }}>
-                  <div className="flex items-center gap-3 px-4 py-3 rounded-2xl float-badge">
+                {/* Floating badge: QR scan — top-right */}
+                <div className="absolute -top-8 right-3 animate-float-slow" style={{ zIndex: 50 }}>
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-2xl float-badge float-badge-indigo">
                     <div
                       className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                       style={{ background: "rgba(99,102,241,0.10)", border: "1px solid rgba(99,102,241,0.20)" }}
@@ -1043,8 +1046,8 @@ export default function LandingPage() {
                 </div>
 
                 {/* Floating badge: mail sent — right center */}
-                <div className="absolute top-[44%] -right-3 animate-float" style={{ animationDelay: "1s", zIndex: 30 }}>
-                  <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl float-badge">
+                <div className="absolute top-[44%] -right-8 animate-float" style={{ animationDelay: "1s", zIndex: 50 }}>
+                  <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl float-badge float-badge-violet">
                     <div
                       className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                       style={{ background: "rgba(139,92,246,0.10)", border: "1px solid rgba(139,92,246,0.20)" }}
@@ -1058,9 +1061,9 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                {/* Floating badge: win-back — left upper, inside gap */}
-                <div className="absolute top-[20%] -left-4 animate-float" style={{ animationDelay: "2.4s", zIndex: 30 }}>
-                  <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl float-badge">
+                {/* Floating badge: win-back — left upper */}
+                <div className="absolute top-[20%] -left-6 animate-float" style={{ animationDelay: "2.4s", zIndex: 50 }}>
+                  <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl float-badge float-badge-emerald">
                     <div
                       className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                       style={{ background: "rgba(16,185,129,0.10)", border: "1px solid rgba(16,185,129,0.22)" }}
@@ -1189,8 +1192,8 @@ export default function LandingPage() {
             { icon: CheckCircle2,  label: "CCPA Compliant" },
             { icon: Shield,        label: "256-bit Encryption" },
             { icon: Zap,          label: "99.9% Uptime SLA" },
-          ].map((t) => (
-            <div key={t.label} className="trust-strip-item shrink-0">
+          ].map((t, i) => (
+            <div key={t.label} className="trust-strip-item trust-strip-item-anim shrink-0" style={{ animationDelay: `${i * 0.08}s` }}>
               <t.icon className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
               <span className="text-[11.5px] font-semibold whitespace-nowrap" style={{ color: "#64748B" }}>{t.label}</span>
             </div>
