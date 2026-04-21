@@ -433,3 +433,20 @@ button, a, [role="button"], input, select, textarea {
 
 /* ── Progress fill ───────────────────────────────────────── */
 .shimmer-move { animation: shimmer-move 2.5s linear infinite; }
+
+/* ── Float ───────────────────────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+.animate-float         { animation: float 5s ease-in-out infinite; }
+.animate-float-slow    { animation: float 7s ease-in-out infinite; }
+.animate-float-delayed { animation: float 5s ease-in-out 1.6s infinite; }
+
+/* ── Ticker scroll ────────────────────────────────────────── */
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.ticker-track { animation: ticker 28s linear infinite; }
+.ticker-track:hover { animation-play-state: paused; }
