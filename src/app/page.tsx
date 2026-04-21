@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   Car, BarChart3, Mail, Bot, Shield, Zap, TrendingUp,
