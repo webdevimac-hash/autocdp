@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { BarChart2, TrendingUp, Mail, MessageSquare, Send, ScanLine, Sparkles } from "lucide-react";
+import { formatRelativeDate } from "@/lib/utils";
 
 export const metadata = { title: "Analytics" };
 
@@ -39,25 +40,25 @@ export default async function AnalyticsPage() {
     supabase.from("billing_events").select("event_type, unit_cost_cents, quantity, created_at").eq("dealership_id", dealershipId).gte("created_at", thirtyDaysAgo),
   ]);
 
-  const mailPieces = mailPiecesRes.data ?? [];
-  const scans = scansRes.data ?? [];
-  const comms = commsRes.data ?? [];
-  const agentRuns = agentRunsRes.data ?? [];
+  const mailPieces      = mailPiecesRes.data ?? [];
+  const scans           = scansRes.data ?? [];
+  const comms           = commsRes.data ?? [];
+  const agentRuns       = agentRunsRes.data ?? [];
   const globalLearnings = globalLearningsRes.data ?? [];
-  const recentOutcomes = recentOutcomesRes.data ?? [];
-  const billingEvents = billingRes.data ?? [];
+  const recentOutcomes  = recentOutcomesRes.data ?? [];
+  const billingEvents   = billingRes.data ?? [];
 
-  const liveMail = mailPieces.filter((m) => !m.is_test);
-  const deliveredMail = liveMail.filter((m) => m.status === "delivered");
-  const scannedMail = liveMail.filter((m) => m.scanned_count > 0);
-  const mailScanRate = liveMail.length > 0 ? (scannedMail.length / liveMail.length) * 100 : 0;
+  const liveMail        = mailPieces.filter((m) => !m.is_test);
+  const deliveredMail   = liveMail.filter((m) => m.status === "delivered");
+  const scannedMail     = liveMail.filter((m) => m.scanned_count > 0);
+  const mailScanRate    = liveMail.length > 0 ? (scannedMail.length / liveMail.length) * 100 : 0;
   const mailDeliveryRate = liveMail.length > 0 ? (deliveredMail.length / liveMail.length) * 100 : 0;
 
-  const smsSent = comms.filter((c) => c.channel === "sms" && c.status === "sent");
+  const smsSent   = comms.filter((c) => c.channel === "sms"   && c.status === "sent");
   const emailSent = comms.filter((c) => c.channel === "email" && c.status === "sent");
 
-  const totalMailSpend = liveMail.reduce((s, m) => s + (m.cost_cents ?? 0), 0);
-  const totalAiSpend = billingEvents.filter((e) => e.event_type === "agent_run").reduce((s, e) => s + (e.unit_cost_cents ?? 0) * (e.quantity ?? 1), 0);
+  const totalMailSpend  = liveMail.reduce((s, m) => s + (m.cost_cents ?? 0), 0);
+  const totalAiSpend    = billingEvents.filter((e) => e.event_type === "agent_run").reduce((s, e) => s + (e.unit_cost_cents ?? 0) * (e.quantity ?? 1), 0);
   const avgAgentDuration = agentRuns.length ? Math.round(agentRuns.reduce((s, r) => s + (r.duration_ms ?? 0), 0) / agentRuns.length / 1000) : 0;
 
   const scansByDay: Record<string, number> = {};
@@ -111,19 +112,43 @@ export default async function AnalyticsPage() {
     },
   ];
 
+  const maxChannelVol = Math.max(liveMail.length, smsSent.length, emailSent.length, 1);
+
   const channelData = [
-    { channel: "Direct Mail", sent: liveMail.length, color: "bg-indigo-500", rate: mailScanRate, rateLabel: "scan rate", total: Math.max(liveMail.length, smsSent.length, emailSent.length, 1) },
-    { channel: "SMS", sent: smsSent.length, color: "bg-violet-500", rate: smsSent.length > 0 ? 98 : 0, rateLabel: "open rate (est.)", total: Math.max(liveMail.length, smsSent.length, emailSent.length, 1) },
-    { channel: "Email", sent: emailSent.length, color: "bg-sky-500", rate: emailSent.length > 0 ? 22 : 0, rateLabel: "open rate (est.)", total: Math.max(liveMail.length, smsSent.length, emailSent.length, 1) },
+    {
+      channel: "Direct Mail",
+      sent: liveMail.length,
+      barGradient: "linear-gradient(90deg, #6366F1, #818cf8)",
+      rate: mailScanRate,
+      rateLabel: "scan rate",
+      rateColor: "text-indigo-600",
+    },
+    {
+      channel: "SMS",
+      sent: smsSent.length,
+      barGradient: "linear-gradient(90deg, #8B5CF6, #a78bfa)",
+      rate: smsSent.length > 0 ? 98 : 0,
+      rateLabel: "open rate (est.)",
+      rateColor: "text-violet-600",
+    },
+    {
+      channel: "Email",
+      sent: emailSent.length,
+      barGradient: "linear-gradient(90deg, #0EA5E9, #38bdf8)",
+      rate: emailSent.length > 0 ? 22 : 0,
+      rateLabel: "open rate (est.)",
+      rateColor: "text-sky-600",
+    },
   ];
 
   const spendData = [
-    { label: "Direct Mail", amount: totalMailSpend / 100, icon: Mail, iconBg: "bg-indigo-50", iconColor: "text-indigo-500" },
-    { label: "AI Tokens", amount: totalAiSpend / 100, icon: Send, iconBg: "bg-violet-50", iconColor: "text-violet-500" },
-    { label: "SMS", amount: smsSent.length * 0.02, icon: MessageSquare, iconBg: "bg-sky-50", iconColor: "text-sky-500" },
-    { label: "Email", amount: 0, icon: BarChart2, iconBg: "bg-emerald-50", iconColor: "text-emerald-500" },
+    { label: "Direct Mail", amount: totalMailSpend / 100,         icon: Mail,         iconBg: "bg-indigo-50", iconColor: "text-indigo-500" },
+    { label: "AI Tokens",   amount: totalAiSpend / 100,           icon: Send,         iconBg: "bg-violet-50", iconColor: "text-violet-500" },
+    { label: "SMS",         amount: smsSent.length * 0.02,        icon: MessageSquare, iconBg: "bg-sky-50",   iconColor: "text-sky-500" },
+    { label: "Email",       amount: 0,                            icon: BarChart2,    iconBg: "bg-emerald-50", iconColor: "text-emerald-500" },
   ];
   const totalSpend = (totalMailSpend + totalAiSpend) / 100 + smsSent.length * 0.02;
+  const maxSpend = Math.max(...spendData.map((s) => s.amount), 0.01);
 
   return (
     <>
@@ -158,8 +183,8 @@ export default async function AnalyticsPage() {
           </div>
           <div className="p-4 sm:p-6">
             {scans.length === 0 ? (
-              <div className="py-10 text-center">
-                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
+              <div className="py-12 text-center">
+                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center mx-auto mb-3 border border-slate-100">
                   <ScanLine className="w-5 h-5 text-slate-300" />
                 </div>
                 <p className="text-sm font-semibold text-slate-700 mb-1">No QR scans yet</p>
@@ -168,13 +193,20 @@ export default async function AnalyticsPage() {
             ) : (
               <>
                 <div className="overflow-x-auto">
-                  <div className="flex items-end gap-0.5 h-28 min-w-[280px]">
-                    {scanChartData.map((d) => (
+                  <div className="flex items-end gap-0.5 h-32 min-w-[280px]">
+                    {scanChartData.map((d, i) => (
                       <div
                         key={d.date}
-                        title={`${d.date}: ${d.count} scans`}
-                        className="flex-1 bg-indigo-500 rounded-sm hover:bg-indigo-400 transition-colors"
-                        style={{ height: `${(d.count / maxScans) * 100}%`, minHeight: d.count > 0 ? "3px" : "1px" }}
+                        title={`${d.date}: ${d.count} scan${d.count !== 1 ? "s" : ""}`}
+                        className="flex-1 rounded-t-sm transition-opacity hover:opacity-80 cursor-default"
+                        style={{
+                          height: `${Math.max((d.count / maxScans) * 100, d.count > 0 ? 3 : 0.5)}%`,
+                          minHeight: d.count > 0 ? "4px" : "2px",
+                          background: d.count > 0
+                            ? "linear-gradient(0deg, #4F46E5, #818CF8)"
+                            : "#F1F5F9",
+                          opacity: d.count > 0 ? (0.5 + (d.count / maxScans) * 0.5) : 1,
+                        }}
                       />
                     ))}
                   </div>
@@ -197,27 +229,27 @@ export default async function AnalyticsPage() {
                 <div className="inst-panel-subtitle">90-day send volume by channel</div>
               </div>
             </div>
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-6">
               {channelData.map((ch) => (
                 <div key={ch.channel}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${ch.color}`} />
-                      <span className="text-[13px] font-medium text-slate-700">{ch.channel}</span>
-                    </div>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-[13px] font-semibold text-slate-700">{ch.channel}</span>
                     <div className="text-right">
-                      <span className="text-xs text-slate-400 tabular-nums block">{ch.sent.toLocaleString()} sent</span>
+                      <span className="text-xs font-semibold text-slate-700 tabular-nums">{ch.sent.toLocaleString()} sent</span>
                       {ch.sent > 0 && (
-                        <span className="text-[11px] text-emerald-600 font-semibold block">
+                        <span className={`text-[11px] font-semibold block ${ch.rateColor}`}>
                           {ch.rate.toFixed(1)}% {ch.rateLabel}
                         </span>
                       )}
                     </div>
                   </div>
-                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div
-                      className={`h-full ${ch.color} rounded-full transition-all duration-500`}
-                      style={{ width: `${Math.max(2, (ch.sent / ch.total) * 100)}%` }}
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${Math.max(2, (ch.sent / maxChannelVol) * 100)}%`,
+                        background: ch.barGradient,
+                      }}
                     />
                   </div>
                 </div>
@@ -231,23 +263,31 @@ export default async function AnalyticsPage() {
                 <div className="inst-panel-title">Spend Breakdown</div>
                 <div className="inst-panel-subtitle">30-day cost by channel</div>
               </div>
-              <span className="text-[13px] font-bold text-slate-900 tabular-nums">${totalSpend.toFixed(2)}</span>
+              <span className="text-[15px] font-bold text-slate-900 tabular-nums">${totalSpend.toFixed(2)}</span>
             </div>
             <div className="p-6 space-y-1">
               {spendData.map((s) => (
-                <div key={s.label} className="flex items-center justify-between py-2.5 border-b border-slate-50 last:border-0">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${s.iconBg}`}>
-                      <s.icon className={`w-3.5 h-3.5 ${s.iconColor}`} />
-                    </div>
-                    <span className="text-[13px] text-slate-700">{s.label}</span>
+                <div key={s.label} className="flex items-center gap-3 py-2.5 border-b border-slate-50 last:border-0">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${s.iconBg}`}>
+                    <s.icon className={`w-3.5 h-3.5 ${s.iconColor}`} />
                   </div>
-                  <span className="text-[13px] font-semibold text-slate-900 tabular-nums">${s.amount.toFixed(2)}</span>
+                  <span className="text-[13px] text-slate-600 flex-1">{s.label}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-slate-300 transition-all"
+                        style={{ width: `${Math.max(2, (s.amount / maxSpend) * 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-[13px] font-semibold text-slate-900 tabular-nums w-16 text-right">
+                      ${s.amount.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               ))}
-              <div className="pt-3 mt-1 border-t border-slate-100 flex items-center justify-between">
+              <div className="pt-3.5 mt-1 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-[13px] font-semibold text-slate-900">Total (30d)</span>
-                <span className="text-[15px] font-bold text-slate-900 tabular-nums">${totalSpend.toFixed(2)}</span>
+                <span className="text-[16px] font-bold text-slate-900 tabular-nums">${totalSpend.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -268,8 +308,8 @@ export default async function AnalyticsPage() {
             </div>
             <div className="p-5 space-y-3">
               {globalLearnings.length === 0 ? (
-                <div className="py-10 text-center">
-                  <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
+                <div className="py-12 text-center">
+                  <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center mx-auto mb-3 border border-slate-100">
                     <TrendingUp className="w-5 h-5 text-slate-300" />
                   </div>
                   <p className="text-sm font-semibold text-slate-700 mb-1">No learnings yet</p>
@@ -277,20 +317,32 @@ export default async function AnalyticsPage() {
                 </div>
               ) : (
                 globalLearnings.map((l, i) => (
-                  <div key={i} className="feature-card feature-card-violet bg-white rounded-[var(--radius)] border border-violet-100 shadow-card p-4">
+                  <div
+                    key={i}
+                    className="bg-white rounded-[var(--radius)] border border-violet-100 shadow-card p-4"
+                    style={{ borderLeft: "3px solid #8B5CF6" }}
+                  >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] font-semibold text-violet-800 uppercase tracking-wide capitalize">
+                      <span className="text-[11px] font-bold text-violet-700 uppercase tracking-wide capitalize">
                         {l.pattern_type.replace(/_/g, " ")}
                       </span>
                       <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-14 bg-violet-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-violet-500 rounded-full" style={{ width: `${Math.round(l.confidence * 100)}%` }} />
+                        <div className="h-1.5 w-16 bg-violet-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${Math.round(l.confidence * 100)}%`,
+                              background: "linear-gradient(90deg, #8B5CF6, #7C3AED)",
+                            }}
+                          />
                         </div>
-                        <span className="text-[10px] font-bold text-violet-600 tabular-nums">{Math.round(l.confidence * 100)}%</span>
+                        <span className="text-[11px] font-bold text-violet-600 tabular-nums">
+                          {Math.round(l.confidence * 100)}%
+                        </span>
                       </div>
                     </div>
                     <p className="text-xs text-slate-600 leading-relaxed">{l.description}</p>
-                    <p className="text-[10px] text-slate-400 mt-1.5 font-medium">n={l.sample_size}</p>
+                    <p className="text-[10px] text-slate-400 mt-1.5 font-medium">n = {l.sample_size.toLocaleString()}</p>
                   </div>
                 ))
               )}
@@ -306,8 +358,8 @@ export default async function AnalyticsPage() {
             </div>
             <div className="p-5">
               {recentOutcomes.length === 0 ? (
-                <div className="py-10 text-center">
-                  <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
+                <div className="py-12 text-center">
+                  <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center mx-auto mb-3 border border-slate-100">
                     <BarChart2 className="w-5 h-5 text-slate-300" />
                   </div>
                   <p className="text-sm font-semibold text-slate-700 mb-1">No outcomes yet</p>
@@ -315,16 +367,37 @@ export default async function AnalyticsPage() {
                 </div>
               ) : (
                 <div className="space-y-2.5">
-                  {recentOutcomes.map((o, i) => (
-                    <div key={i} className="p-4 border border-slate-100 rounded-[var(--radius)] bg-slate-50/60">
-                      <span className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide capitalize">
-                        {o.outcome_type.replace(/_/g, " ")}
-                      </span>
-                      <pre className="text-slate-400 mt-2 text-[10px] whitespace-pre-wrap font-mono leading-relaxed">
-                        {JSON.stringify(o.result, null, 2)}
-                      </pre>
-                    </div>
-                  ))}
+                  {recentOutcomes.map((o, i) => {
+                    const resultObj = typeof o.result === "object" && o.result !== null ? o.result as Record<string, unknown> : null;
+                    const summary = resultObj
+                      ? Object.entries(resultObj)
+                          .slice(0, 3)
+                          .map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`)
+                          .join(" · ")
+                      : String(o.result ?? "");
+
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-start gap-3 p-4 rounded-[var(--radius)] bg-white border border-slate-100 shadow-card"
+                      >
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-[11px] font-semibold text-slate-800 uppercase tracking-wide capitalize">
+                              {o.outcome_type.replace(/_/g, " ")}
+                            </span>
+                            <span className="text-[10px] text-slate-400 shrink-0">
+                              {formatRelativeDate(o.created_at)}
+                            </span>
+                          </div>
+                          {summary && (
+                            <p className="text-xs text-slate-500 leading-relaxed">{summary}</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

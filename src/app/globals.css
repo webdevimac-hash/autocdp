@@ -333,6 +333,7 @@
 .chip-violet  { background: #F5F3FF; color: #5B21B6; border-color: rgba(196, 181, 253, 0.45); }
 .chip-slate   { background: #F8FAFC; color: #334155; border-color: rgba(148, 163, 184, 0.35); }
 .chip-sky     { background: #F0F9FF; color: #0C4A6E; border-color: rgba(125, 211, 252, 0.40); }
+.chip-rose    { background: #FFF1F2; color: #9F1239; border-color: rgba(251, 113, 133, 0.38); }
 
 /* ── AI badge ─────────────────────────────────────────────── */
 .ai-badge {
