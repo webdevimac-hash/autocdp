@@ -150,15 +150,15 @@ export function HandwritingPreview() {
 
       {/* Recipient tabs */}
       <div className="flex items-center gap-2">
-        <button onClick={prev} className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors">
-          <ChevronLeft className="w-4 h-4" />
+        <button onClick={prev} className="w-11 h-11 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors shrink-0">
+          <ChevronLeft className="w-5 h-5" />
         </button>
         <div className="flex gap-1.5 flex-1 flex-wrap">
           {SAMPLE_MESSAGES.map((msg, i) => (
             <button
               key={i}
               onClick={() => setSelectedIdx(i)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+              className={`min-h-[44px] px-4 py-2.5 rounded-lg text-xs font-medium transition-all border ${
                 selectedIdx === i
                   ? "bg-slate-900 text-white border-slate-900"
                   : "border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700"
@@ -168,16 +168,16 @@ export function HandwritingPreview() {
             </button>
           ))}
         </div>
-        <button onClick={next} className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors">
-          <ChevronRight className="w-4 h-4" />
+        <button onClick={next} className="w-11 h-11 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors shrink-0">
+          <ChevronRight className="w-5 h-5" />
         </button>
       </div>
 
       {/* Card / Envelope preview */}
-      <div className="relative">
+      <div className="relative overflow-x-auto">
         {/* Paper card */}
         <div
-          className="rounded-2xl border border-slate-200 bg-white shadow-xl relative overflow-hidden"
+          className="rounded-2xl border border-slate-200 bg-white shadow-xl relative overflow-hidden min-w-[300px]"
           style={{
             minHeight: "420px",
             backgroundImage: [
@@ -226,17 +226,17 @@ export function HandwritingPreview() {
       </div>
 
       {/* Metadata footer */}
-      <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
-        <div className="space-y-1 text-xs text-slate-500">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
+        <div className="space-y-1 text-xs text-slate-500 flex-1">
           <p><span className="font-medium text-slate-700">Vehicle:</span> {sample.vehicle}</p>
           <p><span className="font-medium text-slate-700">Format:</span> 6×9 postcard, 100lb uncoated stock</p>
           <p><span className="font-medium text-slate-700">Fulfillment:</span> PostGrid (robotic pen + USPS First Class)</p>
         </div>
-        <div className="flex flex-col gap-2 shrink-0">
-          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-white hover:border-slate-300 transition-all">
+        <div className="flex sm:flex-col gap-2">
+          <button className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-white hover:border-slate-300 active:bg-slate-100 transition-all">
             <RefreshCw className="w-3.5 h-3.5" /> Regenerate
           </button>
-          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-800 transition-all">
+          <button className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-800 active:bg-slate-700 transition-all">
             <Printer className="w-3.5 h-3.5" /> Send to Print
           </button>
         </div>
@@ -244,8 +244,8 @@ export function HandwritingPreview() {
 
       {/* Technical notes */}
       <div className="bg-slate-900 rounded-xl px-5 py-4">
-        <p className="text-[10px] font-mono text-slate-500 mb-2">// Handwriting engine — production architecture</p>
-        <pre className="text-[11px] font-mono text-emerald-400 leading-relaxed whitespace-pre-wrap">{`1. Creative Agent generates personalized copy per customer
+        <p className="text-xs font-mono text-slate-500 mb-2">// Handwriting engine — production architecture</p>
+        <pre className="text-xs font-mono text-emerald-400 leading-relaxed whitespace-pre-wrap">{`1. Creative Agent generates personalized copy per customer
 2. Post-processor normalizes spacing, paragraphs, and punctuation
 3. Copy → PostGrid API with custom handwriting font profile
 4. PostGrid prints on 100lb uncoated stock with robotic pen

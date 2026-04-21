@@ -66,6 +66,33 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId }:
     setMobileOpen(false);
   }, [pathname]);
 
+  // Body scroll lock when drawer is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.classList.add("scroll-locked");
+    } else {
+      document.body.classList.remove("scroll-locked");
+    }
+    return () => document.body.classList.remove("scroll-locked");
+  }, [mobileOpen]);
+
+  // Swipe-to-close gesture (swipe left ≥ 60px closes drawer)
+  useEffect(() => {
+    if (!mobileOpen) return;
+    let startX = 0;
+    const onTouchStart = (e: TouchEvent) => { startX = e.touches[0].clientX; };
+    const onTouchEnd = (e: TouchEvent) => {
+      const delta = e.changedTouches[0].clientX - startX;
+      if (delta < -60) setMobileOpen(false);
+    };
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    document.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [mobileOpen]);
+
   async function handleSignOut() {
     await supabase.auth.signOut();
     router.push("/login");
@@ -84,13 +111,13 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId }:
       )}
     >
       {/* Mobile close button */}
-      <div className="md:hidden absolute top-3 right-3">
+      <div className="md:hidden absolute top-3 right-3 z-10">
         <button
           onClick={() => setMobileOpen(false)}
-          className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 text-white/70 hover:bg-white/20 transition-colors"
+          className="w-11 h-11 flex items-center justify-center rounded-lg bg-white/10 text-white/70 hover:bg-white/20 active:bg-white/25 transition-colors"
           aria-label="Close menu"
         >
-          <X className="w-4 h-4" />
+          <X className="w-5 h-5" />
         </button>
       </div>
 
@@ -218,9 +245,13 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId }:
       {/* Mobile drawer */}
       <div
         className={cn(
-          "fixed left-0 top-0 h-full w-72 z-50 md:hidden transition-transform duration-300 ease-in-out",
+          "fixed left-0 top-0 h-full z-50 md:hidden transition-transform duration-300",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
+        style={{
+          width: "min(18rem, 85vw)",
+          transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
+        }}
         aria-modal="true"
         role="dialog"
       >

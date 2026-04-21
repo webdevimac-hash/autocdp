@@ -502,7 +502,7 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-medium">Test customer</label>
-                <select className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                <select className="w-full border rounded-lg px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   value={testCustomerId}
                   onChange={(e) => { setTestCustomerId(e.target.value); setTestPreview(null); setTestLiveResult(null); }}
                 >
@@ -515,7 +515,7 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium">Template</label>
-                <select className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                <select className="w-full border rounded-lg px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   value={testTemplateType}
                   onChange={(e) => { setTestTemplateType(e.target.value as MailTemplateType); setTestPreview(null); setTestLiveResult(null); }}
                 >
@@ -527,7 +527,7 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium">Campaign goal</label>
-              <textarea className="w-full border rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring h-16"
+              <textarea className="w-full border rounded-lg p-3 text-base sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring h-16"
                 value={testGoal} onChange={(e) => { setTestGoal(e.target.value); setTestPreview(null); setTestLiveResult(null); }} />
             </div>
 
@@ -628,13 +628,13 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
             <div className="flex gap-2 flex-wrap">
               {["all", "lapsed", "at_risk", "active", "vip"].map((stage) => (
                 <button key={stage} onClick={() => setFilterStage(stage)}
-                  className={cn("text-xs px-2.5 py-1 rounded-full border transition-all capitalize",
+                  className={cn("text-xs px-3 py-2 rounded-full border transition-all capitalize min-h-[44px]",
                     filterStage === stage ? "bg-brand-600 text-white border-brand-600" : "border-gray-200 text-gray-600 hover:border-brand-400")}>
                   {stage === "at_risk" ? "At Risk" : stage === "all" ? "All" : stage}
                 </button>
               ))}
               <button onClick={toggleSelectAll}
-                className="text-xs px-2.5 py-1 rounded-full border border-gray-200 text-gray-600 hover:border-brand-400 ml-auto">
+                className="text-xs px-3 py-2 rounded-full border border-gray-200 text-gray-600 hover:border-brand-400 ml-auto min-h-[44px]">
                 {selectAll ? "Deselect All" : `Select All (${filteredCustomers.length})`}
               </button>
             </div>
@@ -644,7 +644,7 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
                 <div className="py-8 text-center text-sm text-muted-foreground">No customers match this filter.</div>
               ) : (
                 filteredCustomers.slice(0, 20).map((customer) => (
-                  <label key={customer.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer">
+                  <label key={customer.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 cursor-pointer min-h-[52px]">
                     <input type="checkbox" checked={selectedIds.has(customer.id)} onChange={() => toggleCustomer(customer.id)} className="rounded" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{customer.first_name} {customer.last_name}</p>
@@ -668,13 +668,13 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
               )}
             </div>
 
-            <div className="flex justify-between items-center pt-1">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pt-1">
               <p className="text-xs text-muted-foreground">
                 {selectedCount > 0 ? (
                   <>{selectedCount} selected · <span className="text-green-600 font-medium">{withPhone} have phone</span> · <span className="text-blue-600 font-medium">{withEmail} have email</span> · {withAddress} have address</>
                 ) : "Select customers to continue"}
               </p>
-              <Button size="sm" className="h-8" disabled={selectedCount === 0} onClick={() => setCurrentStep(2)}>
+              <Button size="sm" className="h-12 sm:h-8 w-full sm:w-auto" disabled={selectedCount === 0} onClick={() => setCurrentStep(2)}>
                 Next <ChevronRight className="ml-1 w-3.5 h-3.5" />
               </Button>
             </div>
@@ -702,7 +702,7 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
                 const isActive = channel === ch;
                 return (
                   <button key={ch} onClick={() => setChannel(ch)}
-                    className={cn("text-left p-3.5 border-2 rounded-xl transition-all hover:shadow-sm",
+                    className={cn("text-left p-3.5 border-2 rounded-xl transition-all hover:shadow-sm min-h-[88px]",
                       isActive ? cfg.activeColor : `border-gray-200 ${cfg.color}`)}>
                     <Icon className={cn("w-5 h-5 mb-2", isActive ? "text-gray-800" : "text-gray-400")} />
                     <p className="text-sm font-semibold text-gray-900">{cfg.label}</p>
@@ -761,9 +761,9 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
               </div>
             )}
 
-            <div className="flex justify-between pt-1">
-              <Button variant="ghost" size="sm" className="h-8" onClick={() => setCurrentStep(1)}>Back</Button>
-              <Button size="sm" className="h-8" onClick={() => setCurrentStep(3)}>
+            <div className="flex gap-3 pt-1">
+              <Button variant="ghost" size="sm" className="h-12 sm:h-8 flex-1 sm:flex-none" onClick={() => setCurrentStep(1)}>Back</Button>
+              <Button size="sm" className="h-12 sm:h-8 flex-1 sm:flex-none" onClick={() => setCurrentStep(3)}>
                 Next <ChevronRight className="ml-1 w-3.5 h-3.5" />
               </Button>
             </div>
@@ -791,7 +791,7 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
             <div className="space-y-2">
               <label className="text-sm font-medium">Campaign Goal</label>
               <textarea
-                className="w-full border rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring h-20"
+                className="w-full border rounded-lg p-3 text-base sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring h-20"
                 value={campaignGoal}
                 onChange={(e) => setCampaignGoal(e.target.value)}
                 placeholder="Describe what you want to achieve — agents personalize the message per customer…"

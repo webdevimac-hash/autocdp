@@ -91,6 +91,24 @@ button, a, [role="button"], input, select, textarea {
   touch-action: manipulation;
 }
 
+/* Prevent iOS Safari from zooming on input focus (requires 16px) */
+@media (max-width: 767px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Better focus ring on touch devices */
+@media (pointer: coarse) {
+  :focus-visible {
+    outline: 3px solid #6366f1;
+    outline-offset: 2px;
+  }
+}
+
+/* Prevent body scroll-through when a modal/drawer is open */
+.scroll-locked { overflow: hidden !important; }
+
 /* Safe area padding for iPhone notch / home indicator */
 @supports (padding: env(safe-area-inset-bottom)) {
   .pb-safe  { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
