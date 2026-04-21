@@ -2,11 +2,30 @@
 
 import Link from "next/link";
 import {
-  Car, BarChart3, Mail, Bot, Shield, Zap, TrendingUp,
+  Car, Mail, Bot, Shield, Zap, TrendingUp,
   CheckCircle, ArrowRight, Star, Cpu, Target, Database,
-  Sparkles, Users, ArrowUpRight, Activity, CheckCircle2,
-  Megaphone, ScanLine, MessageSquare,
+  Sparkles, ArrowUpRight, CheckCircle2,
+  Megaphone, ScanLine, ArrowUp,
 } from "lucide-react";
+
+// ── Mini sparkline ─────────────────────────────────────────────
+function MiniSpark({ bars, color }: { bars: number[]; color: string }) {
+  return (
+    <div className="flex items-end gap-px" style={{ height: 13, marginTop: 4 }}>
+      {bars.map((h, i) => (
+        <div
+          key={i}
+          className="flex-1 rounded-sm"
+          style={{
+            height: `${h}%`,
+            background: color,
+            opacity: 0.28 + (i / (bars.length - 1)) * 0.72,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 // ── Data ──────────────────────────────────────────────────────
 
@@ -15,7 +34,9 @@ const features = [
     icon: Bot,
     title: "5-Agent AI Swarm",
     desc: "Orchestrator, Data, Targeting, Creative, and Optimization agents work in sequence — no prompts, no babysitting, no vendor wrangling.",
-    iconBg: "bg-indigo-50", iconColor: "text-indigo-600", glowClass: "feature-card-indigo",
+    iconBgClass: "icon-bg-indigo",
+    iconColor: "text-indigo-600",
+    glowClass: "feature-card-indigo",
     topColor: "#6366F1",
     stat: "5 agents", statLabel: "always running",
   },
@@ -23,7 +44,9 @@ const features = [
     icon: Mail,
     title: "Native Direct Mail",
     desc: "PostGrid-powered postcards and letters with QR tracking. Personalized per customer, printed, and fulfilled automatically.",
-    iconBg: "bg-sky-50", iconColor: "text-sky-600", glowClass: "feature-card-sky",
+    iconBgClass: "icon-bg-sky",
+    iconColor: "text-sky-600",
+    glowClass: "feature-card-sky",
     topColor: "#0EA5E9",
     stat: "< $1.60", statLabel: "per piece",
   },
@@ -31,7 +54,9 @@ const features = [
     icon: TrendingUp,
     title: "Self-Learning Optimization",
     desc: "Every campaign result trains the next one. Response patterns improve across your entire customer base over time.",
-    iconBg: "bg-amber-50", iconColor: "text-amber-600", glowClass: "feature-card-amber",
+    iconBgClass: "icon-bg-amber",
+    iconColor: "text-amber-600",
+    glowClass: "feature-card-amber",
     topColor: "#F59E0B",
     stat: "3×", statLabel: "response rate",
   },
@@ -39,7 +64,9 @@ const features = [
     icon: Database,
     title: "Last-Visit Memory",
     desc: "Knows exactly what each customer drove in for, what they spent, and when they're likely to return — updated every sync.",
-    iconBg: "bg-emerald-50", iconColor: "text-emerald-600", glowClass: "feature-card-emerald",
+    iconBgClass: "icon-bg-emerald",
+    iconColor: "text-emerald-600",
+    glowClass: "feature-card-emerald",
     topColor: "#10B981",
     stat: "360°", statLabel: "customer view",
   },
@@ -47,7 +74,9 @@ const features = [
     icon: Zap,
     title: "DMS Integration",
     desc: "CDK Fortellis and Reynolds & Reynolds sync automatically. Customer, RO, and inventory data — always current, zero exports.",
-    iconBg: "bg-violet-50", iconColor: "text-violet-600", glowClass: "feature-card-violet",
+    iconBgClass: "icon-bg-violet",
+    iconColor: "text-violet-600",
+    glowClass: "feature-card-violet",
     topColor: "#8B5CF6",
     stat: "30 min", statLabel: "sync interval",
   },
@@ -55,7 +84,9 @@ const features = [
     icon: Shield,
     title: "Hybrid Pricing",
     desc: "Pay for what you send. No per-seat licenses, no long-term contracts. Scale up during conquest, scale down in slow months.",
-    iconBg: "bg-rose-50", iconColor: "text-rose-600", glowClass: "feature-card-rose",
+    iconBgClass: "icon-bg-rose",
+    iconColor: "text-rose-600",
+    glowClass: "feature-card-rose",
     topColor: "#F43F5E",
     stat: "$0", statLabel: "setup fee",
   },
@@ -105,25 +136,25 @@ const testimonials = [
 ];
 
 const stats = [
-  { value: "18%",  label: "Avg. retention lift",       color: "#059669" },
-  { value: "3×",   label: "Response vs. generic mail",  color: "#4338CA" },
-  { value: "< 2h", label: "Time to first campaign",     color: "#B45309" },
-  { value: "0",    label: "Manual steps per send",      color: "#5B21B6" },
+  { value: "18%",  label: "Avg. retention lift",       color: "#059669", arrow: true  },
+  { value: "3×",   label: "Response vs. generic mail",  color: "#4338CA", arrow: true  },
+  { value: "< 2h", label: "Time to first campaign",     color: "#B45309", arrow: false },
+  { value: "0",    label: "Manual steps per send",      color: "#5B21B6", arrow: false },
 ];
 
 const mockAgents = [
-  { name: "Orchestrator", state: "done",    model: "opus-4.7",   dot: "bg-emerald-500",                dotStyle: { boxShadow: "0 0 0 2px rgba(16,185,129,0.22)" } },
-  { name: "Data Agent",   state: "done",    model: "sonnet-4.6", dot: "bg-emerald-500",                dotStyle: { boxShadow: "0 0 0 2px rgba(16,185,129,0.22)" } },
-  { name: "Targeting",    state: "running", model: "sonnet-4.6", dot: "bg-indigo-400 animate-pulse",   dotStyle: { boxShadow: "0 0 6px rgba(99,102,241,0.55)" } },
-  { name: "Creative",     state: "running", model: "sonnet-4.6", dot: "bg-indigo-400 animate-pulse",   dotStyle: { boxShadow: "0 0 6px rgba(99,102,241,0.55)" } },
-  { name: "Optimization", state: "idle",    model: "sonnet-4.6", dot: "bg-slate-600",                  dotStyle: {} },
+  { name: "Orchestrator", state: "done",    model: "opus-4.7",   dot: "bg-emerald-500",               dotStyle: { boxShadow: "0 0 0 2px rgba(16,185,129,0.22)" } },
+  { name: "Data Agent",   state: "done",    model: "sonnet-4.6", dot: "bg-emerald-500",               dotStyle: { boxShadow: "0 0 0 2px rgba(16,185,129,0.22)" } },
+  { name: "Targeting",    state: "running", model: "sonnet-4.6", dot: "bg-indigo-400 animate-pulse",  dotStyle: { boxShadow: "0 0 6px rgba(99,102,241,0.55)" } },
+  { name: "Creative",     state: "running", model: "sonnet-4.6", dot: "bg-indigo-400 animate-pulse",  dotStyle: { boxShadow: "0 0 6px rgba(99,102,241,0.55)" } },
+  { name: "Optimization", state: "idle",    model: "sonnet-4.6", dot: "bg-slate-600",                 dotStyle: {} },
 ];
 
 const mockStats = [
-  { label: "Sent (30d)", value: "2,847", leftBorder: "#6366F1", color: "#4338CA" },
-  { label: "Scan Rate",  value: "18.3%", leftBorder: "#10B981", color: "#065F46" },
-  { label: "Conv.",      value: "127",   leftBorder: "#8B5CF6", color: "#5B21B6" },
-  { label: "Revenue",    value: "$84k",  leftBorder: "#F59E0B", color: "#92400E" },
+  { label: "Sent (30d)", value: "2,847", leftBorder: "#6366F1", color: "#4338CA", spark: [38, 52, 45, 63, 58, 70, 84] },
+  { label: "Scan Rate",  value: "18.3%", leftBorder: "#10B981", color: "#065F46", spark: [55, 62, 58, 68, 72, 78, 83] },
+  { label: "Conv.",      value: "127",   leftBorder: "#8B5CF6", color: "#5B21B6", spark: [28, 40, 35, 52, 48, 61, 73] },
+  { label: "Revenue",    value: "$84k",  leftBorder: "#F59E0B", color: "#92400E", spark: [44, 53, 61, 57, 69, 75, 88] },
 ];
 
 const mockCampaigns = [
@@ -133,14 +164,14 @@ const mockCampaigns = [
 ];
 
 const integrations = [
-  { name: "CDK Fortellis",       abbr: "CDK" },
-  { name: "Reynolds & Reynolds", abbr: "R&R" },
-  { name: "PostGrid",            abbr: "PG"  },
-  { name: "Anthropic Claude",    abbr: "AI"  },
-  { name: "Twilio",              abbr: "SMS" },
-  { name: "Resend",              abbr: "✉"   },
-  { name: "USPS",                abbr: "USPS"},
-  { name: "Stripe",              abbr: "Pay" },
+  { name: "CDK Fortellis",       abbr: "CDK"  },
+  { name: "Reynolds & Reynolds", abbr: "R&R"  },
+  { name: "PostGrid",            abbr: "PG"   },
+  { name: "Anthropic Claude",    abbr: "AI"   },
+  { name: "Twilio",              abbr: "SMS"  },
+  { name: "Resend",              abbr: "✉"    },
+  { name: "USPS",                abbr: "USPS" },
+  { name: "Stripe",              abbr: "Pay"  },
 ];
 
 // ── Page ──────────────────────────────────────────────────────
@@ -180,8 +211,8 @@ export default function LandingPage() {
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center"
               style={{
-                background: "linear-gradient(135deg, #0F1E35 0%, #0B1526 100%)",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
+                background: "linear-gradient(135deg, #4F46E5 0%, #0B1526 100%)",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.10)",
               }}
             >
               <Car className="w-4 h-4 text-white" />
@@ -239,21 +270,33 @@ export default function LandingPage() {
 
         {/* Background layers */}
         <div className="absolute inset-0 hero-grid" style={{ opacity: 0.55 }} />
+
+        {/* Deep indigo radial from top */}
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 80% 55% at 50% -5%, rgba(99,102,241,0.11), transparent 65%)" }}
+          style={{ background: "radial-gradient(ellipse 85% 50% at 50% -8%, rgba(99,102,241,0.14), transparent 62%)" }}
         />
+
+        {/* Right ambient glow */}
         <div
           className="absolute -top-32 right-0 w-[700px] h-[600px] rounded-full blur-3xl translate-x-1/3 pointer-events-none"
           style={{ background: "rgba(99,102,241,0.07)" }}
         />
+
+        {/* Emerald bottom glow */}
         <div
           className="absolute bottom-0 right-1/4 w-[400px] h-[300px] rounded-full blur-3xl pointer-events-none"
-          style={{ background: "rgba(16,185,129,0.045)" }}
+          style={{ background: "rgba(16,185,129,0.05)" }}
         />
         <div
           className="absolute bottom-0 left-0 w-[500px] h-[400px] rounded-full blur-3xl -translate-x-1/3 translate-y-1/3 pointer-events-none"
           style={{ background: "rgba(16,185,129,0.05)" }}
+        />
+
+        {/* Subtle violet upper-left bloom */}
+        <div
+          className="absolute top-0 -left-32 w-[560px] h-[420px] rounded-full blur-3xl pointer-events-none"
+          style={{ background: "rgba(139,92,246,0.05)" }}
         />
 
         <div className="relative max-w-7xl mx-auto">
@@ -269,6 +312,7 @@ export default function LandingPage() {
                   background: "rgba(16,185,129,0.08)",
                   border: "1px solid rgba(16,185,129,0.22)",
                   color: "#059669",
+                  boxShadow: "0 0 0 3px rgba(16,185,129,0.06)",
                 }}
               >
                 <span className="relative flex h-2 w-2 shrink-0">
@@ -279,7 +323,7 @@ export default function LandingPage() {
               </div>
 
               <h1
-                className="text-[2.75rem] sm:text-[3.4rem] xl:text-[3.75rem] font-black leading-[1.05] tracking-[-0.03em] mb-6"
+                className="text-[2.75rem] sm:text-[3.4rem] xl:text-[3.85rem] font-black leading-[1.04] tracking-[-0.034em] mb-6"
                 style={{ color: "#0F172A" }}
               >
                 The dealership
@@ -287,7 +331,7 @@ export default function LandingPage() {
                 <span className="gradient-text">that markets itself.</span>
               </h1>
 
-              <p className="text-[17px] sm:text-[18px] leading-[1.65] mb-8 max-w-lg" style={{ color: "#64748B" }}>
+              <p className="text-[17px] sm:text-[18px] leading-[1.68] mb-8 max-w-lg" style={{ color: "#64748B" }}>
                 Connect your DMS. Set one goal. Five AI agents identify your best prospects, write{" "}
                 <span style={{ color: "#334155", fontWeight: 600 }}>1-to-1 personalized copy</span>, and drop physical postcards in the mailbox — tracked, optimized, automatic.
               </p>
@@ -299,7 +343,7 @@ export default function LandingPage() {
                   className="btn-press inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-white font-semibold text-[15px] transition-all"
                   style={{
                     background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)",
-                    boxShadow: "0 6px 24px -4px rgba(79,70,229,0.50), inset 0 1px 0 rgba(255,255,255,0.12)",
+                    boxShadow: "0 8px 28px -4px rgba(79,70,229,0.55), inset 0 1px 0 rgba(255,255,255,0.12)",
                   }}
                 >
                   Start free trial
@@ -371,19 +415,14 @@ export default function LandingPage() {
 
               {/* Ambient glow behind mockup */}
               <div
-                className="absolute -inset-10 rounded-3xl pointer-events-none"
-                style={{ background: "radial-gradient(ellipse at 55% 45%, rgba(99,102,241,0.09), transparent 65%)" }}
+                className="absolute -inset-12 rounded-3xl pointer-events-none"
+                style={{ background: "radial-gradient(ellipse at 55% 45%, rgba(99,102,241,0.11), transparent 65%)" }}
               />
 
               <div className="relative animate-float-slow">
                 {/* Main window */}
-                <div
-                  className="rounded-2xl overflow-hidden"
-                  style={{
-                    border: "1px solid rgba(15,23,42,0.14)",
-                    boxShadow: "0 36px 80px -14px rgba(15,23,42,0.24), 0 6px 20px -6px rgba(15,23,42,0.10)",
-                  }}
-                >
+                <div className="rounded-2xl overflow-hidden mockup-shadow">
+
                   {/* Browser chrome */}
                   <div className="flex items-center gap-3 px-4 py-2.5" style={{ background: "#060D18" }}>
                     <div className="flex gap-1.5">
@@ -408,17 +447,20 @@ export default function LandingPage() {
                   </div>
 
                   {/* App shell */}
-                  <div className="flex" style={{ background: "#F3F6FA", minHeight: 370 }}>
+                  <div className="flex relative" style={{ background: "#F3F6FA", minHeight: 380 }}>
+
+                    {/* Scan-line overlay for depth */}
+                    <div className="absolute inset-0 scan-overlay z-10" />
 
                     {/* Sidebar */}
-                    <div className="w-[132px] shrink-0 flex flex-col" style={{ background: "#0B1526" }}>
+                    <div className="w-[132px] shrink-0 flex flex-col relative z-20" style={{ background: "#0B1526" }}>
                       <div
                         className="flex items-center gap-2 px-3 py-3"
                         style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
                       >
                         <div
                           className="w-5 h-5 rounded-md flex items-center justify-center"
-                          style={{ background: "linear-gradient(135deg, rgba(99,102,241,0.4), rgba(139,92,246,0.3))", border: "1px solid rgba(255,255,255,0.10)" }}
+                          style={{ background: "linear-gradient(135deg, #4F46E5, #7C3AED)", border: "1px solid rgba(255,255,255,0.12)" }}
                         >
                           <Car className="w-2.5 h-2.5 text-white" />
                         </div>
@@ -443,7 +485,7 @@ export default function LandingPage() {
                             {item.active && (
                               <div
                                 className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-3.5 rounded-r"
-                                style={{ background: "#10B981", boxShadow: "0 0 8px rgba(16,185,129,0.5)" }}
+                                style={{ background: "#10B981", boxShadow: "0 0 8px rgba(16,185,129,0.6)" }}
                               />
                             )}
                             <div className="w-2 h-2 rounded-sm shrink-0" style={{ background: item.active ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.10)" }} />
@@ -471,11 +513,11 @@ export default function LandingPage() {
                     </div>
 
                     {/* Main content */}
-                    <div className="flex-1 flex flex-col overflow-hidden">
+                    <div className="flex-1 flex flex-col overflow-hidden relative z-20">
                       {/* Header */}
                       <div
                         className="flex items-center justify-between px-4 py-2.5"
-                        style={{ background: "rgba(255,255,255,0.96)", borderBottom: "1px solid rgba(15,23,42,0.07)" }}
+                        style={{ background: "rgba(255,255,255,0.97)", borderBottom: "1px solid rgba(15,23,42,0.07)" }}
                       >
                         <div>
                           <p className="text-[11px] font-semibold" style={{ color: "#0F172A" }}>Dashboard</p>
@@ -498,7 +540,7 @@ export default function LandingPage() {
 
                       <div className="flex-1 p-3 space-y-2 overflow-hidden">
 
-                        {/* Stat cards */}
+                        {/* Stat cards with sparklines */}
                         <div className="grid grid-cols-4 gap-1.5">
                           {mockStats.map((s) => (
                             <div
@@ -516,6 +558,9 @@ export default function LandingPage() {
                               />
                               <p className="text-[7px] font-bold uppercase tracking-wider pl-1" style={{ color: "#94A3B8" }}>{s.label}</p>
                               <p className="text-[13px] font-black mt-0.5 tabular-nums pl-1" style={{ color: s.color }}>{s.value}</p>
+                              <div className="pl-1">
+                                <MiniSpark bars={s.spark} color={s.leftBorder} />
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -555,7 +600,7 @@ export default function LandingPage() {
                                     </div>
                                   </div>
                                   <div className="h-[3px] rounded-full overflow-hidden" style={{ background: "#F1F5F9" }}>
-                                    <div className="h-full rounded-full" style={{ width: `${c.pct}%`, background: c.dotColor }} />
+                                    <div className="h-full rounded-full" style={{ width: `${c.pct}%`, background: `linear-gradient(90deg, ${c.dotColor}aa, ${c.dotColor})` }} />
                                   </div>
                                 </div>
                               ))}
@@ -595,13 +640,16 @@ export default function LandingPage() {
                                   />
                                   <span
                                     className="text-[8px] flex-1 truncate"
-                                    style={{ color: a.state === "running" ? "#4338CA" : a.state === "done" ? "#334155" : "#94A3B8", fontWeight: a.state === "running" ? 700 : a.state === "done" ? 500 : 400 }}
+                                    style={{
+                                      color: a.state === "running" ? "#4338CA" : a.state === "done" ? "#334155" : "#94A3B8",
+                                      fontWeight: a.state === "running" ? 700 : a.state === "done" ? 500 : 400,
+                                    }}
                                   >{a.name}</span>
                                   <span
                                     className="text-[7px] font-bold tabular-nums"
                                     style={{
                                       color: a.state === "done" ? "#059669" :
-                                             a.state === "running" ? "#6366F1" : "#CBD5E1"
+                                             a.state === "running" ? "#6366F1" : "#CBD5E1",
                                     }}
                                   >
                                     {a.state === "done" ? "✓" : a.state === "running" ? "···" : "—"}
@@ -609,12 +657,20 @@ export default function LandingPage() {
                                 </div>
                               ))}
                             </div>
-                            {/* Live copy preview */}
+
+                            {/* Live copy preview with typing dots */}
                             <div
                               className="mx-1.5 mb-1.5 p-1.5 rounded-md"
                               style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.12)" }}
                             >
-                              <p className="text-[6px] font-bold uppercase tracking-wider mb-0.5" style={{ color: "#6366F1" }}>Creative · Writing</p>
+                              <div className="flex items-center gap-1 mb-0.5">
+                                <p className="text-[6px] font-bold uppercase tracking-wider" style={{ color: "#6366F1" }}>Creative · Writing</p>
+                                <div className="flex items-end gap-px ml-1" style={{ height: 6 }}>
+                                  {[1, 2, 3].map((n) => (
+                                    <div key={n} className={`typing-dot w-0.5 rounded-full`} style={{ height: 4, background: "#6366F1" }} />
+                                  ))}
+                                </div>
+                              </div>
                               <p className="text-[7px] leading-relaxed" style={{ color: "#4338CA" }}>
                                 "James, your 2021 Tacoma is due…"
                               </p>
@@ -646,17 +702,10 @@ export default function LandingPage() {
 
                 {/* Floating badge: conversions */}
                 <div className="absolute -bottom-6 -left-9 animate-float-delayed">
-                  <div
-                    className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-                    style={{
-                      background: "#FFFFFF",
-                      border: "1px solid rgba(15,23,42,0.09)",
-                      boxShadow: "0 12px 32px -6px rgba(15,23,42,0.16), 0 2px 8px -2px rgba(15,23,42,0.08)",
-                    }}
-                  >
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-2xl float-badge">
                     <div
                       className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: "rgba(16,185,129,0.10)", border: "1px solid rgba(16,185,129,0.18)" }}
+                      style={{ background: "rgba(16,185,129,0.10)", border: "1px solid rgba(16,185,129,0.20)" }}
                     >
                       <TrendingUp className="w-4 h-4 text-emerald-600" />
                     </div>
@@ -669,17 +718,10 @@ export default function LandingPage() {
 
                 {/* Floating badge: QR scan */}
                 <div className="absolute -top-6 -right-7 animate-float-slow">
-                  <div
-                    className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-                    style={{
-                      background: "#FFFFFF",
-                      border: "1px solid rgba(15,23,42,0.09)",
-                      boxShadow: "0 12px 32px -6px rgba(15,23,42,0.16), 0 2px 8px -2px rgba(15,23,42,0.08)",
-                    }}
-                  >
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-2xl float-badge">
                     <div
                       className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: "rgba(99,102,241,0.10)", border: "1px solid rgba(99,102,241,0.18)" }}
+                      style={{ background: "rgba(99,102,241,0.10)", border: "1px solid rgba(99,102,241,0.20)" }}
                     >
                       <ScanLine className="w-4 h-4 text-indigo-600" />
                     </div>
@@ -692,17 +734,10 @@ export default function LandingPage() {
 
                 {/* Floating badge: mail sent */}
                 <div className="absolute top-[42%] -right-10 animate-float" style={{ animationDelay: "1s" }}>
-                  <div
-                    className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl"
-                    style={{
-                      background: "#FFFFFF",
-                      border: "1px solid rgba(15,23,42,0.09)",
-                      boxShadow: "0 8px 24px -4px rgba(15,23,42,0.14)",
-                    }}
-                  >
+                  <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl float-badge">
                     <div
                       className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: "rgba(139,92,246,0.10)", border: "1px solid rgba(139,92,246,0.18)" }}
+                      style={{ background: "rgba(139,92,246,0.10)", border: "1px solid rgba(139,92,246,0.20)" }}
                     >
                       <Mail className="w-3.5 h-3.5 text-violet-600" />
                     </div>
@@ -738,16 +773,16 @@ export default function LandingPage() {
             />
             <div className="flex ticker-track gap-10 items-center whitespace-nowrap">
               {[...integrations, ...integrations].map((intg, i) => (
-                <div key={i} className="flex items-center gap-2.5 shrink-0 group">
+                <div key={i} className="flex items-center gap-3 shrink-0 group">
                   <div
-                    className="w-7 h-7 rounded-md flex items-center justify-center"
+                    className="w-9 h-9 rounded-lg flex items-center justify-center"
                     style={{
                       background: "#FFFFFF",
                       border: "1px solid rgba(15,23,42,0.10)",
-                      boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+                      boxShadow: "0 1px 3px rgba(15,23,42,0.06)",
                     }}
                   >
-                    <span className="text-[8px] font-black" style={{ color: "#64748B" }}>{intg.abbr}</span>
+                    <span className="text-[8px] font-black" style={{ color: "#475569" }}>{intg.abbr}</span>
                   </div>
                   <span className="text-[13px] font-semibold transition-colors" style={{ color: "#94A3B8" }}>
                     {intg.name}
@@ -766,7 +801,10 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto">
           <div
             className="grid grid-cols-2 md:grid-cols-4 rounded-2xl overflow-hidden"
-            style={{ border: "1px solid rgba(15,23,42,0.08)", boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }}
+            style={{
+              border: "1px solid rgba(15,23,42,0.08)",
+              boxShadow: "0 1px 3px rgba(15,23,42,0.04)",
+            }}
           >
             {stats.map((s, i) => (
               <div
@@ -777,11 +815,16 @@ export default function LandingPage() {
                   borderBottom: i < 2 ? "1px solid rgba(15,23,42,0.07)" : undefined,
                 }}
               >
-                <div
-                  className="text-[2.5rem] font-black tracking-tight leading-none mb-2 stat-number"
-                  style={{ color: s.color }}
-                >
-                  {s.value}
+                <div className="flex items-start justify-center gap-1.5 mb-2">
+                  <div
+                    className={`text-[2.8rem] sm:text-[3.2rem] font-black tracking-tight leading-none stat-pop stat-pop-${i + 1}`}
+                    style={{ color: s.color }}
+                  >
+                    {s.value}
+                  </div>
+                  {s.arrow && (
+                    <ArrowUp className="w-4 h-4 mt-2 shrink-0" style={{ color: s.color }} />
+                  )}
                 </div>
                 <div className="text-[12px] font-medium leading-snug" style={{ color: "#94A3B8" }}>{s.label}</div>
               </div>
@@ -814,24 +857,28 @@ export default function LandingPage() {
             {features.map((f, i) => (
               <div
                 key={f.title}
-                className={`feature-card ${f.glowClass} group p-7 rounded-2xl border border-slate-200 bg-white shadow-card stagger-${Math.min(i + 1, 6)} relative overflow-hidden`}
+                className={`feature-card feature-card-premium ${f.glowClass} group p-7 rounded-2xl border border-slate-200 bg-white shadow-card stagger-${Math.min(i + 1, 6)}`}
               >
                 {/* Colored top accent */}
-                <div className="absolute top-0 left-0 right-0 h-[2.5px]" style={{ background: f.topColor }} />
+                <div className="absolute top-0 left-0 right-0 h-[2.5px] rounded-t-2xl" style={{ background: f.topColor }} />
 
+                {/* Gradient icon background */}
                 <div
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center mb-5 ${f.iconBg} group-hover:scale-110 transition-transform duration-200`}
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 ${f.iconBgClass} group-hover:scale-110 transition-transform duration-200`}
+                  style={{ boxShadow: "0 2px 6px -2px rgba(0,0,0,0.08)" }}
                 >
                   <f.icon className={`w-5 h-5 ${f.iconColor}`} />
                 </div>
+
                 <h3 className="font-bold text-[15px] mb-2 tracking-tight" style={{ color: "#0F172A" }}>{f.title}</h3>
                 <p className="text-[13px] leading-relaxed mb-5" style={{ color: "#64748B" }}>{f.desc}</p>
+
                 <div
-                  className="flex items-center gap-2 pt-4"
+                  className="flex items-baseline gap-2 pt-4"
                   style={{ borderTop: "1px solid rgba(15,23,42,0.06)" }}
                 >
-                  <span className="text-[17px] font-black tracking-tight" style={{ color: "#0F172A" }}>{f.stat}</span>
-                  <span className="text-[11px] font-medium" style={{ color: "#94A3B8" }}>{f.statLabel}</span>
+                  <span className="text-[22px] font-black tracking-tight" style={{ color: "#0F172A" }}>{f.stat}</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#94A3B8" }}>{f.statLabel}</span>
                 </div>
               </div>
             ))}
@@ -1056,7 +1103,7 @@ export default function LandingPage() {
                   items: ["Fully automated", "AI-personalized copy", "QR-tracked mail", "Usage-based pricing"],
                   ok: true,
                 },
-              ].map((col, ci) => (
+              ].map((col) => (
                 <div
                   key={col.label}
                   className="px-6 py-5"
@@ -1173,7 +1220,7 @@ export default function LandingPage() {
                 <div
                   className="w-8 h-8 rounded-lg flex items-center justify-center"
                   style={{
-                    background: "linear-gradient(135deg, #0F1E35, #0B1526)",
+                    background: "linear-gradient(135deg, #4F46E5, #0B1526)",
                     boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
                   }}
                 >

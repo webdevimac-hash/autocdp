@@ -658,3 +658,92 @@ button, a, [role="button"], input, select, textarea {
   50%       { box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
 }
 .animate-glow-pulse { animation: glow-pulse 2.4s ease-in-out infinite; }
+
+/* ═══════════════════════════════════════════════════════════ */
+/* PREMIUM LANDING PAGE ADDITIONS                              */
+/* ═══════════════════════════════════════════════════════════ */
+
+/* ── Gradient icon backgrounds (feature cards) ───────────────── */
+.icon-bg-indigo  { background: linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%); border: 1px solid rgba(165,180,252,0.45); }
+.icon-bg-sky     { background: linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%); border: 1px solid rgba(125,211,252,0.45); }
+.icon-bg-amber   { background: linear-gradient(135deg, #FFFBEB 0%, #FDE68A 100%); border: 1px solid rgba(252,211,77,0.45); }
+.icon-bg-emerald { background: linear-gradient(135deg, #ECFDF5 0%, #A7F3D0 100%); border: 1px solid rgba(52,211,153,0.45); }
+.icon-bg-violet  { background: linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%); border: 1px solid rgba(196,181,253,0.45); }
+.icon-bg-rose    { background: linear-gradient(135deg, #FFF1F2 0%, #FECDD3 100%); border: 1px solid rgba(253,164,175,0.45); }
+
+/* ── Stronger hero gradient text ─────────────────────────────── */
+.gradient-text-strong {
+  background: linear-gradient(135deg, #4338CA 0%, #7C3AED 42%, #0EA5E9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Typing dots animation ───────────────────────────────────── */
+@keyframes typing-dot {
+  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+  30%            { opacity: 1;    transform: translateY(-2px); }
+}
+.typing-dot:nth-child(1) { animation: typing-dot 1.2s ease-in-out 0s infinite; }
+.typing-dot:nth-child(2) { animation: typing-dot 1.2s ease-in-out 0.18s infinite; }
+.typing-dot:nth-child(3) { animation: typing-dot 1.2s ease-in-out 0.36s infinite; }
+
+/* ── Mockup window premium shadow ────────────────────────────── */
+.mockup-shadow {
+  box-shadow:
+    0 0 0 1px rgba(99,102,241,0.07),
+    0 44px 100px -18px rgba(15,23,42,0.30),
+    0 8px 28px -8px rgba(15,23,42,0.14);
+}
+
+/* ── Hero beam ────────────────────────────────────────────────── */
+.hero-beam {
+  background: conic-gradient(from 180deg at 50% -5%, rgba(99,102,241,0.16) 0deg, transparent 60deg, transparent 300deg, rgba(99,102,241,0.16) 360deg);
+}
+
+/* ── Scan line overlay (subtle depth on mockup) ──────────────── */
+.scan-overlay {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(15,23,42,0.012) 3px,
+    rgba(15,23,42,0.012) 4px
+  );
+  pointer-events: none;
+}
+
+/* ── Floating badge premium style ────────────────────────────── */
+.float-badge {
+  background: #FFFFFF;
+  border: 1px solid rgba(15,23,42,0.09);
+  box-shadow: 0 14px 36px -8px rgba(15,23,42,0.18), 0 2px 8px -2px rgba(15,23,42,0.08), inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+/* ── Stats bar number pulse on load ──────────────────────────── */
+@keyframes stat-pop {
+  0%   { opacity: 0; transform: scale(0.88) translateY(6px); }
+  60%  { opacity: 1; transform: scale(1.04) translateY(-1px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.stat-pop { animation: stat-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.stat-pop-1 { animation-delay: 0.05s; }
+.stat-pop-2 { animation-delay: 0.14s; }
+.stat-pop-3 { animation-delay: 0.23s; }
+.stat-pop-4 { animation-delay: 0.32s; }
+
+/* ── Feature card premium base ───────────────────────────────── */
+.feature-card-premium {
+  position: relative;
+  overflow: hidden;
+}
+.feature-card-premium::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 50% at 110% 110%, rgba(99,102,241,0.04), transparent 60%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.feature-card-premium:hover::after { opacity: 1; }
