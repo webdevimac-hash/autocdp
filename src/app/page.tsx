@@ -332,8 +332,10 @@ export default function LandingPage() {
               </h1>
 
               <p className="text-[17px] sm:text-[18px] leading-[1.68] mb-8 max-w-lg" style={{ color: "#64748B" }}>
-                Connect your DMS. Set one goal. Five AI agents identify your best prospects, write{" "}
-                <span style={{ color: "#334155", fontWeight: 600 }}>1-to-1 personalized copy</span>, and drop physical postcards in the mailbox — tracked, optimized, automatic.
+                Five AI agents run{" "}
+                <span style={{ color: "#334155", fontWeight: 600 }}>24/7 against your DMS</span>{" "}
+                — finding lapsed customers, writing personalized copy, and dropping postcards in the mailbox. Every piece tracked. Every result fed back in.{" "}
+                <span style={{ color: "#334155", fontWeight: 600 }}>Set it once. Revenue compounds.</span>
               </p>
 
               {/* CTA row */}
@@ -363,13 +365,21 @@ export default function LandingPage() {
                 </Link>
               </div>
 
-              {/* Trust signals */}
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-9">
-                {["No credit card required", "Setup in under 2 hours", "Cancel anytime"].map((t) => (
-                  <span key={t} className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: "#94A3B8" }}>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                    {t}
-                  </span>
+              {/* Trust signals — visual pill cards */}
+              <div className="grid grid-cols-3 gap-2 mb-9 max-w-sm">
+                {[
+                  { icon: CheckCircle2, label: "No credit card", color: "#10B981" },
+                  { icon: Zap,          label: "Live in < 2 hrs", color: "#6366F1" },
+                  { icon: Shield,       label: "Cancel anytime",  color: "#0EA5E9" },
+                ].map((t) => (
+                  <div
+                    key={t.label}
+                    className="trust-pill flex flex-col items-center gap-1.5 px-2 py-2.5 rounded-xl text-center"
+                    style={{ background: "#F8FAFC", border: "1px solid rgba(15,23,42,0.08)", boxShadow: "0 1px 2px rgba(15,23,42,0.03)" }}
+                  >
+                    <t.icon className="w-4 h-4 shrink-0" style={{ color: t.color }} />
+                    <span className="text-[10.5px] font-semibold leading-tight" style={{ color: "#334155" }}>{t.label}</span>
+                  </div>
                 ))}
               </div>
 
@@ -672,7 +682,7 @@ export default function LandingPage() {
                                 </div>
                               </div>
                               <p className="text-[7px] leading-relaxed" style={{ color: "#4338CA" }}>
-                                "James, your 2021 Tacoma is due…"
+                                "Marcus, your 2021 Tacoma is due…"
                               </p>
                             </div>
                           </div>
@@ -690,7 +700,7 @@ export default function LandingPage() {
                           <div className="flex items-center gap-2.5 text-[8px] overflow-hidden">
                             <span className="font-semibold" style={{ color: "#34D399" }}>↑ 3 pieces sent</span>
                             <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
-                            <span style={{ color: "rgba(255,255,255,0.45)" }}>QR scan: James C. (Scottsdale)</span>
+                            <span style={{ color: "rgba(255,255,255,0.45)" }}>QR scan: Marcus C. (Scottsdale)</span>
                             <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
                             <span style={{ color: "rgba(255,255,255,0.45)" }}>Win-back: 127 conversions</span>
                           </div>
@@ -846,10 +856,10 @@ export default function LandingPage() {
               Platform capabilities
             </div>
             <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4" style={{ color: "#0F172A" }}>
-              Everything in one platform
+              Replace 5 vendors. One platform.
             </h2>
             <p className="text-[17px] max-w-xl mx-auto leading-relaxed" style={{ color: "#64748B" }}>
-              Built for dealer groups that want AI-driven marketing without stitching together five vendors.
+              CDK or Reynolds in. QR-tracked postcards out. AI handles everything in between — automatically, every day.
             </p>
           </div>
 
@@ -1006,18 +1016,32 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════ */}
-      {/* TESTIMONIALS + COMPARISON                          */}
+      {/* TESTIMONIALS + COMPARISON  (dark, cinematic)      */}
       {/* ═══════════════════════════════════════════════════ */}
-      <section id="results" className="py-24 px-5 sm:px-8 bg-white">
-        <div className="max-w-5xl mx-auto">
+      <section id="results" className="py-24 px-5 sm:px-8 relative overflow-hidden" style={{ background: "#0B1526" }}>
+
+        {/* Background */}
+        <div className="absolute inset-0 dark-grid opacity-40" />
+        <div
+          className="absolute top-0 left-1/4 w-[600px] h-[400px] blur-3xl pointer-events-none"
+          style={{ background: "radial-gradient(ellipse, rgba(99,102,241,0.10) 0%, transparent 65%)" }}
+        />
+        <div
+          className="absolute bottom-0 right-1/4 w-[400px] h-[300px] blur-3xl pointer-events-none"
+          style={{ background: "radial-gradient(ellipse, rgba(16,185,129,0.07) 0%, transparent 65%)" }}
+        />
+
+        <div className="relative max-w-5xl mx-auto">
+
+          {/* Header */}
           <div className="text-center mb-16">
             <div
               className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-bold mb-5 uppercase tracking-widest"
-              style={{ background: "#FFFBEB", border: "1px solid rgba(251,191,36,0.40)", color: "#92400E" }}
+              style={{ background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.25)", color: "#FCD34D" }}
             >
-              <Star className="w-3 h-3 fill-amber-500 text-amber-500" /> Real Results
+              <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> Real Results
             </div>
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-3" style={{ color: "#0F172A" }}>
+            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight mb-3">
               Real results from real dealers
             </h2>
             <p className="text-[17px] font-medium" style={{ color: "#64748B" }}>
@@ -1025,68 +1049,81 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+          {/* Cinematic testimonial cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10">
             {testimonials.map((t) => (
               <div
                 key={t.name}
-                className="card-lift p-8 rounded-2xl bg-white"
-                style={{
-                  border: "1px solid rgba(15,23,42,0.08)",
-                  boxShadow: "0 1px 3px rgba(15,23,42,0.05)",
-                }}
+                className="testimonial-dark relative p-8 rounded-2xl overflow-hidden"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
               >
-                <div className="flex items-start justify-between mb-6">
+                {/* Decorative large quote mark */}
+                <div
+                  className="absolute top-4 right-6 text-[80px] font-black leading-none pointer-events-none select-none"
+                  style={{ color: "rgba(99,102,241,0.13)", fontFamily: "Georgia, 'Times New Roman', serif" }}
+                >&ldquo;</div>
+
+                {/* Stars + stat badge */}
+                <div className="flex items-start justify-between mb-5 relative">
                   <div className="flex gap-0.5">
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
                     ))}
                   </div>
                   <div
-                    className="text-right px-4 py-2 rounded-xl"
+                    className="px-3.5 py-2 rounded-xl text-right"
                     style={{ background: t.statBg, border: `1px solid ${t.statBorder}` }}
                   >
-                    <div className="text-2xl font-black tracking-tight" style={{ color: t.statColor }}>{t.stat}</div>
-                    <div className="text-[10px] font-semibold uppercase tracking-wide mt-0.5" style={{ color: "#94A3B8" }}>{t.statLabel}</div>
+                    <div className="text-[22px] font-black tracking-tight leading-none" style={{ color: t.statColor }}>{t.stat}</div>
+                    <div className="text-[9px] font-bold uppercase tracking-wide mt-0.5" style={{ color: "rgba(255,255,255,0.30)" }}>{t.statLabel}</div>
                   </div>
                 </div>
 
-                <blockquote className="text-[15px] italic leading-relaxed mb-7" style={{ color: "#334155" }}>
+                {/* Quote */}
+                <blockquote
+                  className="text-[15px] leading-[1.7] mb-7 relative italic"
+                  style={{ color: "rgba(255,255,255,0.72)" }}
+                >
                   &ldquo;{t.quote}&rdquo;
                 </blockquote>
 
+                {/* Author */}
                 <div
                   className="flex items-center gap-3 pt-5"
-                  style={{ borderTop: "1px solid rgba(15,23,42,0.06)" }}
+                  style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}
                 >
                   <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                    style={{ background: "#0B1526", boxShadow: "0 0 0 2px white, 0 0 0 3px rgba(15,23,42,0.08)" }}
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                    style={{
+                      background: "linear-gradient(135deg, #6366F1, #0B1526)",
+                      boxShadow: "0 0 0 2px rgba(99,102,241,0.40), 0 0 0 4px rgba(99,102,241,0.10)",
+                    }}
                   >
                     {t.initials}
                   </div>
                   <div>
-                    <p className="text-[13px] font-semibold" style={{ color: "#0F172A" }}>{t.name}</p>
-                    <p className="text-[11px] font-medium" style={{ color: "#94A3B8" }}>{t.title}</p>
+                    <p className="text-[13px] font-semibold text-white">{t.name}</p>
+                    <p className="text-[11px] font-medium" style={{ color: "rgba(255,255,255,0.35)" }}>{t.title}</p>
                   </div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Comparison table */}
+          {/* Comparison table — dark version */}
           <div
             className="rounded-2xl overflow-hidden"
-            style={{ border: "1px solid rgba(15,23,42,0.08)", boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }}
+            style={{ border: "1px solid rgba(255,255,255,0.07)" }}
           >
             <div
               className="px-6 py-4"
-              style={{ background: "#F8FAFC", borderBottom: "1px solid rgba(15,23,42,0.06)" }}
+              style={{ background: "rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
             >
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "#94A3B8" }}>
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "rgba(255,255,255,0.28)" }}>
                 AutoCDP vs. traditional approaches
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x" style={{ borderColor: "rgba(15,23,42,0.07)" }}>
+            <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
               {[
                 {
                   label: "Legacy Mail House",
@@ -1107,11 +1144,11 @@ export default function LandingPage() {
                 <div
                   key={col.label}
                   className="px-6 py-5"
-                  style={col.ok ? { background: "#FAFBFF" } : {}}
+                  style={col.ok ? { background: "rgba(99,102,241,0.06)" } : {}}
                 >
                   <p
                     className="text-[11px] font-bold uppercase tracking-wider mb-4"
-                    style={{ color: col.ok ? "#4338CA" : "#94A3B8" }}
+                    style={{ color: col.ok ? "#818CF8" : "rgba(255,255,255,0.22)" }}
                   >
                     {col.label}
                   </p>
@@ -1123,10 +1160,10 @@ export default function LandingPage() {
                         ) : (
                           <div
                             className="w-3.5 h-3.5 rounded-full border-2 shrink-0"
-                            style={{ borderColor: "#E2E8F0" }}
+                            style={{ borderColor: "rgba(255,255,255,0.12)" }}
                           />
                         )}
-                        <span style={{ color: col.ok ? "#334155" : "#94A3B8", fontWeight: col.ok ? 500 : 400 }}>
+                        <span style={{ color: col.ok ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.28)", fontWeight: col.ok ? 500 : 400 }}>
                           {item}
                         </span>
                       </li>
@@ -1165,6 +1202,25 @@ export default function LandingPage() {
             Ready when you are
           </div>
 
+          {/* Social proof mini row */}
+          <div className="flex items-center justify-center gap-3 mb-7">
+            <div className="flex -space-x-2">
+              {[
+                { i: "MT", bg: "#0B1526" }, { i: "DS", bg: "#6366F1" }, { i: "KP", bg: "#10B981" },
+              ].map((a, idx) => (
+                <div
+                  key={idx}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-[8px] font-bold text-white"
+                  style={{ background: a.bg, border: "2px solid #0B1526" }}
+                >{a.i}</div>
+              ))}
+            </div>
+            <p className="text-[13px] font-medium" style={{ color: "rgba(255,255,255,0.40)" }}>
+              40+ dealerships in pilot —{" "}
+              <span style={{ color: "#34D399", fontWeight: 700 }}>limited spots this month</span>
+            </p>
+          </div>
+
           <h2 className="text-3xl sm:text-[2.8rem] font-black text-white tracking-tight mb-4 leading-tight">
             Launch your first AI campaign
             <br />
@@ -1177,13 +1233,14 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
             <Link
               href="/signup"
-              className="btn-press w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-white font-semibold text-[15px] transition-all"
+              className="btn-press w-full sm:w-auto inline-flex items-center justify-center gap-2 px-9 py-4 rounded-xl text-white font-bold text-[15px] transition-all"
               style={{
                 background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)",
-                boxShadow: "0 10px 36px -8px rgba(79,70,229,0.65), inset 0 1px 0 rgba(255,255,255,0.12)",
+                boxShadow: "0 0 0 4px rgba(99,102,241,0.18), 0 12px 40px -8px rgba(79,70,229,0.70), inset 0 1px 0 rgba(255,255,255,0.12)",
+                letterSpacing: "-0.01em",
               }}
             >
-              Start free trial <ArrowRight className="w-4 h-4" />
+              Start free trial — no card needed <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               href="/login"
@@ -1199,7 +1256,7 @@ export default function LandingPage() {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-            {["14-day free trial", "No credit card", "Full feature access", "Cancel anytime"].map((item) => (
+            {["14-day free trial", "Full feature access", "Cancel anytime"].map((item) => (
               <span key={item} className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: "#475569" }}>
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                 {item}
