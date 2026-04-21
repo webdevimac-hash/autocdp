@@ -73,6 +73,7 @@ const features: Array<{
   icon: React.ElementType; title: string; desc: string;
   iconBgClass: string; iconColor: string; glowClass: string;
   topColor: string; stat: string; statLabel: string; statColor: string;
+  detail: string;
   badge?: string;
 }> = [
   {
@@ -84,6 +85,7 @@ const features: Array<{
     glowClass: "feature-card-indigo",
     topColor: "#6366F1",
     stat: "5 agents", statLabel: "always running", statColor: "#4F46E5",
+    detail: "Processes 50k+ DMS events per day",
   },
   {
     icon: Mail,
@@ -94,6 +96,7 @@ const features: Array<{
     glowClass: "feature-card-sky",
     topColor: "#0EA5E9",
     stat: "< $1.60", statLabel: "per piece delivered", statColor: "#0284C7",
+    detail: "Design to mailbox in under 14 days",
     badge: "Only AutoCDP",
   },
   {
@@ -105,6 +108,7 @@ const features: Array<{
     glowClass: "feature-card-violet",
     topColor: "#8B5CF6",
     stat: "98%", statLabel: "open rate", statColor: "#7C3AED",
+    detail: "AI-written, TCPA-compliant, instant trigger",
   },
   {
     icon: AtSign,
@@ -115,6 +119,7 @@ const features: Array<{
     glowClass: "feature-card-emerald",
     topColor: "#10B981",
     stat: "42%", statLabel: "avg. open rate", statColor: "#059669",
+    detail: "Auto-segmented — never batch-and-blast",
   },
   {
     icon: BarChart2,
@@ -125,6 +130,7 @@ const features: Array<{
     glowClass: "feature-card-amber",
     topColor: "#F59E0B",
     stat: "360°", statLabel: "attribution", statColor: "#B45309",
+    detail: "Refreshed every 30-minute DMS sync",
   },
   {
     icon: Database,
@@ -135,6 +141,7 @@ const features: Array<{
     glowClass: "feature-card-rose",
     topColor: "#F43F5E",
     stat: "30 min", statLabel: "sync interval", statColor: "#E11D48",
+    detail: "Zero manual exports needed",
   },
 ];
 
@@ -1160,7 +1167,10 @@ export default function LandingPage() {
                         <f.icon className={`w-5 h-5 ${f.iconColor}`} />
                       </div>
                       <h3 className="font-black text-[19px] mb-2 tracking-tight" style={{ color: "#0F172A" }}>{f.title}</h3>
-                      <p className="text-[14px] leading-relaxed max-w-sm" style={{ color: "#64748B" }}>{f.desc}</p>
+                      <p className="text-[14px] leading-relaxed max-w-sm mb-3" style={{ color: "#64748B" }}>{f.desc}</p>
+                      <p className="text-[12px] font-semibold flex items-center gap-1" style={{ color: f.statColor }}>
+                        <span style={{ opacity: 0.7 }}>↗</span> {f.detail}
+                      </p>
                     </div>
                     <div
                       className="flex items-baseline gap-2 pt-5 mt-5"
@@ -1256,7 +1266,10 @@ export default function LandingPage() {
                   <f.icon className={`w-5 h-5 ${f.iconColor}`} />
                 </div>
                 <h3 className="font-bold text-[15px] mb-2 tracking-tight" style={{ color: "#0F172A" }}>{f.title}</h3>
-                <p className="text-[13px] leading-relaxed mb-5" style={{ color: "#64748B" }}>{f.desc}</p>
+                <p className="text-[13px] leading-relaxed mb-3" style={{ color: "#64748B" }}>{f.desc}</p>
+                <p className="text-[11px] font-semibold mb-4 flex items-center gap-1" style={{ color: f.statColor }}>
+                  <span style={{ opacity: 0.7 }}>↗</span> {f.detail}
+                </p>
                 <div
                   className="flex items-baseline gap-2 pt-4"
                   style={{ borderTop: "1px solid rgba(15,23,42,0.06)" }}
@@ -1435,7 +1448,7 @@ export default function LandingPage() {
               <div
                 key={t.name}
                 className={`${t.hoverClass} relative p-8 rounded-2xl overflow-hidden`}
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderLeft: `3px solid ${t.statColor}55` }}
               >
                 {/* Decorative large quote mark */}
                 <div
