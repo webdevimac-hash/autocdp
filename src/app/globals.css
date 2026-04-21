@@ -511,12 +511,10 @@ button, a, [role="button"], input, select, textarea {
 /* BACKGROUNDS + SURFACES                                      */
 /* ═══════════════════════════════════════════════════════════ */
 
-/* ── Hero grid overlay ──────────────────────────────────────── */
+/* ── Hero grid overlay (premium dot pattern) ────────────────── */
 .hero-grid {
-  background-image:
-    linear-gradient(rgba(99, 102, 241, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(99, 102, 241, 0.045) 1px, transparent 1px);
-  background-size: 48px 48px;
+  background-image: radial-gradient(circle at 1px 1px, rgba(99, 102, 241, 0.13) 1px, transparent 0);
+  background-size: 32px 32px;
 }
 
 /* ── Dark grid ───────────────────────────────────────────────── */
@@ -643,6 +641,16 @@ button, a, [role="button"], input, select, textarea {
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 .animate-slide-up { animation: slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ── Live dot pulse (distinct from Tailwind animate-pulse) ──── */
+@keyframes live-dot {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); opacity: 1; }
+  50%       { box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); opacity: 0.85; }
+}
+.live-dot {
+  border-radius: 9999px;
+  animation: live-dot 2s ease-in-out infinite;
+}
 
 /* ── Glow pulse (for live indicators) ───────────────────────── */
 @keyframes glow-pulse {

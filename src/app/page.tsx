@@ -112,11 +112,11 @@ const stats = [
 ];
 
 const mockAgents = [
-  { name: "Orchestrator", state: "done",    model: "opus-4.7",   dot: "bg-emerald-500" },
-  { name: "Data Agent",   state: "done",    model: "sonnet-4.6", dot: "bg-emerald-500" },
-  { name: "Targeting",    state: "running", model: "sonnet-4.6", dot: "bg-indigo-400 animate-pulse" },
-  { name: "Creative",     state: "running", model: "sonnet-4.6", dot: "bg-indigo-400 animate-pulse" },
-  { name: "Optimization", state: "idle",    model: "sonnet-4.6", dot: "bg-slate-600" },
+  { name: "Orchestrator", state: "done",    model: "opus-4.7",   dot: "bg-emerald-500",                dotStyle: { boxShadow: "0 0 0 2px rgba(16,185,129,0.22)" } },
+  { name: "Data Agent",   state: "done",    model: "sonnet-4.6", dot: "bg-emerald-500",                dotStyle: { boxShadow: "0 0 0 2px rgba(16,185,129,0.22)" } },
+  { name: "Targeting",    state: "running", model: "sonnet-4.6", dot: "bg-indigo-400 animate-pulse",   dotStyle: { boxShadow: "0 0 6px rgba(99,102,241,0.55)" } },
+  { name: "Creative",     state: "running", model: "sonnet-4.6", dot: "bg-indigo-400 animate-pulse",   dotStyle: { boxShadow: "0 0 6px rgba(99,102,241,0.55)" } },
+  { name: "Optimization", state: "idle",    model: "sonnet-4.6", dot: "bg-slate-600",                  dotStyle: {} },
 ];
 
 const mockStats = [
@@ -238,14 +238,18 @@ export default function LandingPage() {
       <section className="relative pt-20 pb-16 sm:pt-28 sm:pb-24 px-5 sm:px-8 overflow-hidden">
 
         {/* Background layers */}
-        <div className="absolute inset-0 hero-grid" style={{ opacity: 0.35 }} />
+        <div className="absolute inset-0 hero-grid" style={{ opacity: 0.55 }} />
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 70% 50% at 50% -5%, rgba(99,102,241,0.09), transparent)" }}
+          style={{ background: "radial-gradient(ellipse 80% 55% at 50% -5%, rgba(99,102,241,0.11), transparent 65%)" }}
         />
         <div
           className="absolute -top-32 right-0 w-[700px] h-[600px] rounded-full blur-3xl translate-x-1/3 pointer-events-none"
-          style={{ background: "rgba(99,102,241,0.055)" }}
+          style={{ background: "rgba(99,102,241,0.07)" }}
+        />
+        <div
+          className="absolute bottom-0 right-1/4 w-[400px] h-[300px] rounded-full blur-3xl pointer-events-none"
+          style={{ background: "rgba(16,185,129,0.045)" }}
         />
         <div
           className="absolute bottom-0 left-0 w-[500px] h-[400px] rounded-full blur-3xl -translate-x-1/3 translate-y-1/3 pointer-events-none"
@@ -580,16 +584,21 @@ export default function LandingPage() {
                               {mockAgents.map((a) => (
                                 <div
                                   key={a.name}
-                                  className="flex items-center gap-1.5 px-1 py-0.5 rounded"
-                                  style={a.state === "running" ? { background: "rgba(99,102,241,0.06)" } : {}}
+                                  className="flex items-center gap-1.5 px-1.5 py-1 rounded"
+                                  style={a.state === "running"
+                                    ? { background: "rgba(99,102,241,0.07)", borderRadius: "5px" }
+                                    : {}}
                                 >
-                                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${a.dot}`} />
+                                  <div
+                                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${a.dot}`}
+                                    style={a.dotStyle}
+                                  />
                                   <span
                                     className="text-[8px] flex-1 truncate"
-                                    style={{ color: a.state === "running" ? "#4338CA" : "#64748B", fontWeight: a.state === "running" ? 600 : 400 }}
+                                    style={{ color: a.state === "running" ? "#4338CA" : a.state === "done" ? "#334155" : "#94A3B8", fontWeight: a.state === "running" ? 700 : a.state === "done" ? 500 : 400 }}
                                   >{a.name}</span>
                                   <span
-                                    className="text-[7px] font-bold"
+                                    className="text-[7px] font-bold tabular-nums"
                                     style={{
                                       color: a.state === "done" ? "#059669" :
                                              a.state === "running" ? "#6366F1" : "#CBD5E1"

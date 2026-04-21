@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { TemplatePreview } from "./template-preview";
 import { useToast } from "@/hooks/use-toast";
@@ -112,19 +112,21 @@ function StepIndicator({ step, current, label }: { step: number; current: number
   const done = current > step;
   const active = current === step;
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex flex-col items-center gap-1.5">
       <div className={cn(
-        "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all",
-        done ? "bg-emerald-500 text-white" : active ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-500"
+        "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200",
+        done
+          ? "bg-emerald-500 text-white shadow-[0_0_0_3px_rgba(16,185,129,0.15)]"
+          : active
+          ? "bg-indigo-600 text-white shadow-[0_0_0_3px_rgba(99,102,241,0.18)]"
+          : "bg-white border-2 border-slate-200 text-slate-400"
       )}>
-        {done ? <CheckCircle className="w-3.5 h-3.5" /> : step}
+        {done ? <CheckCircle className="w-4 h-4" /> : step}
       </div>
       <span className={cn(
-        "text-xs font-medium",
-        active ? "text-indigo-700" : done ? "text-emerald-700" : "text-slate-400"
-      )}>
-        {label}
-      </span>
+        "text-[10px] font-semibold whitespace-nowrap hidden sm:block",
+        active ? "text-indigo-700" : done ? "text-emerald-600" : "text-slate-400"
+      )}>{label}</span>
     </div>
   );
 }
@@ -592,15 +594,20 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
       </div>
 
       {/* Step indicators */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-start gap-0">
         {[
           [1, "Customers"], [2, "Channel"], [3, "Goal & Copy"],
           [4, "Preview"], [5, "Send"],
         ].map(([step, label], i, arr) => (
-          <div key={step} className="flex items-center gap-2">
+          <Fragment key={step as number}>
             <StepIndicator step={step as number} current={currentStep} label={label as string} />
-            {i < arr.length - 1 && <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />}
-          </div>
+            {i < arr.length - 1 && (
+              <div
+                className="flex-1 h-px mt-4 mx-1 transition-colors duration-300"
+                style={{ background: currentStep > (step as number) ? "#10B981" : "#E2E8F0" }}
+              />
+            )}
+          </Fragment>
         ))}
       </div>
 
@@ -695,12 +702,25 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
                 const isActive = channel === ch;
                 return (
                   <button key={ch} onClick={() => setChannel(ch)}
-                    className={cn("text-left p-4 border-2 rounded-[var(--radius)] transition-all min-h-[88px]",
-                      isActive ? cfg.activeColor : `bg-white border-slate-200 ${cfg.color}`)}>
-                    <Icon className={cn("w-5 h-5 mb-2", isActive ? "text-slate-700" : "text-slate-400")} />
+                    className={cn(
+                      "text-left p-4 rounded-[var(--radius)] transition-all min-h-[100px] relative overflow-hidden",
+                      isActive
+                        ? "bg-white border border-indigo-200 shadow-[0_0_0_2px_rgba(99,102,241,0.16),0_4px_12px_-2px_rgba(99,102,241,0.10)]"
+                        : "bg-white border border-slate-200 hover:border-slate-300 hover:shadow-card"
+                    )}
+                  >
+                    {isActive && (
+                      <div className="absolute top-0 left-0 right-0 h-[3px]" style={{
+                        background: ch === "direct_mail" ? "#6366F1"
+                                  : ch === "sms" ? "#8B5CF6"
+                                  : ch === "email" ? "#0EA5E9"
+                                  : "#F59E0B"
+                      }} />
+                    )}
+                    <Icon className={cn("w-5 h-5 mb-2 mt-1", isActive ? "text-indigo-600" : "text-slate-400")} />
                     <p className="text-[13px] font-semibold text-slate-900">{cfg.label}</p>
                     <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">{cfg.description}</p>
-                    <p className="text-[10px] font-semibold text-emerald-700 mt-1.5">{cfg.cost}</p>
+                    <p className="text-[10px] font-bold text-emerald-700 mt-1.5">{cfg.cost}</p>
                   </button>
                 );
               })}
@@ -922,20 +942,20 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
           <div className="p-5 space-y-4">
             {/* Summary */}
             <div className="grid grid-cols-3 gap-3">
-              <div className="p-4 bg-slate-50/60 rounded-[var(--radius)] border border-slate-100 text-center">
-                <p className="text-xl font-bold text-slate-900 tabular-nums">{selectedCount}</p>
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mt-0.5">Recipients</p>
+              <div className="p-4 bg-indigo-50/60 rounded-[var(--radius)] border border-indigo-100 text-center">
+                <p className="text-2xl font-bold text-indigo-700 tabular-nums">{selectedCount}</p>
+                <p className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wide mt-0.5">Recipients</p>
               </div>
               <div className="p-4 bg-slate-50/60 rounded-[var(--radius)] border border-slate-100 text-center">
-                <div className="flex items-center justify-center gap-1.5">
+                <div className="flex items-center justify-center gap-1.5 mb-0.5">
                   {(() => { const Icon = channelCfg.icon; return <Icon className="w-4 h-4 text-slate-600" />; })()}
                   <p className="text-[13px] font-bold text-slate-900">{channelCfg.label}</p>
                 </div>
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mt-0.5">Channel</p>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Channel</p>
               </div>
-              <div className="p-4 bg-slate-50/60 rounded-[var(--radius)] border border-slate-100 text-center">
-                <p className="text-xl font-bold text-slate-900 tabular-nums">{estimateCost()}</p>
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mt-0.5">Est. Cost</p>
+              <div className="p-4 bg-emerald-50/60 rounded-[var(--radius)] border border-emerald-100 text-center">
+                <p className="text-2xl font-bold text-emerald-700 tabular-nums">{estimateCost()}</p>
+                <p className="text-[10px] font-semibold text-emerald-500 uppercase tracking-wide mt-0.5">Est. Cost</p>
               </div>
             </div>
 
