@@ -123,21 +123,23 @@ const config: Config = {
       },
 
       boxShadow: {
-        // Institutional — refined, very subtle
-        card:         "0 1px 2px 0 rgb(15 23 42 / 0.04), 0 0 0 1px rgb(15 23 42 / 0.03)",
-        "card-md":    "0 3px 8px -2px rgb(15 23 42 / 0.07), 0 1px 3px 0 rgb(15 23 42 / 0.04)",
-        "card-lg":    "0 8px 20px -4px rgb(15 23 42 / 0.09), 0 2px 6px -2px rgb(15 23 42 / 0.05)",
-        "card-hover": "0 14px 32px -6px rgb(15 23 42 / 0.11), 0 4px 10px -4px rgb(15 23 42 / 0.06)",
-        modal:        "0 24px 48px -8px rgb(15 23 42 / 0.18), 0 8px 16px -6px rgb(15 23 42 / 0.08)",
-        // Colored glows
+        // ── Base elevation scale ──────────────────────────────────
+        card:         "0 1px 3px 0 rgb(15 23 42 / 0.05), 0 1px 2px -1px rgb(15 23 42 / 0.04)",
+        "card-md":    "0 4px 10px -2px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.04)",
+        "card-lg":    "0 10px 24px -6px rgb(15 23 42 / 0.10), 0 4px 8px -4px rgb(15 23 42 / 0.05)",
+        "card-hover": "0 18px 40px -8px rgb(15 23 42 / 0.13), 0 6px 14px -4px rgb(15 23 42 / 0.07)",
+        "card-float": "0 24px 48px -10px rgb(15 23 42 / 0.16), 0 8px 18px -6px rgb(15 23 42 / 0.08)",
+        modal:        "0 28px 56px -10px rgb(15 23 42 / 0.22), 0 10px 20px -8px rgb(15 23 42 / 0.10)",
+        panel:        "0 1px 3px 0 rgb(15 23 42 / 0.04), inset 0 1px 0 rgb(255 255 255 / 0.80)",
+        // ── Colored glows ─────────────────────────────────────────
         indigo:        "0 6px 20px -4px rgb(79 70 229 / 0.38)",
         emerald:       "0 6px 20px -4px rgb(16 185 129 / 0.32)",
-        "glow-indigo": "0 0 0 2px rgb(99 102 241 / 0.12), 0 6px 20px -4px rgb(79 70 229 / 0.22)",
-        "glow-emerald":"0 0 0 2px rgb(16 185 129 / 0.12), 0 6px 20px -4px rgb(5 150 105 / 0.20)",
-        "glow-sky":    "0 0 0 2px rgb(14 165 233 / 0.12), 0 6px 20px -4px rgb(2 132 199 / 0.20)",
-        "glow-amber":  "0 0 0 2px rgb(245 158 11 / 0.12), 0 6px 20px -4px rgb(217 119 6 / 0.20)",
-        "glow-violet": "0 0 0 2px rgb(139 92 246 / 0.12), 0 6px 20px -4px rgb(124 58 237 / 0.20)",
-        "glow-rose":   "0 0 0 2px rgb(244 63 94 / 0.12), 0 6px 20px -4px rgb(225 29 72 / 0.20)",
+        "glow-indigo": "0 0 0 1.5px rgb(99 102 241 / 0.20), 0 8px 24px -4px rgb(79 70 229 / 0.22)",
+        "glow-emerald":"0 0 0 1.5px rgb(16 185 129 / 0.20), 0 8px 24px -4px rgb(5 150 105 / 0.20)",
+        "glow-sky":    "0 0 0 1.5px rgb(14 165 233 / 0.20), 0 8px 24px -4px rgb(2 132 199 / 0.18)",
+        "glow-amber":  "0 0 0 1.5px rgb(245 158 11 / 0.20), 0 8px 24px -4px rgb(217 119 6 / 0.18)",
+        "glow-violet": "0 0 0 1.5px rgb(139 92 246 / 0.20), 0 8px 24px -4px rgb(124 58 237 / 0.18)",
+        "glow-rose":   "0 0 0 1.5px rgb(244 63 94 / 0.20), 0 8px 24px -4px rgb(225 29 72 / 0.18)",
       },
 
       fontSize: {

@@ -117,7 +117,7 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId }:
   }
 
   const sidebarContent = (
-    <aside className="sidebar-gradient flex h-full w-full flex-col" style={{ background: "#0B1526" }}>
+    <aside className="flex h-full w-full flex-col" style={{ background: "#0B1526" }}>
 
       {/* Mobile close button */}
       <div className="md:hidden absolute top-3 right-3 z-10">
@@ -131,23 +131,33 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId }:
       </div>
 
       {/* Logo + dealership */}
-      <div className="shrink-0 border-b border-white/8">
+      <div className="shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
         <div
           className={cn(
-            "flex items-center gap-3 px-4 py-4",
-            hasMultiple && "cursor-pointer hover:bg-white/5 transition-colors"
+            "flex items-center gap-3 px-4 py-[14px]",
+            hasMultiple && "cursor-pointer hover:bg-white/4 transition-colors"
           )}
           onClick={() => hasMultiple && setSwitcherOpen((o) => !o)}
         >
-          <div className="flex items-center justify-center w-8 h-8 bg-white/10 rounded-lg ring-1 ring-white/12 shrink-0">
-            <Car className="w-4 h-4 text-white/80" />
+          <div
+            className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0"
+            style={{
+              background: "linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(139,92,246,0.20) 100%)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
+            }}
+          >
+            <Car className="w-4 h-4 text-white/85" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-white font-bold text-sm leading-tight tracking-tight">AutoCDP</p>
-            <p className="text-white/38 text-[11px] truncate mt-0.5">{dealership?.name ?? "Loading…"}</p>
+            <p className="font-bold text-sm leading-tight tracking-tight" style={{ color: "#FFFFFF" }}>AutoCDP</p>
+            <p className="text-[11px] truncate mt-0.5" style={{ color: "rgba(255,255,255,0.36)" }}>
+              {dealership?.name ?? "Loading…"}
+            </p>
           </div>
           {hasMultiple && (
-            <ChevronDown className={cn("w-3.5 h-3.5 text-white/30 shrink-0 transition-transform", switcherOpen && "rotate-180")} />
+            <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 transition-transform", switcherOpen && "rotate-180")}
+              style={{ color: "rgba(255,255,255,0.28)" }} />
           )}
         </div>
 
