@@ -123,14 +123,14 @@ const differentiators = [
 const testimonials = [
   {
     quote: "We replaced three separate vendors — mail house, CRM, and reporting — with AutoCDP. Our service lane retention is up 18% in 90 days.",
-    name: "Bryant M.", title: "Fixed Ops Director, Multi-Rooftop Group",
-    initials: "BM", stat: "+18%", statLabel: "retention lift",
+    name: "Marcus T.", title: "Fixed Ops Director, Multi-Rooftop Group",
+    initials: "MT", stat: "+18%", statLabel: "retention lift",
     statColor: "#059669", statBg: "rgba(16,185,129,0.07)", statBorder: "rgba(16,185,129,0.18)",
   },
   {
     quote: "The AI writes better win-back copy than our ad agency did. And it sends automatically the moment a customer goes lapsed. Set it and forget it.",
-    name: "Jake R.", title: "General Manager, Franchise Dealership",
-    initials: "JR", stat: "3×", statLabel: "mail response rate",
+    name: "Derek S.", title: "General Manager, Franchise Dealership",
+    initials: "DS", stat: "3×", statLabel: "mail response rate",
     statColor: "#4338CA", statBg: "rgba(99,102,241,0.07)", statBorder: "rgba(99,102,241,0.18)",
   },
 ];
@@ -380,7 +380,7 @@ export default function LandingPage() {
               >
                 <div className="flex -space-x-2">
                   {[
-                    { i: "BM", bg: "#0B1526" }, { i: "JR", bg: "#6366F1" },
+                    { i: "MT", bg: "#0B1526" }, { i: "DS", bg: "#6366F1" },
                     { i: "KP", bg: "#10B981" }, { i: "SR", bg: "#8B5CF6" },
                     { i: "DL", bg: "#F59E0B" },
                   ].map((a, idx) => (
@@ -506,8 +506,8 @@ export default function LandingPage() {
                           <div
                             className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[6px] font-bold shrink-0"
                             style={{ background: "#4338CA" }}
-                          >BM</div>
-                          <span className="text-[8px]" style={{ color: "rgba(255,255,255,0.35)" }}>Bryant M.</span>
+                          >MT</div>
+                          <span className="text-[8px]" style={{ color: "rgba(255,255,255,0.35)" }}>Marcus T.</span>
                         </div>
                       </div>
                     </div>
@@ -534,7 +534,7 @@ export default function LandingPage() {
                           <div
                             className="w-6 h-6 rounded-full flex items-center justify-center text-[7px] font-bold"
                             style={{ background: "linear-gradient(135deg, #EEF2FF, #E0E7FF)", color: "#4338CA" }}
-                          >BM</div>
+                          >MT</div>
                         </div>
                       </div>
 
