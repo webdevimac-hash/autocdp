@@ -1,66 +1,75 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { runOrchestrator } from "@/lib/anthropic/agents/orchestrator";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { toApiError } from "@/lib/errors";
+import { getActiveDealershipId } from "@/lib/dealership";
 import type { CampaignChannel } from "@/types";
 
-// POST /api/agents/test
-// Runs the full 5-agent orchestrator pipeline and returns a preview.
-// Authenticated route — dealership_id derived from session.
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const { data: ud } = await supabase
-      .from("user_dealerships")
-      .select("dealership_id")
-      .eq("user_id", user.id)
-      .single() as { data: { dealership_id: string } | null };
+    const dealershipId = await getActiveDealershipId(user.id);
+    if (!dealershipId) {
+      return NextResponse.json({ error: "No dealership found for this user", code: "NO_DEALERSHIP" }, { status: 400 });
+    }
 
-    if (!ud?.dealership_id) {
-      return NextResponse.json({ error: "No dealership found for this user" }, { status: 400 });
+    // Rate limit: agent runs
+    const limit = await checkRateLimit(dealershipId, "agent_run", 1);
+    if (!limit.allowed) {
+      return NextResponse.json(
+        {
+          error: "You've reached your daily AI agent limit. Limits reset at midnight UTC.",
+          code: "DAILY_LIMIT_EXCEEDED",
+          limit: limit.limit,
+          count: limit.count,
+        },
+        { status: 429 }
+      );
     }
 
     const { data: dealership } = await supabase
       .from("dealerships")
       .select("name")
-      .eq("id", ud.dealership_id)
+      .eq("id", dealershipId)
       .single() as { data: { name: string } | null };
 
     const body = await req.json();
     const { goal, channel = "direct_mail", maxCustomers = 3 } = body;
 
     if (!goal?.trim()) {
-      return NextResponse.json({ error: "Campaign goal is required" }, { status: 400 });
+      return NextResponse.json({ error: "Campaign goal is required", code: "VALIDATION_ERROR" }, { status: 400 });
     }
 
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
-        { error: "ANTHROPIC_API_KEY is not configured. Add it to your .env.local file." },
+        { error: "AI service is not configured. Add your ANTHROPIC_API_KEY to environment settings.", code: "AI_NOT_CONFIGURED" },
         { status: 503 }
       );
     }
 
     const result = await runOrchestrator({
       context: {
-        dealershipId: ud.dealership_id,
+        dealershipId,
         dealershipName: dealership?.name ?? "Your Dealership",
       },
       campaignGoal: goal,
       channel: channel as CampaignChannel,
-      maxCustomers: Math.min(Number(maxCustomers), 5), // cap at 5 during testing
+      maxCustomers: Math.min(Number(maxCustomers), 5),
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      ...result,
+      _rateLimit: { count: limit.count + 1, limit: limit.limit, nearLimit: limit.nearLimit },
+    });
   } catch (error) {
-    console.error("[/api/agents/test]", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    const { error: msg, code, statusCode } = toApiError(error);
+    return NextResponse.json({ error: msg, code }, { status: statusCode });
   }
 }

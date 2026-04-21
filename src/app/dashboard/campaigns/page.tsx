@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Header } from "@/components/layout/header";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Mail, MessageSquare, FileText, Layers, BarChart2, Play, Megaphone } from "lucide-react";
+import { Plus, Mail, MessageSquare, FileText, Layers, BarChart2, Play, Megaphone, Download } from "lucide-react";
 import { formatDate, calcOpenRate } from "@/lib/utils";
 import type { CampaignChannel, CampaignStats } from "@/types";
 import Link from "next/link";
@@ -162,9 +162,19 @@ export default async function CampaignsPage() {
                         </button>
                       )}
                       {campaign.status === "completed" && (
-                        <button className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-slate-500 text-[10px] font-semibold hover:bg-slate-50 transition-colors">
-                          <BarChart2 className="w-3 h-3" /> Report
-                        </button>
+                        <>
+                          <button className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-slate-500 text-[10px] font-semibold hover:bg-slate-50 transition-colors">
+                            <BarChart2 className="w-3 h-3" /> Report
+                          </button>
+                          <a
+                            href={`/api/campaigns/${campaign.id}/report`}
+                            download
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 text-slate-500 text-[10px] font-semibold hover:bg-slate-50 transition-colors"
+                            title="Download CSV report"
+                          >
+                            <Download className="w-3 h-3" /> CSV
+                          </a>
+                        </>
                       )}
                     </div>
                   </div>

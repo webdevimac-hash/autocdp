@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/sidebar";
+import { UsageBanner } from "@/components/layout/usage-banner";
+import { getAllUserDealerships, getActiveDealershipId } from "@/lib/dealership";
 import type { Dealership } from "@/types";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -9,32 +11,32 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) redirect("/login");
 
-  // Load the user's dealership
-  const { data: userDealership } = await supabase
-    .from("user_dealerships")
-    .select("dealership_id, role")
-    .eq("user_id", user.id)
+  // Load all dealerships the user belongs to (supports multi-rooftop)
+  const [allDealerships, activeDealershipId] = await Promise.all([
+    getAllUserDealerships(user.id),
+    getActiveDealershipId(user.id),
+  ]);
+
+  if (!activeDealershipId) redirect("/onboarding");
+
+  const { data: dealershipData } = await supabase
+    .from("dealerships")
+    .select("*")
+    .eq("id", activeDealershipId)
     .single();
 
-  let dealership: Dealership | null = null;
-  if (userDealership?.dealership_id) {
-    const { data } = await supabase
-      .from("dealerships")
-      .select("*")
-      .eq("id", userDealership.dealership_id)
-      .single();
-    dealership = data;
-  }
-
-  // New users without a dealership → onboarding
-  if (!dealership) {
-    redirect("/onboarding");
-  }
+  const dealership = dealershipData as Dealership | null;
+  if (!dealership) redirect("/onboarding");
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <Sidebar dealership={dealership} />
+      <Sidebar
+        dealership={dealership}
+        allDealerships={allDealerships}
+        activeDealershipId={activeDealershipId}
+      />
       <div className="flex-1 ml-60 flex flex-col min-h-screen">
+        <UsageBanner dealershipId={activeDealershipId} />
         {children}
       </div>
     </div>
