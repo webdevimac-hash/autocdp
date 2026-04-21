@@ -5,9 +5,10 @@ import Link from "next/link";
 import {
   Car, Mail, Bot, Shield, Zap, TrendingUp,
   CheckCircle, ArrowRight, Star, Cpu, Target, Database,
-  Sparkles, ArrowUpRight, CheckCircle2,
+  Sparkles, CheckCircle2,
   Megaphone, ScanLine, ArrowUp, Play,
-  MessageSquare, BarChart2, AtSign, Menu, X,
+  MessageSquare, BarChart2, AtSign, Menu, X, ChevronDown,
+  Users, Award,
 } from "lucide-react";
 
 // ── Mini sparkline ─────────────────────────────────────────────
@@ -26,6 +27,38 @@ function MiniSpark({ bars, color, animKey = 0 }: { bars: number[]; color: string
           }}
         />
       ))}
+    </div>
+  );
+}
+
+// ── Scroll-triggered visible wrapper ─────────────────────────
+function OnVisible({ children, className = "", delay = 0 }: {
+  children: React.ReactNode; className?: string; delay?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [vis, setVis] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVis(true); obs.disconnect(); } },
+      { threshold: 0.15 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: vis ? 1 : 0,
+        transform: vis ? "translateY(0)" : "translateY(16px)",
+        transition: `opacity 0.55s ease ${delay}ms, transform 0.6s cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
+        willChange: "opacity, transform",
+      }}
+    >
+      {children}
     </div>
   );
 }
@@ -392,6 +425,40 @@ const plans = [
   },
 ];
 
+const faqs = [
+  {
+    q: "How is AutoCDP different from Fullpath or CDK's marketing tools?",
+    a: "Fullpath and CDK offer digital ads and email — but neither does AI-personalized direct mail, and neither connects all three channels automatically. AutoCDP is the only platform that writes and sends SMS, email, and QR-tracked direct mail from a single DMS sync. One platform. Zero extra vendors. Self-learning AI.",
+  },
+  {
+    q: "How long does setup take?",
+    a: "Most dealerships are live within 2 hours. Connect your CDK or Reynolds DMS via OAuth, set your first campaign goal in plain language, and AutoCDP handles the rest — audience selection, AI copywriting, channel delivery, and attribution. No CSV exports, no agency calls, no manual uploads.",
+  },
+  {
+    q: "Does AutoCDP replace my CRM?",
+    a: "No — AutoCDP works alongside your existing CRM. We read from your DMS to trigger campaigns and optionally write campaign activity back to your CRM records. Think of AutoCDP as the AI-powered omnichannel outreach engine, not the data warehouse.",
+  },
+  {
+    q: "What DMS systems do you support?",
+    a: "CDK Fortellis and Reynolds & Reynolds are fully supported, with DMS data syncing every 30–60 minutes. Additional DMS integrations are available on Enterprise plans. Contact us if you run a different DMS — we add new integrations quickly.",
+  },
+  {
+    q: "Can I try it before committing?",
+    a: "Yes — every plan includes a 14-day free trial with full feature access across all three channels. No credit card required. Most dealerships see their first automated campaign deliver results within 48 hours of connecting their DMS.",
+  },
+  {
+    q: "How does AI direct mail work?",
+    a: "AutoCDP generates a personalized postcard design per customer segment, submits it to PostGrid for print and fulfillment, and tracks response via a unique QR code on each piece. Every scan appears in your attribution dashboard in real time. Average design-to-mailbox time is under 14 days — and it's the one channel no competitor offers.",
+  },
+];
+
+const pilotMetrics = [
+  { value: "127", label: "campaigns sent this week", icon: Megaphone, color: "#34D399" },
+  { value: "4,891", label: "customers reached",       icon: Users,    color: "#818CF8" },
+  { value: "$142k", label: "revenue attributed",      icon: TrendingUp, color: "#FCD34D" },
+  { value: "99.2%", label: "delivery rate",           icon: Award,    color: "#38BDF8" },
+];
+
 // ── Page ──────────────────────────────────────────────────────
 
 export default function LandingPage() {
@@ -404,6 +471,7 @@ export default function LandingPage() {
   const [nextCampaign, setNextCampaign] = useState({ h: 4, m: 12, s: 7 });
   const [announcementIdx, setAnnouncementIdx] = useState(0);
   const [announcementKey, setAnnouncementKey] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
     const aId = setInterval(() => setAgentIdx(i => (i + 1) % AGENT_CYCLES.length), 3200);
@@ -1605,6 +1673,22 @@ export default function LandingPage() {
             </p>
           </div>
 
+          {/* Live pilot metrics strip */}
+          <OnVisible className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12 pb-12" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" } as React.CSSProperties}>
+            {pilotMetrics.map((m, i) => (
+              <OnVisible key={m.label} delay={i * 60} className="text-center">
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-2"
+                  style={{ background: `${m.color}15`, border: `1px solid ${m.color}30` }}
+                >
+                  <m.icon className="w-4 h-4" style={{ color: m.color }} />
+                </div>
+                <p className="text-[1.75rem] font-black tabular-nums tracking-tight leading-none" style={{ color: m.color }}>{m.value}</p>
+                <p className="text-[10.5px] font-semibold mt-1 leading-snug" style={{ color: "rgba(255,255,255,0.25)" }}>{m.label}</p>
+              </OnVisible>
+            ))}
+          </OnVisible>
+
           {/* Cinematic testimonial cards */}
           <ScrollReveal>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
@@ -1801,7 +1885,7 @@ export default function LandingPage() {
             {plans.map((plan, pi) => (
               <ScrollReveal key={plan.name} delay={pi * 80}>
               <div
-                className="pricing-card rounded-2xl p-7 flex flex-col relative overflow-hidden"
+                className={`pricing-card${plan.highlight ? " pricing-highlight" : ""} rounded-2xl p-7 flex flex-col relative overflow-hidden`}
                 style={{
                   background: plan.highlight ? "#0B1526" : "#FFFFFF",
                   border: plan.highlight ? "1px solid rgba(99,102,241,0.28)" : "1px solid rgba(15,23,42,0.08)",
@@ -1903,6 +1987,88 @@ export default function LandingPage() {
           <p className="text-center text-[12px] font-medium mt-8" style={{ color: "#94A3B8" }}>
             All plans include a 14-day free trial &nbsp;·&nbsp; No credit card required &nbsp;·&nbsp; Cancel anytime
           </p>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════ */}
+      {/* FAQ                                                */}
+      {/* ═══════════════════════════════════════════════════ */}
+      <section id="faq" className="py-24 px-5 sm:px-8 relative" style={{ background: "#F8FAFC" }}>
+        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(15,23,42,0.07), transparent)" }} />
+        <div className="max-w-3xl mx-auto">
+
+          <OnVisible className="text-center mb-14">
+            <div
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-bold mb-5 uppercase tracking-widest"
+              style={{ background: "#EEF2FF", border: "1px solid rgba(165,180,252,0.45)", color: "#4338CA" }}
+            >
+              FAQ
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-3" style={{ color: "#0F172A" }}>
+              Questions dealers ask us every day
+            </h2>
+            <p className="text-[16px] leading-relaxed" style={{ color: "#64748B" }}>
+              Straight answers — no marketing speak.
+            </p>
+          </OnVisible>
+
+          <div className="space-y-3">
+            {faqs.map((faq, i) => (
+              <OnVisible key={i} delay={i * 40}>
+              <div
+                className="faq-item rounded-2xl overflow-hidden"
+                style={{
+                  background: "#FFFFFF",
+                  border: openFaq === i ? "1px solid rgba(99,102,241,0.28)" : "1px solid rgba(15,23,42,0.08)",
+                  boxShadow: openFaq === i
+                    ? "0 0 0 1px rgba(99,102,241,0.08), 0 8px 24px -6px rgba(99,102,241,0.14)"
+                    : "0 1px 3px rgba(15,23,42,0.04)",
+                  transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+                }}
+              >
+                <button
+                  className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left"
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                >
+                  <span className="text-[15px] font-semibold leading-snug" style={{ color: "#0F172A" }}>
+                    {faq.q}
+                  </span>
+                  <ChevronDown
+                    className="w-5 h-5 shrink-0 transition-transform duration-250"
+                    style={{
+                      color: openFaq === i ? "#6366F1" : "#94A3B8",
+                      transform: openFaq === i ? "rotate(180deg)" : "rotate(0deg)",
+                    }}
+                  />
+                </button>
+                {openFaq === i && (
+                  <div className="px-6 pb-5 faq-answer">
+                    <p className="text-[14px] leading-[1.75]" style={{ color: "#475569" }}>{faq.a}</p>
+                  </div>
+                )}
+              </div>
+              </OnVisible>
+            ))}
+          </div>
+
+          {/* Still have questions */}
+          <OnVisible delay={300} className="mt-10 text-center">
+            <p className="text-[14px] font-medium mb-3" style={{ color: "#94A3B8" }}>
+              Still have questions?
+            </p>
+            <Link
+              href="/signup"
+              className="btn-press inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[14px] font-semibold transition-all"
+              style={{
+                background: "#FFFFFF",
+                border: "1px solid rgba(15,23,42,0.10)",
+                color: "#334155",
+                boxShadow: "0 2px 8px -2px rgba(15,23,42,0.06)",
+              }}
+            >
+              Chat with us during your free trial <ArrowRight className="w-4 h-4 text-indigo-500" />
+            </Link>
+          </OnVisible>
         </div>
       </section>
 
