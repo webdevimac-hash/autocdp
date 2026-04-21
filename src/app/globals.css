@@ -1254,6 +1254,39 @@ button, a, [role="button"], input, select, textarea {
   animation: trust-item-enter 0.5s cubic-bezier(0.16,1,0.3,1) both;
 }
 
+/* ── Announcement bar cycle ──────────────────────────────────── */
+@keyframes announcement-cycle {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.announcement-cycle {
+  animation: announcement-cycle 0.4s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/* PRICING SECTION                                             */
+/* ═══════════════════════════════════════════════════════════ */
+
+.pricing-card {
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.24s ease;
+  will-change: transform;
+}
+.pricing-card:not([style*="0B1526"]):hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 36px -8px rgba(15,23,42,0.12), 0 4px 10px -4px rgba(15,23,42,0.06) !important;
+}
+/* Highlighted (dark) card floats higher */
+.pricing-card[style*="0B1526"] {
+  transform: translateY(-6px);
+}
+.pricing-card[style*="0B1526"]:hover {
+  transform: translateY(-10px);
+  box-shadow:
+    0 0 0 1px rgba(99,102,241,0.30),
+    0 36px 80px -16px rgba(99,102,241,0.35),
+    0 12px 28px -8px rgba(15,23,42,0.22) !important;
+}
+
 /* ── Live badge enhanced pulse ───────────────────────────────── */
 @keyframes hero-live-pulse-v2 {
   0%, 100% {

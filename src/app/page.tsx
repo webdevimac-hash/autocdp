@@ -301,6 +301,24 @@ const TICKER_EVENTS = [
   ],
 ];
 
+const ANNOUNCEMENTS = [
+  {
+    label: "Pilot results:",
+    highlight: "+18% service retention",
+    suffix: "in 90 days — SMS + email + direct mail",
+  },
+  {
+    label: "New:",
+    highlight: "AI direct mail",
+    suffix: "— only AutoCDP sends all 3 channels automatically",
+  },
+  {
+    label: "Join",
+    highlight: "40+ dealerships",
+    suffix: "in pilot · Limited spots this month",
+  },
+];
+
 const integrations = [
   { name: "CDK Fortellis",       abbr: "CDK"  },
   { name: "Reynolds & Reynolds", abbr: "R&R"  },
@@ -310,6 +328,68 @@ const integrations = [
   { name: "Resend",              abbr: "✉"    },
   { name: "USPS",                abbr: "USPS" },
   { name: "Stripe",              abbr: "Pay"  },
+];
+
+const plans = [
+  {
+    name: "Starter",
+    price: "$299",
+    period: "/mo",
+    desc: "One store. Two channels. Full AI.",
+    badge: null as string | null,
+    highlight: false,
+    topColor: "#6366F1",
+    features: [
+      "SMS + email campaigns",
+      "1 DMS connection (CDK or R&R)",
+      "Up to 2,500 customers",
+      "3-agent AI processing",
+      "Standard analytics dashboard",
+      "Email support",
+    ],
+    cta: "Start free trial",
+    href: "/signup",
+  },
+  {
+    name: "Growth",
+    price: "$599",
+    period: "/mo",
+    desc: "All 3 channels. Multi-store. Full swarm.",
+    badge: "Most popular" as string | null,
+    highlight: true,
+    topColor: "gradient",
+    features: [
+      "SMS + email + AI direct mail",
+      "Up to 3 stores",
+      "Up to 10,000 customers",
+      "Full 5-agent AI swarm",
+      "QR + click + open attribution",
+      "Custom trigger rules",
+      "Priority support",
+    ],
+    cta: "Start free trial",
+    href: "/signup",
+  },
+  {
+    name: "Enterprise",
+    price: "Custom",
+    period: "",
+    desc: "Unlimited stores. White-glove setup.",
+    badge: null as string | null,
+    highlight: false,
+    topColor: "#0EA5E9",
+    features: [
+      "Unlimited stores & customers",
+      "Dedicated AI model training",
+      "Custom DMS integrations",
+      "Dedicated CSM + SLA",
+      "API access & webhooks",
+      "Custom reporting",
+      "SAML SSO",
+    ],
+    cta: "Talk to sales",
+    href: "/signup?plan=enterprise",
+  },
 ];
 
 // ── Page ──────────────────────────────────────────────────────
@@ -322,6 +402,8 @@ export default function LandingPage() {
   const [statsIdx, setStatsIdx] = useState(0);
   const [countdown, setCountdown] = useState({ d: 9, h: 14, m: 33 });
   const [nextCampaign, setNextCampaign] = useState({ h: 4, m: 12, s: 7 });
+  const [announcementIdx, setAnnouncementIdx] = useState(0);
+  const [announcementKey, setAnnouncementKey] = useState(0);
 
   useEffect(() => {
     const aId = setInterval(() => setAgentIdx(i => (i + 1) % AGENT_CYCLES.length), 3200);
@@ -330,7 +412,11 @@ export default function LandingPage() {
       setTickerKey(k => k + 1);
       setStatsIdx(i => (i + 1) % MOCK_STAT_CYCLES.length);
     }, 4000);
-    return () => { clearInterval(aId); clearInterval(tId); };
+    const aAId = setInterval(() => {
+      setAnnouncementIdx(i => (i + 1) % ANNOUNCEMENTS.length);
+      setAnnouncementKey(k => k + 1);
+    }, 5000);
+    return () => { clearInterval(aId); clearInterval(tId); clearInterval(aAId); };
   }, []);
 
   useEffect(() => {
@@ -367,14 +453,15 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white overflow-x-hidden">
 
       {/* ── Announcement bar ──────────────────────────────── */}
-      <div className="relative py-2.5 px-4 text-center" style={{ background: "#060D18" }}>
-        <div className="flex items-center justify-center gap-2.5 text-xs font-medium">
+      <div className="relative py-2.5 px-4 text-center overflow-hidden" style={{ background: "#060D18" }}>
+        <div key={announcementKey} className="announcement-cycle flex items-center justify-center gap-2.5 text-xs font-medium">
           <span className="relative flex h-1.5 w-1.5 shrink-0">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
           </span>
-          <span className="text-white/50">Pilot results:</span>
-          <span className="text-white/80">Dealers average <strong className="announcement-highlight font-bold">+18% service retention</strong> in 90 days — <span className="text-white/60 font-normal">SMS + email + direct mail, zero extra vendors</span></span>
+          <span className="text-white/50">{ANNOUNCEMENTS[announcementIdx].label}</span>
+          <strong className="announcement-highlight font-bold">{ANNOUNCEMENTS[announcementIdx].highlight}</strong>
+          <span className="text-white/60 hidden sm:inline">{ANNOUNCEMENTS[announcementIdx].suffix}</span>
           <Link href="/signup" className="hidden sm:inline-flex items-center gap-1 font-semibold text-emerald-400 hover:text-emerald-300 transition-colors ml-0.5">
             Get access <ArrowRight className="w-3 h-3" />
           </Link>
@@ -407,7 +494,7 @@ export default function LandingPage() {
           </div>
 
           <div className="hidden md:flex items-center gap-0.5">
-            {["Features", "How it works", "Results"].map((item) => (
+            {["Features", "How it works", "Results", "Pricing"].map((item) => (
               <a
                 key={item}
                 href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
@@ -461,7 +548,7 @@ export default function LandingPage() {
         {navOpen && (
           <div className="nav-mobile-menu sm:hidden">
             <div className="flex flex-col gap-1 mb-4">
-              {["Features", "How it works", "Results"].map((item) => (
+              {["Features", "How it works", "Results", "Pricing"].map((item) => (
                 <a
                   key={item}
                   href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
@@ -832,7 +919,11 @@ export default function LandingPage() {
                           <p className="text-[11px] font-semibold" style={{ color: "#0F172A" }}>Dashboard</p>
                           <p className="text-[8px]" style={{ color: "#94A3B8" }}>Sunrise Ford · Scottsdale AZ</p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1 h-5 px-2 rounded-md" style={{ background: "rgba(16,185,129,0.09)", border: "1px solid rgba(16,185,129,0.20)" }}>
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" style={{ boxShadow: "0 0 4px rgba(16,185,129,0.60)" }} />
+                            <span className="text-[7px] font-bold" style={{ color: "#059669" }}>DMS synced</span>
+                          </div>
                           <div
                             className="flex items-center gap-1.5 h-5 px-2 rounded-md"
                             style={{ background: "#F1F5F9", border: "1px solid rgba(15,23,42,0.07)" }}
@@ -1677,6 +1768,141 @@ export default function LandingPage() {
             </div>
           </div>
           </ScrollReveal>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════ */}
+      {/* PRICING                                            */}
+      {/* ═══════════════════════════════════════════════════ */}
+      <section id="pricing" className="py-24 px-5 sm:px-8 relative" style={{ background: "#FFFFFF" }}>
+        {/* Subtle top gradient */}
+        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(15,23,42,0.07), transparent)" }} />
+        <div className="max-w-6xl mx-auto">
+
+          <ScrollReveal>
+          <div className="text-center mb-16">
+            <div
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-bold mb-5 uppercase tracking-widest"
+              style={{ background: "#EEF2FF", border: "1px solid rgba(165,180,252,0.45)", color: "#4338CA" }}
+            >
+              Simple pricing
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4" style={{ color: "#0F172A" }}>
+              One price. Every channel.{" "}
+              <span className="gradient-text-hero">Zero surprises.</span>
+            </h2>
+            <p className="text-[17px] max-w-xl mx-auto leading-relaxed" style={{ color: "#64748B" }}>
+              No per-seat fees. No channel add-ons. No surprise invoices. One flat monthly rate covers SMS, email, and direct mail — fully automated.
+            </p>
+          </div>
+          </ScrollReveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
+            {plans.map((plan, pi) => (
+              <ScrollReveal key={plan.name} delay={pi * 80}>
+              <div
+                className="pricing-card rounded-2xl p-7 flex flex-col relative overflow-hidden"
+                style={{
+                  background: plan.highlight ? "#0B1526" : "#FFFFFF",
+                  border: plan.highlight ? "1px solid rgba(99,102,241,0.28)" : "1px solid rgba(15,23,42,0.08)",
+                  boxShadow: plan.highlight
+                    ? "0 0 0 1px rgba(99,102,241,0.14), 0 28px 60px -12px rgba(99,102,241,0.28), 0 8px 20px -6px rgba(15,23,42,0.15)"
+                    : "0 2px 8px -2px rgba(15,23,42,0.06)",
+                  marginTop: plan.highlight ? 0 : undefined,
+                }}
+              >
+                {/* Top accent */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-[2.5px] rounded-t-2xl"
+                  style={{
+                    background: plan.topColor === "gradient"
+                      ? "linear-gradient(90deg, #6366F1, #8B5CF6, #0EA5E9)"
+                      : plan.topColor,
+                  }}
+                />
+
+                {/* Popular badge */}
+                {plan.badge && (
+                  <div className="absolute top-4 right-4">
+                    <span
+                      className="text-[9px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-lg text-white"
+                      style={{
+                        background: "linear-gradient(135deg, #6366F1, #8B5CF6)",
+                        boxShadow: "0 2px 10px rgba(99,102,241,0.45)",
+                        letterSpacing: "0.06em",
+                      }}
+                    >
+                      ★ {plan.badge}
+                    </span>
+                  </div>
+                )}
+
+                {/* Plan name */}
+                <p className="text-[10px] font-bold uppercase tracking-[0.15em] mb-3"
+                  style={{ color: plan.highlight ? "rgba(255,255,255,0.32)" : "#94A3B8" }}>
+                  {plan.name}
+                </p>
+
+                {/* Price */}
+                <div className="flex items-baseline gap-1 mb-2">
+                  <span className="text-[2.6rem] font-black tracking-tight leading-none"
+                    style={{ color: plan.highlight ? "#FFFFFF" : "#0F172A" }}>
+                    {plan.price}
+                  </span>
+                  {plan.period && (
+                    <span className="text-[14px] font-semibold"
+                      style={{ color: plan.highlight ? "rgba(255,255,255,0.30)" : "#94A3B8" }}>
+                      {plan.period}
+                    </span>
+                  )}
+                </div>
+
+                {/* Desc */}
+                <p className="text-[13px] mb-7"
+                  style={{ color: plan.highlight ? "rgba(255,255,255,0.45)" : "#64748B" }}>
+                  {plan.desc}
+                </p>
+
+                {/* Features */}
+                <ul className="space-y-2.5 mb-8 flex-1">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2.5">
+                      <CheckCircle className="w-3.5 h-3.5 mt-0.5 shrink-0"
+                        style={{ color: plan.highlight ? "#34D399" : "#10B981" }} />
+                      <span className="text-[13px]"
+                        style={{ color: plan.highlight ? "rgba(255,255,255,0.68)" : "#334155" }}>
+                        {f}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* CTA */}
+                <Link
+                  href={plan.href}
+                  className="btn-press w-full inline-flex items-center justify-center gap-2 h-11 rounded-xl font-semibold text-[14px] transition-all"
+                  style={plan.highlight ? {
+                    background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)",
+                    color: "#FFFFFF",
+                    boxShadow: "0 6px 20px -4px rgba(79,70,229,0.50)",
+                  } : {
+                    background: "#F8FAFC",
+                    border: "1px solid rgba(15,23,42,0.10)",
+                    color: "#334155",
+                  }}
+                >
+                  {plan.cta}
+                  {plan.href === "/signup" && <ArrowRight className="w-4 h-4" />}
+                </Link>
+              </div>
+              </ScrollReveal>
+            ))}
+          </div>
+
+          {/* Footer note */}
+          <p className="text-center text-[12px] font-medium mt-8" style={{ color: "#94A3B8" }}>
+            All plans include a 14-day free trial &nbsp;·&nbsp; No credit card required &nbsp;·&nbsp; Cancel anytime
+          </p>
         </div>
       </section>
 
