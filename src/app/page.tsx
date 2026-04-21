@@ -8,11 +8,6 @@ import {
   Megaphone, ScanLine, MessageSquare,
 } from "lucide-react";
 
-export const metadata = {
-  title: "AutoCDP — AI Marketing That Runs Itself",
-  description: "5 AI agents that autonomously run your dealership marketing. Personalized direct mail, QR tracking, and optimization — all from one DMS-connected platform.",
-};
-
 // ── Data ──────────────────────────────────────────────────────
 
 const features = [
