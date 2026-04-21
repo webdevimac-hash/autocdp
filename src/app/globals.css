@@ -748,6 +748,23 @@ button, a, [role="button"], input, select, textarea {
 }
 .feature-card-premium:hover::after { opacity: 1; }
 
+/* ── Trust pill (large horizontal) ──────────────────────────── */
+.trust-pill-lg {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  will-change: transform;
+}
+.trust-pill-lg:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px -4px rgba(15,23,42,0.10);
+}
+
+/* ── Play button ring pulse ──────────────────────────────────── */
+@keyframes play-ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.35); }
+  50%       { box-shadow: 0 0 0 5px rgba(99,102,241,0); }
+}
+.play-ring { animation: play-ring-pulse 2.2s ease-in-out infinite; }
+
 /* ── Testimonial card dark hover ─────────────────────────────── */
 .testimonial-dark {
   transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease, border-color 0.18s ease;

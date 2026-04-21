@@ -5,7 +5,7 @@ import {
   Car, Mail, Bot, Shield, Zap, TrendingUp,
   CheckCircle, ArrowRight, Star, Cpu, Target, Database,
   Sparkles, ArrowUpRight, CheckCircle2,
-  Megaphone, ScanLine, ArrowUp,
+  Megaphone, ScanLine, ArrowUp, Play,
 } from "lucide-react";
 
 // ── Mini sparkline ─────────────────────────────────────────────
@@ -38,7 +38,7 @@ const features = [
     iconColor: "text-indigo-600",
     glowClass: "feature-card-indigo",
     topColor: "#6366F1",
-    stat: "5 agents", statLabel: "always running",
+    stat: "5 agents", statLabel: "always running", statColor: "#4F46E5",
   },
   {
     icon: Mail,
@@ -48,7 +48,7 @@ const features = [
     iconColor: "text-sky-600",
     glowClass: "feature-card-sky",
     topColor: "#0EA5E9",
-    stat: "< $1.60", statLabel: "per piece",
+    stat: "< $1.60", statLabel: "per piece", statColor: "#0284C7",
   },
   {
     icon: TrendingUp,
@@ -58,7 +58,7 @@ const features = [
     iconColor: "text-amber-600",
     glowClass: "feature-card-amber",
     topColor: "#F59E0B",
-    stat: "3×", statLabel: "response rate",
+    stat: "3×", statLabel: "response rate", statColor: "#B45309",
   },
   {
     icon: Database,
@@ -68,7 +68,7 @@ const features = [
     iconColor: "text-emerald-600",
     glowClass: "feature-card-emerald",
     topColor: "#10B981",
-    stat: "360°", statLabel: "customer view",
+    stat: "360°", statLabel: "customer view", statColor: "#059669",
   },
   {
     icon: Zap,
@@ -78,7 +78,7 @@ const features = [
     iconColor: "text-violet-600",
     glowClass: "feature-card-violet",
     topColor: "#8B5CF6",
-    stat: "30 min", statLabel: "sync interval",
+    stat: "30 min", statLabel: "sync interval", statColor: "#7C3AED",
   },
   {
     icon: Shield,
@@ -88,7 +88,7 @@ const features = [
     iconColor: "text-rose-600",
     glowClass: "feature-card-rose",
     topColor: "#F43F5E",
-    stat: "$0", statLabel: "setup fee",
+    stat: "$0", statLabel: "setup fee", statColor: "#E11D48",
   },
 ];
 
@@ -352,8 +352,8 @@ export default function LandingPage() {
                   <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
-                  href="/login"
-                  className="btn-press inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-[15px] transition-all"
+                  href="/demo"
+                  className="btn-press inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl font-semibold text-[15px] transition-all"
                   style={{
                     background: "#FFFFFF",
                     border: "1px solid rgba(15,23,42,0.12)",
@@ -361,24 +361,35 @@ export default function LandingPage() {
                     boxShadow: "0 1px 3px 0 rgba(15,23,42,0.06), inset 0 1px 0 rgba(255,255,255,0.9)",
                   }}
                 >
-                  Request a demo
+                  <div
+                    className="play-ring w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(99,102,241,0.10)", border: "1px solid rgba(99,102,241,0.22)" }}
+                  >
+                    <Play className="w-2.5 h-2.5 text-indigo-600 ml-0.5" fill="currentColor" />
+                  </div>
+                  Watch 60-sec demo
                 </Link>
               </div>
 
-              {/* Trust signals — visual pill cards */}
-              <div className="grid grid-cols-3 gap-2 mb-9 max-w-sm">
+              {/* Trust signals — horizontal icon + label + sub */}
+              <div className="flex flex-col sm:flex-row gap-2 mb-9 max-w-lg">
                 {[
-                  { icon: CheckCircle2, label: "No credit card", color: "#10B981" },
-                  { icon: Zap,          label: "Live in < 2 hrs", color: "#6366F1" },
-                  { icon: Shield,       label: "Cancel anytime",  color: "#0EA5E9" },
+                  { icon: CheckCircle2, label: "No credit card",  sub: "Start immediately",   color: "#10B981", bg: "rgba(16,185,129,0.10)"  },
+                  { icon: Zap,          label: "Live in < 2 hrs", sub: "DMS to first send",   color: "#6366F1", bg: "rgba(99,102,241,0.10)"  },
+                  { icon: Shield,       label: "Cancel anytime",  sub: "No long contracts",   color: "#0EA5E9", bg: "rgba(14,165,233,0.10)"  },
                 ].map((t) => (
                   <div
                     key={t.label}
-                    className="trust-pill flex flex-col items-center gap-1.5 px-2 py-2.5 rounded-xl text-center"
-                    style={{ background: "#F8FAFC", border: "1px solid rgba(15,23,42,0.08)", boxShadow: "0 1px 2px rgba(15,23,42,0.03)" }}
+                    className="trust-pill-lg flex items-center gap-2.5 px-3.5 py-3 rounded-xl flex-1"
+                    style={{ background: "#FFFFFF", border: "1px solid rgba(15,23,42,0.09)", boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
                   >
-                    <t.icon className="w-4 h-4 shrink-0" style={{ color: t.color }} />
-                    <span className="text-[10.5px] font-semibold leading-tight" style={{ color: "#334155" }}>{t.label}</span>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: t.bg }}>
+                      <t.icon className="w-4 h-4" style={{ color: t.color }} />
+                    </div>
+                    <div>
+                      <p className="text-[11.5px] font-bold leading-none" style={{ color: "#0F172A" }}>{t.label}</p>
+                      <p className="text-[10px] font-medium mt-0.5" style={{ color: "#94A3B8" }}>{t.sub}</p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -887,7 +898,7 @@ export default function LandingPage() {
                   className="flex items-baseline gap-2 pt-4"
                   style={{ borderTop: "1px solid rgba(15,23,42,0.06)" }}
                 >
-                  <span className="text-[22px] font-black tracking-tight" style={{ color: "#0F172A" }}>{f.stat}</span>
+                  <span className="text-[22px] font-black tracking-tight" style={{ color: f.statColor }}>{f.stat}</span>
                   <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#94A3B8" }}>{f.statLabel}</span>
                 </div>
               </div>
@@ -1243,15 +1254,21 @@ export default function LandingPage() {
               Start free trial — no card needed <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
-              href="/login"
-              className="btn-press w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-semibold text-[15px] transition-all"
+              href="/demo"
+              className="btn-press w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl font-semibold text-[15px] transition-all"
               style={{
                 background: "rgba(255,255,255,0.06)",
                 border: "1px solid rgba(255,255,255,0.12)",
                 color: "rgba(255,255,255,0.80)",
               }}
             >
-              Request a demo <ArrowUpRight className="w-4 h-4" />
+              <div
+                className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                style={{ background: "rgba(255,255,255,0.10)" }}
+              >
+                <Play className="w-2.5 h-2.5 text-white ml-0.5" fill="currentColor" />
+              </div>
+              Watch 60-sec demo
             </Link>
           </div>
 
