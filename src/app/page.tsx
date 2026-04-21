@@ -342,7 +342,7 @@ export default function LandingPage() {
               <div className="flex flex-col sm:flex-row gap-3 mb-7">
                 <Link
                   href="/signup"
-                  className="btn-press inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-white font-semibold text-[15px] transition-all"
+                  className="btn-press btn-beacon inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-white font-semibold text-[15px] transition-all"
                   style={{
                     background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)",
                     boxShadow: "0 8px 28px -4px rgba(79,70,229,0.55), inset 0 1px 0 rgba(255,255,255,0.12)",
@@ -374,21 +374,26 @@ export default function LandingPage() {
               {/* Trust signals — horizontal icon + label + sub */}
               <div className="flex flex-col sm:flex-row gap-2 mb-9 max-w-lg">
                 {[
-                  { icon: CheckCircle2, label: "No credit card",  sub: "Start immediately",   color: "#10B981", bg: "rgba(16,185,129,0.10)"  },
-                  { icon: Zap,          label: "Live in < 2 hrs", sub: "DMS to first send",   color: "#6366F1", bg: "rgba(99,102,241,0.10)"  },
-                  { icon: Shield,       label: "Cancel anytime",  sub: "No long contracts",   color: "#0EA5E9", bg: "rgba(14,165,233,0.10)"  },
+                  { icon: CheckCircle2, label: "No credit card",  sub: "Start immediately",   color: "#10B981", bg: "rgba(16,185,129,0.08)"  },
+                  { icon: Zap,          label: "Live in < 2 hrs", sub: "DMS to first send",   color: "#6366F1", bg: "rgba(99,102,241,0.08)"  },
+                  { icon: Shield,       label: "Cancel anytime",  sub: "No long contracts",   color: "#0EA5E9", bg: "rgba(14,165,233,0.08)"  },
                 ].map((t) => (
                   <div
                     key={t.label}
-                    className="trust-pill-lg flex items-center gap-2.5 px-3.5 py-3 rounded-xl flex-1"
-                    style={{ background: "#FFFFFF", border: "1px solid rgba(15,23,42,0.09)", boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
+                    className="trust-pill-lg flex items-center gap-2.5 px-3.5 py-3.5 rounded-xl flex-1"
+                    style={{
+                      background: `linear-gradient(145deg, #FFFFFF 50%, ${t.bg} 100%)`,
+                      border: "1px solid rgba(15,23,42,0.08)",
+                      borderLeft: `3px solid ${t.color}`,
+                      boxShadow: "0 2px 8px rgba(15,23,42,0.06)",
+                    }}
                   >
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: t.bg }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: t.bg, border: `1px solid ${t.color}22` }}>
                       <t.icon className="w-4 h-4" style={{ color: t.color }} />
                     </div>
                     <div>
-                      <p className="text-[11.5px] font-bold leading-none" style={{ color: "#0F172A" }}>{t.label}</p>
-                      <p className="text-[10px] font-medium mt-0.5" style={{ color: "#94A3B8" }}>{t.sub}</p>
+                      <p className="text-[12px] font-bold leading-none" style={{ color: "#0F172A" }}>{t.label}</p>
+                      <p className="text-[10.5px] font-medium mt-0.5" style={{ color: "#94A3B8" }}>{t.sub}</p>
                     </div>
                   </div>
                 ))}
@@ -743,7 +748,7 @@ export default function LandingPage() {
                     </div>
                     <div>
                       <p className="text-[10px] font-medium" style={{ color: "#94A3B8" }}>QR code scanned</p>
-                      <p className="text-[13px] font-black tracking-tight" style={{ color: "#0F172A" }}>James C. — 2m ago</p>
+                      <p className="text-[13px] font-black tracking-tight" style={{ color: "#0F172A" }}>Marcus C. — 2m ago</p>
                     </div>
                   </div>
                 </div>
@@ -813,28 +818,46 @@ export default function LandingPage() {
       {/* ═══════════════════════════════════════════════════ */}
       {/* STATS BAR                                          */}
       {/* ═══════════════════════════════════════════════════ */}
-      <section className="py-20 px-5 sm:px-8 bg-white">
-        <div className="max-w-4xl mx-auto">
+      <section className="py-20 px-5 sm:px-8 relative overflow-hidden" style={{ background: "#060D18" }}>
+        {/* Background grid */}
+        <div className="absolute inset-0 dark-grid opacity-50" />
+        {/* Centered glow */}
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[350px] rounded-full blur-3xl pointer-events-none"
+          style={{ background: "radial-gradient(ellipse, rgba(99,102,241,0.12) 0%, transparent 65%)" }}
+        />
+        <div className="relative max-w-5xl mx-auto">
+          {/* Label */}
+          <div className="flex items-center justify-center gap-2 mb-10">
+            <div className="h-px w-12 bg-gradient-to-r from-transparent to-white/10" />
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: "rgba(255,255,255,0.25)" }}>
+              Pilot results — updated weekly
+            </p>
+            <div className="h-px w-12 bg-gradient-to-l from-transparent to-white/10" />
+          </div>
           <div
             className="grid grid-cols-2 md:grid-cols-4 rounded-2xl overflow-hidden"
-            style={{
-              border: "1px solid rgba(15,23,42,0.08)",
-              boxShadow: "0 1px 3px rgba(15,23,42,0.04)",
-            }}
+            style={{ border: "1px solid rgba(255,255,255,0.07)" }}
           >
             {stats.map((s, i) => (
               <div
                 key={s.label}
-                className="px-8 py-10 text-center bg-white"
+                className="px-6 py-10 text-center relative"
                 style={{
-                  borderRight: i < stats.length - 1 ? "1px solid rgba(15,23,42,0.07)" : undefined,
-                  borderBottom: i < 2 ? "1px solid rgba(15,23,42,0.07)" : undefined,
+                  background: "#060D18",
+                  borderRight: i < stats.length - 1 ? "1px solid rgba(255,255,255,0.05)" : undefined,
+                  borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.05)" : undefined,
                 }}
               >
+                {/* Top accent */}
+                <div
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-[2px] rounded-full"
+                  style={{ background: s.color, opacity: 0.75 }}
+                />
                 <div className="flex items-start justify-center gap-1.5 mb-2">
                   <div
                     className={`text-[2.8rem] sm:text-[3.2rem] font-black tracking-tight leading-none stat-pop stat-pop-${i + 1}`}
-                    style={{ color: s.color }}
+                    style={{ color: s.color, filter: `drop-shadow(0 0 20px ${s.color}55)` }}
                   >
                     {s.value}
                   </div>
@@ -842,7 +865,7 @@ export default function LandingPage() {
                     <ArrowUp className="w-4 h-4 mt-2 shrink-0" style={{ color: s.color }} />
                   )}
                 </div>
-                <div className="text-[12px] font-medium leading-snug" style={{ color: "#94A3B8" }}>{s.label}</div>
+                <div className="text-[12px] font-medium leading-snug" style={{ color: "rgba(255,255,255,0.32)" }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -1253,9 +1276,11 @@ export default function LandingPage() {
                           <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                         ) : (
                           <div
-                            className="w-3.5 h-3.5 rounded-full border-2 shrink-0"
-                            style={{ borderColor: "rgba(255,255,255,0.12)" }}
-                          />
+                            className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
+                            style={{ background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.20)" }}
+                          >
+                            <span className="text-[7px] font-black leading-none" style={{ color: "#EF4444" }}>✕</span>
+                          </div>
                         )}
                         <span style={{ color: col.ok ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.28)", fontWeight: col.ok ? 500 : 400 }}>
                           {item}
@@ -1315,6 +1340,17 @@ export default function LandingPage() {
             </p>
           </div>
 
+          <div
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 text-[12px] font-bold"
+            style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.28)", color: "#FCD34D" }}
+          >
+            <span className="relative flex h-1.5 w-1.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
+            </span>
+            Next cohort: May 1 · 6 spots remaining
+          </div>
+
           <h2 className="text-3xl sm:text-[2.8rem] font-black text-white tracking-tight mb-4 leading-tight">
             Launch your first AI campaign
             <br />
@@ -1369,7 +1405,7 @@ export default function LandingPage() {
       {/* ═══════════════════════════════════════════════════ */}
       {/* FOOTER                                             */}
       {/* ═══════════════════════════════════════════════════ */}
-      <footer className="bg-white" style={{ borderTop: "1px solid rgba(15,23,42,0.07)" }}>
+      <footer className="bg-white pb-16 sm:pb-0" style={{ borderTop: "1px solid rgba(15,23,42,0.07)" }}>
         <div className="max-w-7xl mx-auto px-5 sm:px-8">
           <div className="py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="col-span-2 md:col-span-1">
@@ -1435,6 +1471,37 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* ── Mobile sticky CTA ─────────────────────────────── */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 sm:hidden pb-safe"
+        style={{
+          background: "rgba(6,13,24,0.97)",
+          borderTop: "1px solid rgba(255,255,255,0.08)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+        }}
+      >
+        <div className="flex gap-2.5 p-3">
+          <Link
+            href="/signup"
+            className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-xl text-white font-bold text-[14px]"
+            style={{
+              background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)",
+              boxShadow: "0 6px 20px -4px rgba(79,70,229,0.55)",
+            }}
+          >
+            Start free trial <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link
+            href="/demo"
+            className="inline-flex items-center justify-center w-12 h-12 rounded-xl shrink-0"
+            style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)" }}
+          >
+            <Play className="w-4 h-4 text-white ml-0.5" fill="currentColor" />
+          </Link>
+        </div>
+      </div>
 
     </div>
   );

@@ -479,32 +479,32 @@ button, a, [role="button"], input, select, textarea {
 .feature-card:hover { transform: translateY(-2px); }
 
 .feature-card-indigo:hover {
-  box-shadow: 0 0 0 1px #a5b4fc, 0 12px 28px -6px rgba(99, 102, 241, 0.18);
-  border-color: #c7d2fe;
+  box-shadow: 0 0 0 1.5px #a5b4fc, 0 0 28px -4px rgba(99,102,241,0.22), 0 18px 40px -8px rgba(99,102,241,0.18);
+  border-color: #a5b4fc;
 }
 .feature-card-emerald:hover {
-  box-shadow: 0 0 0 1px #6ee7b7, 0 12px 28px -6px rgba(16, 185, 129, 0.16);
-  border-color: #a7f3d0;
+  box-shadow: 0 0 0 1.5px #6ee7b7, 0 0 28px -4px rgba(16,185,129,0.20), 0 18px 40px -8px rgba(16,185,129,0.16);
+  border-color: #6ee7b7;
 }
 .feature-card-sky:hover {
-  box-shadow: 0 0 0 1px #7dd3fc, 0 12px 28px -6px rgba(14, 165, 233, 0.16);
-  border-color: #bae6fd;
+  box-shadow: 0 0 0 1.5px #7dd3fc, 0 0 28px -4px rgba(14,165,233,0.20), 0 18px 40px -8px rgba(14,165,233,0.16);
+  border-color: #7dd3fc;
 }
 .feature-card-amber:hover {
-  box-shadow: 0 0 0 1px #fcd34d, 0 12px 28px -6px rgba(245, 158, 11, 0.16);
-  border-color: #fde68a;
+  box-shadow: 0 0 0 1.5px #fcd34d, 0 0 28px -4px rgba(245,158,11,0.22), 0 18px 40px -8px rgba(245,158,11,0.16);
+  border-color: #fcd34d;
 }
 .feature-card-violet:hover {
-  box-shadow: 0 0 0 1px #c4b5fd, 0 12px 28px -6px rgba(139, 92, 246, 0.16);
-  border-color: #ddd6fe;
+  box-shadow: 0 0 0 1.5px #c4b5fd, 0 0 28px -4px rgba(139,92,246,0.22), 0 18px 40px -8px rgba(139,92,246,0.16);
+  border-color: #c4b5fd;
 }
 .feature-card-rose:hover {
-  box-shadow: 0 0 0 1px #fda4af, 0 12px 28px -6px rgba(244, 63, 94, 0.16);
-  border-color: #fecdd3;
+  box-shadow: 0 0 0 1.5px #fda4af, 0 0 28px -4px rgba(244,63,94,0.22), 0 18px 40px -8px rgba(244,63,94,0.16);
+  border-color: #fda4af;
 }
 .feature-card-slate:hover {
-  box-shadow: 0 0 0 1px #cbd5e1, 0 12px 28px -6px rgba(100, 116, 139, 0.12);
-  border-color: #e2e8f0;
+  box-shadow: 0 0 0 1.5px #cbd5e1, 0 0 20px -4px rgba(100,116,139,0.16), 0 18px 40px -8px rgba(100,116,139,0.12);
+  border-color: #cbd5e1;
 }
 
 /* ═══════════════════════════════════════════════════════════ */
@@ -804,4 +804,23 @@ button, a, [role="button"], input, select, textarea {
 /* ── Hero feature card agent panel ──────────────────────────── */
 .feature-hero-panel {
   background: linear-gradient(160deg, #0B1526 0%, #111E35 100%);
+}
+
+/* ── Beacon pulse (primary CTA button) ───────────────────────── */
+@keyframes beacon-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(99,102,241,0.55), 0 12px 40px -8px rgba(79,70,229,0.70); }
+  70%  { box-shadow: 0 0 0 8px rgba(99,102,241,0), 0 12px 40px -8px rgba(79,70,229,0.70); }
+  100% { box-shadow: 0 0 0 0 rgba(99,102,241,0), 0 12px 40px -8px rgba(79,70,229,0.70); }
+}
+.btn-beacon { animation: beacon-pulse 2.8s ease-out infinite; }
+
+/* ── Mobile body padding for sticky CTA ─────────────────────── */
+@media (max-width: 639px) {
+  .mobile-cta-pad { padding-bottom: 4.5rem; }
+}
+
+/* ── Feature card: stronger inner glow on hover ──────────────── */
+.feature-card-premium:hover::after {
+  opacity: 1;
+  background: radial-gradient(ellipse 70% 50% at 100% 100%, rgba(99,102,241,0.08), transparent 55%);
 }
