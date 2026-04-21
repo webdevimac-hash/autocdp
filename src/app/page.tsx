@@ -566,7 +566,7 @@ export default function LandingPage() {
                 ].map((ch) => (
                   <div
                     key={ch.label}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold"
+                    className="channel-pill flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold cursor-default"
                     style={{ background: ch.bg, border: `1px solid ${ch.border}`, color: ch.color }}
                   >
                     <ch.icon className="w-3 h-3" />
@@ -1177,6 +1177,26 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════ */}
+      {/* TRUST / COMPLIANCE STRIP                           */}
+      {/* ═══════════════════════════════════════════════════ */}
+      <div className="trust-strip py-4 px-5 sm:px-8 overflow-x-auto">
+        <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+          {[
+            { icon: Shield,        label: "CDK Fortellis Certified" },
+            { icon: CheckCircle2,  label: "TCPA Compliant" },
+            { icon: CheckCircle2,  label: "CCPA Compliant" },
+            { icon: Shield,        label: "256-bit Encryption" },
+            { icon: Zap,          label: "99.9% Uptime SLA" },
+          ].map((t) => (
+            <div key={t.label} className="trust-strip-item shrink-0">
+              <t.icon className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              <span className="text-[11.5px] font-semibold whitespace-nowrap" style={{ color: "#64748B" }}>{t.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════ */}
       {/* FEATURES                                           */}
       {/* ═══════════════════════════════════════════════════ */}
       <section id="features" className="py-24 px-5 sm:px-8" style={{ background: "#F8FAFC" }}>
@@ -1189,10 +1209,11 @@ export default function LandingPage() {
               Platform capabilities
             </div>
             <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4" style={{ color: "#0F172A" }}>
-              Every channel. One platform. No headcount.
+              One connection. Three channels.{" "}
+              <span className="gradient-text-hero">Infinite campaigns.</span>
             </h2>
             <p className="text-[17px] max-w-xl mx-auto leading-relaxed" style={{ color: "#64748B" }}>
-              SMS, email, and AI-personalized direct mail — all connected to your DMS, all written and sent by AI agents, all tracked in one dashboard.
+              SMS, email, and AI-personalized QR-tracked direct mail — all written by AI agents, all triggered from your DMS, all reported in one dashboard. Nothing slips through.
             </p>
           </div>
 
@@ -1362,34 +1383,36 @@ export default function LandingPage() {
 
           {/* Steps */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative mb-6">
-            {/* Connector line */}
+            {/* Animated connector line */}
             <div
-              className="hidden md:block absolute h-px pointer-events-none"
+              className="hidden md:block absolute h-px step-connector pointer-events-none"
               style={{
                 top: "52px",
                 left: "calc(33.333% + 1.5rem)",
                 right: "calc(33.333% + 1.5rem)",
-                background: "linear-gradient(to right, rgba(255,255,255,0.08), rgba(99,102,241,0.35), rgba(255,255,255,0.08))",
               }}
             />
 
             {steps.map((s, i) => (
               <div
                 key={s.step}
-                className="relative p-7 rounded-2xl transition-all duration-200 group cursor-default"
+                className="step-card relative p-7 rounded-2xl cursor-default"
                 style={{
                   background: "rgba(255,255,255,0.04)",
                   border: "1px solid rgba(255,255,255,0.07)",
                 }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.07)";
-                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.12)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)";
-                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.07)";
-                }}
               >
+                {/* Step number accent line */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl"
+                  style={{
+                    background: i === 0
+                      ? "linear-gradient(90deg, #4F46E5, #6366F1)"
+                      : i === 1
+                      ? "linear-gradient(90deg, #6366F1, #8B5CF6)"
+                      : "linear-gradient(90deg, #8B5CF6, #10B981)",
+                  }}
+                />
                 <div className="flex items-center gap-3 mb-5">
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
@@ -1397,23 +1420,13 @@ export default function LandingPage() {
                   >
                     <s.icon className="w-5 h-5 text-indigo-400" />
                   </div>
-                  <span
-                    className="text-[3.5rem] font-black tabular-nums leading-none select-none"
-                    style={{
-                      background: "linear-gradient(135deg, rgba(99,102,241,0.30) 0%, rgba(99,102,241,0.06) 100%)",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                      backgroundClip: "text",
-                    }}
-                  >
-                    {s.step}
-                  </span>
+                  <span className="step-number">{s.step}</span>
                 </div>
-                <h3 className="font-semibold text-white text-[15px] mb-2 tracking-tight">{s.title}</h3>
+                <h3 className="font-bold text-white text-[16px] mb-2.5 tracking-tight">{s.title}</h3>
                 <p className="text-[13px] leading-relaxed mb-4" style={{ color: "#64748B" }}>{s.desc}</p>
                 <div
-                  className="flex items-center gap-1.5 text-[11px] font-semibold"
-                  style={{ color: "rgba(52,211,153,0.75)" }}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-full"
+                  style={{ background: "rgba(16,185,129,0.10)", border: "1px solid rgba(16,185,129,0.20)", color: "#34D399" }}
                 >
                   <CheckCircle className="w-3 h-3" />
                   {s.time}
@@ -1426,31 +1439,35 @@ export default function LandingPage() {
           <div
             className="p-7 rounded-2xl"
             style={{
-              background: "rgba(16,185,129,0.05)",
-              border: "1px solid rgba(16,185,129,0.14)",
+              background: "rgba(16,185,129,0.04)",
+              border: "1px solid rgba(16,185,129,0.13)",
             }}
           >
             <div className="flex items-center gap-3 mb-5">
               <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{ background: "rgba(16,185,129,0.12)" }}
+                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "rgba(16,185,129,0.14)", border: "1px solid rgba(16,185,129,0.22)" }}
               >
-                <CheckCircle className="w-4 h-4 text-emerald-400" />
+                <Sparkles className="w-4 h-4 text-emerald-400" />
               </div>
-              <p className="text-white font-semibold text-[14px]">
+              <p className="text-white font-bold text-[15px]">
                 Why dealers switch from Fullpath, CDK, and their mail house to AutoCDP
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {differentiators.map((d) => (
-                <div key={d} className="flex items-start gap-3">
+                <div
+                  key={d}
+                  className="diff-card flex items-start gap-3 p-4 rounded-xl"
+                  style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.10)" }}
+                >
                   <div
-                    className="w-4 h-4 rounded-full flex items-center justify-center mt-0.5 shrink-0"
-                    style={{ background: "rgba(16,185,129,0.12)" }}
+                    className="w-6 h-6 rounded-lg flex items-center justify-center mt-0.5 shrink-0"
+                    style={{ background: "rgba(16,185,129,0.14)" }}
                   >
-                    <CheckCircle className="w-2.5 h-2.5 text-emerald-400" />
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
                   </div>
-                  <span className="text-[13px] leading-relaxed" style={{ color: "#94A3B8" }}>{d}</span>
+                  <span className="text-[13px] leading-relaxed font-medium" style={{ color: "#94A3B8" }}>{d}</span>
                 </div>
               ))}
             </div>
@@ -1485,10 +1502,10 @@ export default function LandingPage() {
               <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> Real Results
             </div>
             <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight mb-3">
-              Real results from real dealers
+              Dealers who switched don&apos;t go back.
             </h2>
             <p className="text-[17px] font-medium" style={{ color: "#64748B" }}>
-              Not projections. Actual outcomes from pilot dealerships.
+              Not projections. Not demos. Actual lift from pilot dealerships running SMS, email, and direct mail through AutoCDP.
             </p>
           </div>
 
@@ -1662,6 +1679,7 @@ export default function LandingPage() {
       {/* FINAL CTA                                          */}
       {/* ═══════════════════════════════════════════════════ */}
       <section className="py-24 px-5 sm:px-8 relative overflow-hidden" style={{ background: "#0B1526" }}>
+        <div className="cta-glow-edge" />
         <div className="absolute inset-0 dark-grid opacity-60" />
         <div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full blur-3xl pointer-events-none"
@@ -1719,9 +1737,14 @@ export default function LandingPage() {
             <br />
             <span style={{ color: "#818CF8" }}>Live in under two hours.</span>
           </h2>
-          <p className="text-[17px] font-medium mb-10 leading-relaxed max-w-xl mx-auto" style={{ color: "#64748B" }}>
+          <p className="text-[17px] font-medium mb-6 leading-relaxed max-w-xl mx-auto" style={{ color: "#64748B" }}>
             Connect your DMS, set a goal, and AutoCDP fires SMS, email, and direct mail campaigns the same day — automatically, forever.
           </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mb-8 text-[12px] font-semibold" style={{ color: "#475569" }}>
+            <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-indigo-400" /> Setup in ~15 minutes</span>
+            <span className="flex items-center gap-1.5"><Database className="w-3.5 h-3.5 text-sky-400" /> CDK &amp; Reynolds supported</span>
+            <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-emerald-400" /> TCPA &amp; CCPA compliant</span>
+          </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
             <Link
@@ -1755,7 +1778,7 @@ export default function LandingPage() {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-            {["14-day free trial", "Full feature access", "Cancel anytime"].map((item) => (
+            {["14-day free trial", "Full feature access", "Cancel anytime", "No onboarding fee"].map((item) => (
               <span key={item} className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: "#475569" }}>
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                 {item}
