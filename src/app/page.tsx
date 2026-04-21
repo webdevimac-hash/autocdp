@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   Car, Mail, Bot, Shield, Zap, TrendingUp,
@@ -25,6 +25,43 @@ function MiniSpark({ bars, color }: { bars: number[]; color: string }) {
           }}
         />
       ))}
+    </div>
+  );
+}
+
+// ── Scroll reveal ─────────────────────────────────────────────
+function ScrollReveal({ children, className = "", delay = 0 }: {
+  children: React.ReactNode; className?: string; delay?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.style.opacity = "1";
+          el.style.transform = "translateY(0)";
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.08, rootMargin: "0px 0px -48px 0px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: 0,
+        transform: "translateY(22px)",
+        transition: `opacity 0.6s ease ${delay}ms, transform 0.65s cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
+        willChange: "opacity, transform",
+      }}
+    >
+      {children}
     </div>
   );
 }
@@ -137,6 +174,7 @@ const testimonials = [
     avatarGrad: "linear-gradient(135deg, #059669, #0B1526)",
     avatarRing: "rgba(16,185,129,0.40)",
     channels: ["Direct Mail", "SMS", "Email"],
+    hoverClass: "testimonial-emerald",
   },
   {
     quote: "The AI writes better win-back copy than our ad agency did. And it sends automatically the moment a customer goes lapsed. Set it and forget it.",
@@ -146,6 +184,7 @@ const testimonials = [
     avatarGrad: "linear-gradient(135deg, #6366F1, #0B1526)",
     avatarRing: "rgba(99,102,241,0.40)",
     channels: ["Direct Mail", "Email"],
+    hoverClass: "testimonial-indigo",
   },
   {
     quote: "We ran AutoCDP alongside Fullpath for 60 days. AutoCDP generated 3.4× more service appointments from the same customer list. The QR tracking alone changed how we budget.",
@@ -155,6 +194,7 @@ const testimonials = [
     avatarGrad: "linear-gradient(135deg, #0EA5E9, #0B1526)",
     avatarRing: "rgba(14,165,233,0.40)",
     channels: ["Direct Mail", "SMS"],
+    hoverClass: "testimonial-sky",
   },
 ];
 
@@ -186,6 +226,52 @@ const mockCampaigns = [
   { name: "Direct Mail — Conquest", pct: 37, sent: "504",   dotColor: "#0EA5E9" },
 ];
 
+// ── Live cycling data ─────────────────────────────────────────
+
+type AgentRow = { name: string; state: string; dot: string; dotStyle: React.CSSProperties };
+
+const AGENT_CYCLES: AgentRow[][] = [
+  [
+    { name: "Orchestrator", state: "done",    dot: "bg-emerald-500",              dotStyle: { boxShadow: "0 0 0 2px rgba(16,185,129,0.22)" } },
+    { name: "Data Agent",   state: "done",    dot: "bg-emerald-500",              dotStyle: { boxShadow: "0 0 0 2px rgba(16,185,129,0.22)" } },
+    { name: "Targeting",    state: "running", dot: "bg-indigo-400 animate-pulse", dotStyle: { boxShadow: "0 0 6px rgba(99,102,241,0.55)" } },
+    { name: "Creative",     state: "running", dot: "bg-indigo-400 animate-pulse", dotStyle: { boxShadow: "0 0 6px rgba(99,102,241,0.55)" } },
+    { name: "Optimization", state: "idle",    dot: "bg-slate-600",                dotStyle: {} },
+  ],
+  [
+    { name: "Orchestrator", state: "done",    dot: "bg-emerald-500",              dotStyle: { boxShadow: "0 0 0 2px rgba(16,185,129,0.22)" } },
+    { name: "Data Agent",   state: "done",    dot: "bg-emerald-500",              dotStyle: { boxShadow: "0 0 0 2px rgba(16,185,129,0.22)" } },
+    { name: "Targeting",    state: "done",    dot: "bg-emerald-500",              dotStyle: { boxShadow: "0 0 0 2px rgba(16,185,129,0.22)" } },
+    { name: "Creative",     state: "done",    dot: "bg-emerald-500",              dotStyle: { boxShadow: "0 0 0 2px rgba(16,185,129,0.22)" } },
+    { name: "Optimization", state: "running", dot: "bg-violet-400 animate-pulse", dotStyle: { boxShadow: "0 0 6px rgba(139,92,246,0.55)" } },
+  ],
+  [
+    { name: "Orchestrator", state: "running", dot: "bg-indigo-400 animate-pulse", dotStyle: { boxShadow: "0 0 6px rgba(99,102,241,0.55)" } },
+    { name: "Data Agent",   state: "running", dot: "bg-indigo-400 animate-pulse", dotStyle: { boxShadow: "0 0 6px rgba(99,102,241,0.55)" } },
+    { name: "Targeting",    state: "idle",    dot: "bg-slate-600",                dotStyle: {} },
+    { name: "Creative",     state: "idle",    dot: "bg-slate-600",                dotStyle: {} },
+    { name: "Optimization", state: "done",    dot: "bg-emerald-500",              dotStyle: { boxShadow: "0 0 0 2px rgba(16,185,129,0.22)" } },
+  ],
+];
+
+const TICKER_EVENTS = [
+  [
+    { text: "↑ SMS: 47 sent",       color: "#34D399" },
+    { text: "Email opens: 23",       color: "#818CF8" },
+    { text: "Mail in-transit: 504",  color: "#38BDF8" },
+  ],
+  [
+    { text: "↑ QR scan: Marcus C.",  color: "#34D399" },
+    { text: "Email click: Sarah M.", color: "#818CF8" },
+    { text: "SMS reply: David K.",   color: "#F59E0B" },
+  ],
+  [
+    { text: "↑ Win-back: 3 booked", color: "#34D399" },
+    { text: "Mail delivered: 127",   color: "#38BDF8" },
+    { text: "Open rate: 41.2%",      color: "#818CF8" },
+  ],
+];
+
 const integrations = [
   { name: "CDK Fortellis",       abbr: "CDK"  },
   { name: "Reynolds & Reynolds", abbr: "R&R"  },
@@ -200,6 +286,50 @@ const integrations = [
 // ── Page ──────────────────────────────────────────────────────
 
 export default function LandingPage() {
+  const [agentIdx, setAgentIdx] = useState(0);
+  const [tickerIdx, setTickerIdx] = useState(0);
+  const [tickerKey, setTickerKey] = useState(0);
+  const [countdown, setCountdown] = useState({ d: 9, h: 14, m: 33 });
+  const [nextCampaign, setNextCampaign] = useState({ h: 4, m: 12, s: 7 });
+
+  useEffect(() => {
+    const aId = setInterval(() => setAgentIdx(i => (i + 1) % AGENT_CYCLES.length), 3200);
+    const tId = setInterval(() => {
+      setTickerIdx(i => (i + 1) % TICKER_EVENTS.length);
+      setTickerKey(k => k + 1);
+    }, 4000);
+    return () => { clearInterval(aId); clearInterval(tId); };
+  }, []);
+
+  useEffect(() => {
+    const target = new Date("2026-05-01T09:00:00-05:00").getTime();
+    const update = () => {
+      const diff = target - Date.now();
+      if (diff <= 0) return;
+      setCountdown({ d: Math.floor(diff / 86400000), h: Math.floor((diff % 86400000) / 3600000), m: Math.floor((diff % 3600000) / 60000) });
+    };
+    update();
+    const id = setInterval(update, 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setNextCampaign(prev => {
+        let { h, m, s } = prev;
+        s -= 1;
+        if (s < 0) { s = 59; m -= 1; }
+        if (m < 0) { m = 59; h -= 1; }
+        if (h < 0) { h = 4; m = 12; s = 7; }
+        return { h, m, s };
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const liveAgents = AGENT_CYCLES[agentIdx];
+  const liveTicker = TICKER_EVENTS[tickerIdx];
+
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
 
@@ -373,10 +503,11 @@ export default function LandingPage() {
               </h1>
 
               <p className="text-[17px] sm:text-[18px] leading-[1.68] mb-8 max-w-lg" style={{ color: "#64748B" }}>
-                AutoCDP connects to your DMS and runs every channel automatically —{" "}
-                <span style={{ color: "#334155", fontWeight: 600 }}>AI-written SMS, personalized email, and QR-tracked direct mail</span>{" "}
-                that no other platform offers. Five agents handle writing, sending, tracking, and learning across every channel.{" "}
-                <span style={{ color: "#334155", fontWeight: 600 }}>Zero manual steps. Revenue compounds.</span>
+                Five AI agents monitor your DMS 24/7 — writing, sending, and self-optimizing{" "}
+                <span style={{ color: "#334155", fontWeight: 600 }}>personalized SMS, email, and QR-tracked direct mail</span>{" "}
+                the moment a customer trigger fires.{" "}
+                <span style={{ color: "#334155", fontWeight: 600 }}>No manual steps. No extra vendors.</span>{" "}
+                Your competitors are still doing this by hand.
               </p>
 
               {/* CTA row */}
@@ -720,7 +851,7 @@ export default function LandingPage() {
                               </div>
                             </div>
                             <div className="p-2 space-y-0.5 flex-1">
-                              {mockAgents.map((a) => (
+                              {liveAgents.map((a) => (
                                 <div
                                   key={a.name}
                                   className="flex items-center gap-1.5 px-1.5 py-1 rounded"
@@ -781,12 +912,13 @@ export default function LandingPage() {
                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                             <span className="text-[7px] font-bold uppercase tracking-wider" style={{ color: "#34D399" }}>LIVE</span>
                           </div>
-                          <div className="flex items-center gap-2.5 text-[8px] overflow-hidden">
-                            <span className="font-semibold" style={{ color: "#34D399" }}>↑ SMS: 47 sent</span>
-                            <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
-                            <span style={{ color: "#818CF8", fontWeight: 600 }}>Email opens: 23</span>
-                            <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
-                            <span style={{ color: "#38BDF8", fontWeight: 600 }}>Mail in-transit: 504</span>
+                          <div key={tickerKey} className="flex items-center gap-2.5 text-[8px] overflow-hidden ticker-item">
+                            {liveTicker.map((item, i) => (
+                              <React.Fragment key={i}>
+                                {i > 0 && <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>}
+                                <span className="font-semibold" style={{ color: item.color }}>{item.text}</span>
+                              </React.Fragment>
+                            ))}
                           </div>
                         </div>
                       </div>
@@ -1008,7 +1140,7 @@ export default function LandingPage() {
                         Live agent status
                       </p>
                       <div className="space-y-2.5">
-                        {mockAgents.map((a) => (
+                        {liveAgents.map((a) => (
                           <div
                             key={a.name}
                             className="flex items-center justify-between px-3.5 py-2.5 rounded-xl"
@@ -1041,7 +1173,10 @@ export default function LandingPage() {
                       <p className="text-[10px] font-bold uppercase tracking-[0.12em] mb-2" style={{ color: "rgba(255,255,255,0.28)" }}>
                         Next campaign fires in
                       </p>
-                      <p className="text-[22px] font-black tabular-nums" style={{ color: "#818CF8" }}>4h 12m</p>
+                      <p className="text-[22px] font-black tabular-nums" style={{ color: "#818CF8" }}>
+                        {String(nextCampaign.h).padStart(2,"0")}h {String(nextCampaign.m).padStart(2,"0")}m{" "}
+                        <span className="text-[14px]" style={{ color: "rgba(129,140,248,0.50)" }}>{String(nextCampaign.s).padStart(2,"0")}s</span>
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1253,11 +1388,12 @@ export default function LandingPage() {
           </div>
 
           {/* Cinematic testimonial cards */}
+          <ScrollReveal>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
             {testimonials.map((t) => (
               <div
                 key={t.name}
-                className="testimonial-dark relative p-8 rounded-2xl overflow-hidden"
+                className={`${t.hoverClass} relative p-8 rounded-2xl overflow-hidden`}
                 style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
               >
                 {/* Decorative large quote mark */}
@@ -1335,7 +1471,10 @@ export default function LandingPage() {
             ))}
           </div>
 
+          </ScrollReveal>
+
           {/* Comparison table — dark version */}
+          <ScrollReveal delay={120}>
           <div
             className="rounded-2xl overflow-hidden"
             style={{ border: "1px solid rgba(255,255,255,0.07)" }}
@@ -1400,6 +1539,7 @@ export default function LandingPage() {
               ))}
             </div>
           </div>
+          </ScrollReveal>
         </div>
       </section>
 
@@ -1456,7 +1596,7 @@ export default function LandingPage() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
             </span>
-            Next cohort: May 1 · 6 spots remaining
+            Next cohort: May 1 · {countdown.d}d {countdown.h}h {countdown.m}m
           </div>
 
           <h2 className="text-3xl sm:text-[2.8rem] font-black text-white tracking-tight mb-4 leading-tight">

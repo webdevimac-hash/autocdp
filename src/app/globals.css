@@ -842,3 +842,69 @@ button, a, [role="button"], input, select, textarea {
   50%       { opacity: 0.6; transform: scale(0.85); }
 }
 .live-tick { animation: live-tick 1.8s ease-in-out infinite; }
+
+/* ═══════════════════════════════════════════════════════════ */
+/* ROUND 10 POLISH — LIVE DATA + SCROLL REVEAL                 */
+/* ═══════════════════════════════════════════════════════════ */
+
+/* ── Per-color testimonial hover glows ──────────────────────── */
+.testimonial-emerald {
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.24s ease, border-color 0.20s ease;
+}
+.testimonial-emerald:hover {
+  transform: translateY(-4px);
+  border-color: rgba(16,185,129,0.32) !important;
+  box-shadow: 0 0 0 1px rgba(16,185,129,0.16), 0 0 32px -4px rgba(16,185,129,0.18), 0 20px 44px -10px rgba(15,23,42,0.40);
+}
+.testimonial-indigo {
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.24s ease, border-color 0.20s ease;
+}
+.testimonial-indigo:hover {
+  transform: translateY(-4px);
+  border-color: rgba(99,102,241,0.32) !important;
+  box-shadow: 0 0 0 1px rgba(99,102,241,0.16), 0 0 32px -4px rgba(99,102,241,0.18), 0 20px 44px -10px rgba(15,23,42,0.40);
+}
+.testimonial-sky {
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.24s ease, border-color 0.20s ease;
+}
+.testimonial-sky:hover {
+  transform: translateY(-4px);
+  border-color: rgba(14,165,233,0.32) !important;
+  box-shadow: 0 0 0 1px rgba(14,165,233,0.16), 0 0 32px -4px rgba(14,165,233,0.18), 0 20px 44px -10px rgba(15,23,42,0.40);
+}
+
+/* ── Ticker item fade-in (on cycle change) ──────────────────── */
+@keyframes ticker-fade-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.ticker-item { animation: ticker-fade-in 0.38s cubic-bezier(0.16,1,0.3,1) both; }
+
+/* ── Countdown number pulse ─────────────────────────────────── */
+@keyframes countdown-tick {
+  0%   { opacity: 1; }
+  10%  { opacity: 0.6; }
+  20%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+.countdown-tick { animation: countdown-tick 1s ease-in-out; }
+
+/* ── Agent row state flash ──────────────────────────────────── */
+@keyframes agent-row-activate {
+  0%   { background: rgba(99,102,241,0.20); }
+  100% { background: rgba(99,102,241,0.07); }
+}
+
+/* ── Mockup ambient glow breathe ────────────────────────────── */
+@keyframes mockup-breathe {
+  0%, 100% { opacity: 0.80; transform: scale(1); }
+  50%       { opacity: 1.00; transform: scale(1.04); }
+}
+.mockup-breathe { animation: mockup-breathe 5s ease-in-out infinite; }
+
+/* ── Stat glow pulse (stats bar numbers) ────────────────────── */
+@keyframes stat-glow {
+  0%, 100% { filter: drop-shadow(0 0 14px currentColor); }
+  50%       { filter: drop-shadow(0 0 32px currentColor); }
+}
+.stat-glow { animation: stat-glow 3.5s ease-in-out infinite; }
