@@ -353,14 +353,14 @@ const ANNOUNCEMENTS = [
 ];
 
 const integrations = [
-  { name: "CDK Fortellis",       abbr: "CDK"  },
-  { name: "Reynolds & Reynolds", abbr: "R&R"  },
-  { name: "PostGrid",            abbr: "PG"   },
-  { name: "Anthropic Claude",    abbr: "AI"   },
-  { name: "Twilio",              abbr: "SMS"  },
-  { name: "Resend",              abbr: "✉"    },
-  { name: "USPS",                abbr: "USPS" },
-  { name: "Stripe",              abbr: "Pay"  },
+  { name: "CDK Fortellis",       abbr: "CDK",  color: "#6366F1", bg: "rgba(99,102,241,0.10)",  border: "rgba(99,102,241,0.22)"  },
+  { name: "Reynolds & Reynolds", abbr: "R&R",  color: "#0EA5E9", bg: "rgba(14,165,233,0.10)",  border: "rgba(14,165,233,0.22)"  },
+  { name: "PostGrid",            abbr: "PG",   color: "#8B5CF6", bg: "rgba(139,92,246,0.10)",  border: "rgba(139,92,246,0.22)"  },
+  { name: "Anthropic Claude",    abbr: "AI",   color: "#10B981", bg: "rgba(16,185,129,0.10)",  border: "rgba(16,185,129,0.22)"  },
+  { name: "Twilio",              abbr: "SMS",  color: "#F59E0B", bg: "rgba(245,158,11,0.10)",  border: "rgba(245,158,11,0.22)"  },
+  { name: "Resend",              abbr: "✉",    color: "#EC4899", bg: "rgba(236,72,153,0.10)",  border: "rgba(236,72,153,0.22)"  },
+  { name: "USPS",                abbr: "USPS", color: "#EF4444", bg: "rgba(239,68,68,0.10)",   border: "rgba(239,68,68,0.22)"   },
+  { name: "Stripe",              abbr: "Pay",  color: "#6366F1", bg: "rgba(99,102,241,0.10)",  border: "rgba(99,102,241,0.22)"  },
 ];
 
 const plans = [
@@ -472,6 +472,8 @@ export default function LandingPage() {
   const [announcementIdx, setAnnouncementIdx] = useState(0);
   const [announcementKey, setAnnouncementKey] = useState(0);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [statsVisible, setStatsVisible] = useState(false);
+  const statsRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const aId = setInterval(() => setAgentIdx(i => (i + 1) % AGENT_CYCLES.length), 3200);
@@ -513,6 +515,17 @@ export default function LandingPage() {
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    const el = statsRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setStatsVisible(true); obs.disconnect(); } },
+      { threshold: 0.2 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   const liveAgents = AGENT_CYCLES[agentIdx];
   const liveTicker = TICKER_EVENTS[tickerIdx];
   const liveStats  = MOCK_STAT_CYCLES[statsIdx];
@@ -522,6 +535,7 @@ export default function LandingPage() {
 
       {/* ── Announcement bar ──────────────────────────────── */}
       <div className="relative py-2.5 px-4 text-center overflow-hidden" style={{ background: "#060D18" }}>
+        <div key={`progress-${announcementKey}`} className="announcement-progress" />
         <div key={announcementKey} className="announcement-cycle flex items-center justify-center gap-2.5 text-xs font-medium">
           <span className="relative flex h-1.5 w-1.5 shrink-0">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -736,7 +750,7 @@ export default function LandingPage() {
               >
                 Your DMS fires the trigger.
                 <br />
-                <span className="gradient-text">We fire the campaign.</span>
+                <span className="gradient-text-animated">We fire the campaign.</span>
               </h1>
 
               <p className="text-[17px] sm:text-[18px] leading-[1.68] mb-8 max-w-lg" style={{ color: "#64748B" }}>
@@ -1261,18 +1275,18 @@ export default function LandingPage() {
             />
             <div className="flex ticker-track gap-10 items-center whitespace-nowrap">
               {[...integrations, ...integrations].map((intg, i) => (
-                <div key={i} className="flex items-center gap-3 shrink-0 group">
+                <div key={i} className="flex items-center gap-2.5 shrink-0 group">
                   <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center"
+                    className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110"
                     style={{
-                      background: "#FFFFFF",
-                      border: "1px solid rgba(15,23,42,0.10)",
-                      boxShadow: "0 1px 3px rgba(15,23,42,0.06)",
+                      background: intg.bg,
+                      border: `1px solid ${intg.border}`,
+                      boxShadow: `0 2px 8px ${intg.bg}`,
                     }}
                   >
-                    <span className="text-[8px] font-black" style={{ color: "#475569" }}>{intg.abbr}</span>
+                    <span className="text-[8px] font-black" style={{ color: intg.color }}>{intg.abbr}</span>
                   </div>
-                  <span className="text-[13px] font-semibold transition-colors" style={{ color: "#94A3B8" }}>
+                  <span className="text-[13px] font-semibold transition-colors group-hover:text-slate-500" style={{ color: "#94A3B8" }}>
                     {intg.name}
                   </span>
                 </div>
@@ -1285,7 +1299,7 @@ export default function LandingPage() {
       {/* ═══════════════════════════════════════════════════ */}
       {/* STATS BAR                                          */}
       {/* ═══════════════════════════════════════════════════ */}
-      <section className="py-20 px-5 sm:px-8 relative overflow-hidden" style={{ background: "#060D18" }}>
+      <section ref={statsRef} className="py-20 px-5 sm:px-8 relative overflow-hidden" style={{ background: "#060D18" }}>
         {/* Background grid */}
         <div className="absolute inset-0 dark-grid opacity-50" />
         {/* Centered glow */}
@@ -1323,7 +1337,7 @@ export default function LandingPage() {
                 />
                 <div className="flex items-start justify-center gap-1.5 mb-2">
                   <div
-                    className={`text-[2.8rem] sm:text-[3.2rem] font-black tracking-tight leading-none stat-pop stat-pop-${i + 1} stat-glow`}
+                    className={`text-[2.8rem] sm:text-[3.2rem] font-black tracking-tight leading-none stat-glow transition-all duration-700 ${statsVisible ? `stat-pop stat-pop-${i + 1} opacity-100` : "opacity-0 translate-y-3"}`}
                     style={{ color: s.color }}
                   >
                     {s.value}

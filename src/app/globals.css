@@ -1263,6 +1263,36 @@ button, a, [role="button"], input, select, textarea {
   animation: announcement-cycle 0.4s cubic-bezier(0.16,1,0.3,1) both;
 }
 
+/* ── Announcement bar progress indicator ────────────────────── */
+@keyframes announcement-progress {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+.announcement-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #10B981, #34D399);
+  animation: announcement-progress 5s linear both;
+  border-radius: 0 1px 1px 0;
+}
+
+/* ── Animated gradient text ─────────────────────────────────── */
+@keyframes gradient-shift {
+  0%   { background-position: 0% center; }
+  50%  { background-position: 100% center; }
+  100% { background-position: 0% center; }
+}
+.gradient-text-animated {
+  background: linear-gradient(90deg, #4F46E5, #7C3AED, #0EA5E9, #10B981, #4F46E5);
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 6s linear infinite;
+}
+
 /* ═══════════════════════════════════════════════════════════ */
 /* PRICING SECTION                                             */
 /* ═══════════════════════════════════════════════════════════ */
