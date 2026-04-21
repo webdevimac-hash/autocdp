@@ -824,3 +824,21 @@ button, a, [role="button"], input, select, textarea {
   opacity: 1;
   background: radial-gradient(ellipse 70% 50% at 100% 100%, rgba(99,102,241,0.08), transparent 55%);
 }
+
+/* ── Campaign bar entrance animation ─────────────────────────── */
+@keyframes bar-scale-in {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* ── Dark footer link hover ──────────────────────────────────── */
+.footer-link:hover {
+  color: rgba(255,255,255,0.75) !important;
+}
+
+/* ── Stats bar live dot ──────────────────────────────────────── */
+@keyframes live-tick {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(0.85); }
+}
+.live-tick { animation: live-tick 1.8s ease-in-out infinite; }

@@ -126,12 +126,24 @@ const testimonials = [
     name: "Marcus T.", title: "Fixed Ops Director, Multi-Rooftop Group",
     initials: "MT", stat: "+18%", statLabel: "retention lift",
     statColor: "#059669", statBg: "rgba(16,185,129,0.07)", statBorder: "rgba(16,185,129,0.18)",
+    avatarGrad: "linear-gradient(135deg, #059669, #0B1526)",
+    avatarRing: "rgba(16,185,129,0.40)",
   },
   {
     quote: "The AI writes better win-back copy than our ad agency did. And it sends automatically the moment a customer goes lapsed. Set it and forget it.",
     name: "Derek S.", title: "General Manager, Franchise Dealership",
     initials: "DS", stat: "3×", statLabel: "mail response rate",
     statColor: "#4338CA", statBg: "rgba(99,102,241,0.07)", statBorder: "rgba(99,102,241,0.18)",
+    avatarGrad: "linear-gradient(135deg, #6366F1, #0B1526)",
+    avatarRing: "rgba(99,102,241,0.40)",
+  },
+  {
+    quote: "We ran AutoCDP alongside Fullpath for 60 days. AutoCDP generated 3.4× more service appointments from the same customer list. The QR tracking alone changed how we budget.",
+    name: "Kevin P.", title: "Marketing Manager, 3-Store Group",
+    initials: "KP", stat: "3.4×", statLabel: "vs. Fullpath",
+    statColor: "#0EA5E9", statBg: "rgba(14,165,233,0.07)", statBorder: "rgba(14,165,233,0.18)",
+    avatarGrad: "linear-gradient(135deg, #0EA5E9, #0B1526)",
+    avatarRing: "rgba(14,165,233,0.40)",
   },
 ];
 
@@ -326,16 +338,16 @@ export default function LandingPage() {
                 className="text-[2.75rem] sm:text-[3.4rem] xl:text-[3.85rem] font-black leading-[1.04] tracking-[-0.034em] mb-6"
                 style={{ color: "#0F172A" }}
               >
-                The dealership
+                Win back lapsed customers.
                 <br />
-                <span className="gradient-text">that markets itself.</span>
+                <span className="gradient-text">Zero manual work.</span>
               </h1>
 
               <p className="text-[17px] sm:text-[18px] leading-[1.68] mb-8 max-w-lg" style={{ color: "#64748B" }}>
-                Five AI agents run{" "}
-                <span style={{ color: "#334155", fontWeight: 600 }}>24/7 against your DMS</span>{" "}
-                — finding lapsed customers, writing personalized copy, and dropping postcards in the mailbox. Every piece tracked. Every result fed back in.{" "}
-                <span style={{ color: "#334155", fontWeight: 600 }}>Set it once. Revenue compounds.</span>
+                AutoCDP's five AI agents scan your DMS daily, find every overdue or lapsed customer,
+                write personalized QR-tracked postcards, and ship them automatically.{" "}
+                <span style={{ color: "#334155", fontWeight: 600 }}>No prompts. No vendor calls. No spreadsheets.</span>{" "}
+                Just revenue that compounds while you sleep.
               </p>
 
               {/* CTA row */}
@@ -395,6 +407,24 @@ export default function LandingPage() {
                       <p className="text-[12px] font-bold leading-none" style={{ color: "#0F172A" }}>{t.label}</p>
                       <p className="text-[10.5px] font-medium mt-0.5" style={{ color: "#94A3B8" }}>{t.sub}</p>
                     </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Mobile-only live stats preview (mockup hidden on mobile) */}
+              <div className="xl:hidden grid grid-cols-3 gap-2 mb-7">
+                {[
+                  { value: "2,847", label: "Pieces sent today", color: "#6366F1", bg: "rgba(99,102,241,0.06)" },
+                  { value: "18.3%", label: "Avg. scan rate",    color: "#10B981", bg: "rgba(16,185,129,0.06)" },
+                  { value: "$84k",  label: "Rev. attributed",   color: "#F59E0B", bg: "rgba(245,158,11,0.06)" },
+                ].map((s) => (
+                  <div
+                    key={s.label}
+                    className="rounded-xl p-3 text-center"
+                    style={{ background: s.bg, border: "1px solid rgba(15,23,42,0.06)" }}
+                  >
+                    <p className="text-[20px] font-black tabular-nums leading-none mb-0.5" style={{ color: s.color }}>{s.value}</p>
+                    <p className="text-[9px] font-semibold leading-tight" style={{ color: "#94A3B8" }}>{s.label}</p>
                   </div>
                 ))}
               </div>
@@ -608,7 +638,7 @@ export default function LandingPage() {
                               >3 running</span>
                             </div>
                             <div className="p-2 space-y-2">
-                              {mockCampaigns.map((c) => (
+                              {mockCampaigns.map((c, ci) => (
                                 <div key={c.name}>
                                   <div className="flex items-center justify-between mb-0.5">
                                     <div className="flex items-center gap-1">
@@ -621,7 +651,15 @@ export default function LandingPage() {
                                     </div>
                                   </div>
                                   <div className="h-[3px] rounded-full overflow-hidden" style={{ background: "#F1F5F9" }}>
-                                    <div className="h-full rounded-full" style={{ width: `${c.pct}%`, background: `linear-gradient(90deg, ${c.dotColor}aa, ${c.dotColor})` }} />
+                                    <div
+                                      className="h-full rounded-full"
+                                      style={{
+                                        width: `${c.pct}%`,
+                                        background: `linear-gradient(90deg, ${c.dotColor}aa, ${c.dotColor})`,
+                                        transformOrigin: "left",
+                                        animation: `bar-scale-in 1s cubic-bezier(0.34, 1.56, 0.64, 1) ${ci * 0.28 + 0.15}s both`,
+                                      }}
+                                    />
                                   </div>
                                 </div>
                               ))}
@@ -1067,8 +1105,13 @@ export default function LandingPage() {
                     <s.icon className="w-5 h-5 text-indigo-400" />
                   </div>
                   <span
-                    className="text-[2.5rem] font-black tabular-nums leading-none"
-                    style={{ color: "rgba(255,255,255,0.05)" }}
+                    className="text-[3.5rem] font-black tabular-nums leading-none select-none"
+                    style={{
+                      background: "linear-gradient(135deg, rgba(99,102,241,0.30) 0%, rgba(99,102,241,0.06) 100%)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      backgroundClip: "text",
+                    }}
                   >
                     {s.step}
                   </span>
@@ -1157,7 +1200,7 @@ export default function LandingPage() {
           </div>
 
           {/* Cinematic testimonial cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
             {testimonials.map((t) => (
               <div
                 key={t.name}
@@ -1212,8 +1255,8 @@ export default function LandingPage() {
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
                     style={{
-                      background: "linear-gradient(135deg, #6366F1, #0B1526)",
-                      boxShadow: "0 0 0 2px rgba(99,102,241,0.40), 0 0 0 4px rgba(99,102,241,0.10)",
+                      background: t.avatarGrad,
+                      boxShadow: `0 0 0 2px ${t.avatarRing}, 0 0 0 4px ${t.avatarRing.replace("0.40", "0.10")}`,
                     }}
                   >
                     {t.initials}
@@ -1405,7 +1448,7 @@ export default function LandingPage() {
       {/* ═══════════════════════════════════════════════════ */}
       {/* FOOTER                                             */}
       {/* ═══════════════════════════════════════════════════ */}
-      <footer className="bg-white pb-16 sm:pb-0" style={{ borderTop: "1px solid rgba(15,23,42,0.07)" }}>
+      <footer className="pb-16 sm:pb-0" style={{ background: "#060D18", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="max-w-7xl mx-auto px-5 sm:px-8">
           <div className="py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="col-span-2 md:col-span-1">
@@ -1414,14 +1457,14 @@ export default function LandingPage() {
                   className="w-8 h-8 rounded-lg flex items-center justify-center"
                   style={{
                     background: "linear-gradient(135deg, #4F46E5, #0B1526)",
-                    boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.10)",
                   }}
                 >
                   <Car className="w-4 h-4 text-white" />
                 </div>
-                <span className="font-bold text-[15px] tracking-tight" style={{ color: "#0F172A" }}>AutoCDP</span>
+                <span className="font-bold text-[15px] tracking-tight text-white">AutoCDP</span>
               </div>
-              <p className="text-[13px] leading-relaxed max-w-[200px]" style={{ color: "#94A3B8" }}>
+              <p className="text-[13px] leading-relaxed max-w-[200px]" style={{ color: "rgba(255,255,255,0.28)" }}>
                 AI-powered marketing for modern dealership groups.
               </p>
             </div>
@@ -1441,13 +1484,17 @@ export default function LandingPage() {
               },
             ].map((col) => (
               <div key={col.heading}>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-4" style={{ color: "#CBD5E1" }}>
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-4" style={{ color: "rgba(255,255,255,0.20)" }}>
                   {col.heading}
                 </p>
                 <ul className="space-y-2.5">
                   {col.links.map((item) => (
                     <li key={item.label}>
-                      <Link href={item.href} className="text-[13px] font-medium transition-colors" style={{ color: "#64748B" }}>
+                      <Link
+                        href={item.href}
+                        className="footer-link text-[13px] font-medium transition-colors"
+                        style={{ color: "rgba(255,255,255,0.38)" }}
+                      >
                         {item.label}
                       </Link>
                     </li>
@@ -1459,14 +1506,24 @@ export default function LandingPage() {
 
           <div
             className="py-6 flex flex-col sm:flex-row items-center justify-between gap-3"
-            style={{ borderTop: "1px solid rgba(15,23,42,0.06)" }}
+            style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
           >
-            <p className="text-[11px] font-medium" style={{ color: "#94A3B8" }}>
+            <p className="text-[11px] font-medium" style={{ color: "rgba(255,255,255,0.22)" }}>
               © {new Date().getFullYear()} AutoCDP. Built for automotive retail.
             </p>
             <div className="flex items-center gap-2">
-              <span className="chip chip-emerald text-[10px]">SOC 2 Type II (in progress)</span>
-              <span className="chip chip-indigo text-[10px]">CCPA compliant</span>
+              <div
+                className="px-2.5 py-1 rounded-full text-[10px] font-bold"
+                style={{ background: "rgba(16,185,129,0.10)", border: "1px solid rgba(16,185,129,0.20)", color: "#34D399" }}
+              >
+                SOC 2 Type II (in progress)
+              </div>
+              <div
+                className="px-2.5 py-1 rounded-full text-[10px] font-bold"
+                style={{ background: "rgba(99,102,241,0.10)", border: "1px solid rgba(99,102,241,0.20)", color: "#818CF8" }}
+              >
+                CCPA compliant
+              </div>
             </div>
           </div>
         </div>
