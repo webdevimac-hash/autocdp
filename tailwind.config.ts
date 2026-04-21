@@ -65,11 +65,25 @@ const config: Config = {
           900: "#312e81",
         },
 
-        // ── Navy — structural ─────────────────────────────────────
+        // ── Navy — sidebar & dark sections ────────────────────────
         navy: {
-          700: "#334155",
-          800: "#1e293b",
-          900: "#0f172a",
+          950: "#060D18",
+          900: "#0B1526",
+          850: "#0F1D34",
+          800: "#152238",
+          700: "#1E3048",
+          600: "#2A4060",
+          // legacy aliases
+          "700-old": "#334155",
+          "800-old": "#1e293b",
+        },
+
+        // ── Surface — layered page backgrounds ───────────────────
+        surface: {
+          0: "#FFFFFF",
+          1: "#F8FAFC",
+          2: "#F1F5F9",
+          3: "#E8EEF4",
         },
 
         // ── Success — emerald ─────────────────────────────────────
@@ -95,40 +109,43 @@ const config: Config = {
       },
 
       borderRadius: {
-        lg:   "var(--radius)",
-        md:   "calc(var(--radius) - 2px)",
-        sm:   "calc(var(--radius) - 4px)",
-        xl:   "0.75rem",
-        "2xl":"1rem",
-        "3xl":"1.5rem",
+        lg:    "var(--radius)",
+        md:    "calc(var(--radius) - 2px)",
+        sm:    "calc(var(--radius) - 4px)",
+        xl:    "0.75rem",
+        "2xl": "1rem",
+        "3xl": "1.5rem",
       },
 
       fontFamily: {
-        sans:        ["var(--font-sans)", ...fontFamily.sans],
+        sans:        ["var(--font-sans)", "Inter", ...fontFamily.sans],
         handwriting: ["'Caveat'", "cursive"],
       },
 
       boxShadow: {
-        card:          "0 1px 3px 0 rgb(15 23 42 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.06)",
-        "card-md":     "0 4px 6px -1px rgb(15 23 42 / 0.07), 0 2px 4px -2px rgb(15 23 42 / 0.05)",
-        "card-lg":     "0 10px 15px -3px rgb(15 23 42 / 0.08), 0 4px 6px -4px rgb(15 23 42 / 0.05)",
-        "card-hover":  "0 16px 32px -4px rgb(15 23 42 / 0.12), 0 6px 12px -2px rgb(15 23 42 / 0.07)",
-        modal:         "0 20px 25px -5px rgb(15 23 42 / 0.10), 0 8px 10px -6px rgb(15 23 42 / 0.08)",
-        indigo:        "0 8px 24px -4px rgb(79 70 229 / 0.35)",
-        "glow-indigo": "0 0 0 2px rgb(99 102 241 / 0.15), 0 8px 24px -4px rgb(79 70 229 / 0.20)",
-        "glow-emerald":"0 0 0 2px rgb(16 185 129 / 0.15), 0 8px 24px -4px rgb(5 150 105 / 0.20)",
-        "glow-sky":    "0 0 0 2px rgb(14 165 233 / 0.15), 0 8px 24px -4px rgb(2 132 199 / 0.20)",
-        "glow-amber":  "0 0 0 2px rgb(245 158 11 / 0.15), 0 8px 24px -4px rgb(217 119 6 / 0.20)",
-        "glow-violet": "0 0 0 2px rgb(139 92 246 / 0.15), 0 8px 24px -4px rgb(124 58 237 / 0.20)",
-        "glow-rose":   "0 0 0 2px rgb(244 63 94 / 0.15), 0 8px 24px -4px rgb(225 29 72 / 0.20)",
+        // Institutional — refined, very subtle
+        card:         "0 1px 2px 0 rgb(15 23 42 / 0.04), 0 0 0 1px rgb(15 23 42 / 0.03)",
+        "card-md":    "0 3px 8px -2px rgb(15 23 42 / 0.07), 0 1px 3px 0 rgb(15 23 42 / 0.04)",
+        "card-lg":    "0 8px 20px -4px rgb(15 23 42 / 0.09), 0 2px 6px -2px rgb(15 23 42 / 0.05)",
+        "card-hover": "0 14px 32px -6px rgb(15 23 42 / 0.11), 0 4px 10px -4px rgb(15 23 42 / 0.06)",
+        modal:        "0 24px 48px -8px rgb(15 23 42 / 0.18), 0 8px 16px -6px rgb(15 23 42 / 0.08)",
+        // Colored glows
+        indigo:        "0 6px 20px -4px rgb(79 70 229 / 0.38)",
+        emerald:       "0 6px 20px -4px rgb(16 185 129 / 0.32)",
+        "glow-indigo": "0 0 0 2px rgb(99 102 241 / 0.12), 0 6px 20px -4px rgb(79 70 229 / 0.22)",
+        "glow-emerald":"0 0 0 2px rgb(16 185 129 / 0.12), 0 6px 20px -4px rgb(5 150 105 / 0.20)",
+        "glow-sky":    "0 0 0 2px rgb(14 165 233 / 0.12), 0 6px 20px -4px rgb(2 132 199 / 0.20)",
+        "glow-amber":  "0 0 0 2px rgb(245 158 11 / 0.12), 0 6px 20px -4px rgb(217 119 6 / 0.20)",
+        "glow-violet": "0 0 0 2px rgb(139 92 246 / 0.12), 0 6px 20px -4px rgb(124 58 237 / 0.20)",
+        "glow-rose":   "0 0 0 2px rgb(244 63 94 / 0.12), 0 6px 20px -4px rgb(225 29 72 / 0.20)",
       },
 
       fontSize: {
         "2xl": ["1.5rem",   { lineHeight: "2rem",    letterSpacing: "-0.015em" }],
-        "3xl": ["1.875rem", { lineHeight: "2.25rem", letterSpacing: "-0.02em"  }],
+        "3xl": ["1.875rem", { lineHeight: "2.25rem", letterSpacing: "-0.020em" }],
         "4xl": ["2.25rem",  { lineHeight: "2.5rem",  letterSpacing: "-0.025em" }],
-        "5xl": ["3rem",     { lineHeight: "1",       letterSpacing: "-0.03em"  }],
-        "6xl": ["3.75rem",  { lineHeight: "1",       letterSpacing: "-0.04em"  }],
+        "5xl": ["3rem",     { lineHeight: "1",        letterSpacing: "-0.030em" }],
+        "6xl": ["3.75rem",  { lineHeight: "1",        letterSpacing: "-0.040em" }],
       },
 
       keyframes: {
@@ -145,20 +162,20 @@ const config: Config = {
           "50%":      { opacity: "0.5" },
         },
         "fade-in": {
-          from: { opacity: "0", transform: "translateY(6px)" },
+          from: { opacity: "0", transform: "translateY(4px)" },
           to:   { opacity: "1", transform: "translateY(0)" },
         },
         "fade-up": {
-          from: { opacity: "0", transform: "translateY(16px)" },
+          from: { opacity: "0", transform: "translateY(14px)" },
           to:   { opacity: "1", transform: "translateY(0)" },
         },
         "fade-up-sm": {
-          from: { opacity: "0", transform: "translateY(8px)" },
+          from: { opacity: "0", transform: "translateY(6px)" },
           to:   { opacity: "1", transform: "translateY(0)" },
         },
         "float": {
           "0%, 100%": { transform: "translateY(0px)" },
-          "50%":      { transform: "translateY(-8px)" },
+          "50%":      { transform: "translateY(-6px)" },
         },
         "ping-slow": {
           "75%, 100%": { transform: "scale(2.2)", opacity: "0" },
@@ -172,7 +189,7 @@ const config: Config = {
           to:   { width: "var(--bar-w, 100%)" },
         },
         "count-up": {
-          from: { opacity: "0", transform: "translateY(8px) scale(0.95)" },
+          from: { opacity: "0", transform: "translateY(6px) scale(0.97)" },
           to:   { opacity: "1", transform: "translateY(0) scale(1)" },
         },
       },
@@ -181,18 +198,19 @@ const config: Config = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up":   "accordion-up 0.2s ease-out",
         "pulse-slow":     "pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-        "fade-in":        "fade-in 0.25s ease-out both",
-        "fade-up":        "fade-up 0.45s ease-out both",
-        "fade-up-sm":     "fade-up-sm 0.3s ease-out both",
-        "float":          "float 3.5s ease-in-out infinite",
+        "fade-in":        "fade-in 0.2s ease-out both",
+        "fade-up":        "fade-up 0.4s ease-out both",
+        "fade-up-sm":     "fade-up-sm 0.25s ease-out both",
+        "float":          "float 4s ease-in-out infinite",
         "ping-slow":      "ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite",
         "shimmer":        "shimmer 2.5s linear infinite",
-        "bar-grow":       "bar-grow 0.8s ease-out forwards",
-        "count-up":       "count-up 0.5s ease-out both",
+        "bar-grow":       "bar-grow 0.7s ease-out forwards",
+        "count-up":       "count-up 0.4s ease-out both",
       },
 
       transitionDuration: {
         "150": "150ms",
+        "200": "200ms",
         "250": "250ms",
       },
     },

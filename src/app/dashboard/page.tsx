@@ -3,7 +3,7 @@ import { Header } from "@/components/layout/header";
 import { Badge } from "@/components/ui/badge";
 import {
   Users, Megaphone, Mail, TrendingUp, ArrowUpRight,
-  Bot, Clock, CheckCircle, Sparkles,
+  Bot, Clock, CheckCircle, Sparkles, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { formatRelativeDate, formatCurrency } from "@/lib/utils";
 import Link from "next/link";
@@ -24,7 +24,7 @@ export default async function DashboardPage() {
 
   const [customersRes, campaignsRes, commsRes, agentRunsRes] = await Promise.all([
     supabase.from("customers").select("id, lifecycle_stage, total_spend", { count: "exact" }).eq("dealership_id", dealershipId ?? ""),
-    supabase.from("campaigns").select("id, name, status, stats, channel, updated_at").eq("dealership_id", dealershipId ?? "").order("updated_at", { ascending: false }).limit(5),
+    supabase.from("campaigns").select("id, name, status, stats, channel, updated_at").eq("dealership_id", dealershipId ?? "").order("updated_at", { ascending: false }).limit(6),
     supabase.from("communications").select("id, status, channel, created_at").eq("dealership_id", dealershipId ?? "").gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
     supabase.from("agent_runs").select("id, agent_type, status, created_at, output_summary").eq("dealership_id", dealershipId ?? "").order("created_at", { ascending: false }).limit(6),
   ]);
@@ -45,139 +45,187 @@ export default async function DashboardPage() {
     {
       title: "Total Customers",
       value: totalCustomers.toLocaleString(),
-      change: "+12% vs last month",
+      change: "+12%",
+      trend: "up" as const,
+      note: "vs. last month",
       icon: Users,
+      accent: "stat-card-indigo",
       iconBg: "bg-indigo-50",
       iconColor: "text-indigo-600",
-      trend: "up",
+      href: "/dashboard/customers",
     },
     {
       title: "Active Campaigns",
-      value: activeCampaigns,
-      change: `${campaigns.length} total`,
+      value: String(activeCampaigns),
+      change: String(campaigns.length),
+      trend: "neutral" as const,
+      note: "campaigns total",
       icon: Megaphone,
+      accent: "stat-card-violet",
       iconBg: "bg-violet-50",
       iconColor: "text-violet-600",
-      trend: "neutral",
+      href: "/dashboard/campaigns",
     },
     {
       title: "Sent This Month",
       value: sentThisMonth.toLocaleString(),
-      change: "30-day window",
+      change: "+8%",
+      trend: "up" as const,
+      note: "30-day window",
       icon: Mail,
+      accent: "stat-card-emerald",
       iconBg: "bg-emerald-50",
       iconColor: "text-emerald-600",
-      trend: "up",
+      href: "/dashboard/analytics",
     },
     {
       title: "Customer Value",
-      value: `$${(totalRevenue / 1000).toFixed(0)}k`,
-      change: "All-time total spend",
+      value: totalRevenue >= 1000000 ? `$${(totalRevenue / 1000000).toFixed(1)}M` : `$${(totalRevenue / 1000).toFixed(0)}k`,
+      change: "All-time",
+      trend: "neutral" as const,
+      note: "total spend",
       icon: TrendingUp,
+      accent: "stat-card-amber",
       iconBg: "bg-amber-50",
       iconColor: "text-amber-600",
-      trend: "up",
+      href: "/dashboard/analytics",
     },
   ];
 
   const agentTypeColors: Record<string, string> = {
-    orchestrator: "bg-violet-100 text-violet-700",
-    data: "bg-sky-100 text-sky-700",
-    targeting: "bg-indigo-100 text-indigo-700",
-    creative: "bg-emerald-100 text-emerald-700",
-    optimization: "bg-amber-100 text-amber-700",
+    orchestrator: "chip chip-violet",
+    data:         "chip chip-sky",
+    targeting:    "chip chip-indigo",
+    creative:     "chip chip-emerald",
+    optimization: "chip chip-amber",
   };
 
   const segments = [
-    { label: "VIP", count: vipCount, color: "bg-amber-500", pct: totalCustomers ? vipCount / totalCustomers : 0 },
-    { label: "Active", count: customers.filter((c) => c.lifecycle_stage === "active").length, color: "bg-emerald-500", pct: totalCustomers ? customers.filter((c) => c.lifecycle_stage === "active").length / totalCustomers : 0 },
-    { label: "At Risk", count: atRiskCount, color: "bg-orange-500", pct: totalCustomers ? atRiskCount / totalCustomers : 0 },
-    { label: "Lapsed", count: customers.filter((c) => c.lifecycle_stage === "lapsed").length, color: "bg-red-400", pct: totalCustomers ? customers.filter((c) => c.lifecycle_stage === "lapsed").length / totalCustomers : 0 },
+    { label: "VIP",     count: vipCount,      pct: totalCustomers ? vipCount / totalCustomers : 0,      color: "bg-amber-400" },
+    { label: "Active",  count: customers.filter(c => c.lifecycle_stage === "active").length, pct: totalCustomers ? customers.filter(c => c.lifecycle_stage === "active").length / totalCustomers : 0, color: "bg-emerald-500" },
+    { label: "At Risk", count: atRiskCount,    pct: totalCustomers ? atRiskCount / totalCustomers : 0,    color: "bg-orange-500" },
+    { label: "Lapsed",  count: customers.filter(c => c.lifecycle_stage === "lapsed").length, pct: totalCustomers ? customers.filter(c => c.lifecycle_stage === "lapsed").length / totalCustomers : 0, color: "bg-red-400" },
   ];
+
+  const campaignStatusStyle: Record<string, string> = {
+    active:    "chip chip-emerald",
+    draft:     "chip chip-slate",
+    scheduled: "chip chip-sky",
+    paused:    "chip chip-amber",
+    completed: "chip chip-slate",
+  };
 
   return (
     <>
       <Header title="Dashboard" subtitle="Your dealership at a glance" userEmail={user?.email} />
 
-      <main className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6 max-w-[1400px]">
+      <main className="flex-1 p-4 sm:p-6 space-y-5 max-w-[1400px]">
 
-        {/* Stats grid */}
+        {/* ── Stat cards ──────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {stats.map((stat) => (
-            <div key={stat.title} className="bg-white rounded-xl border border-slate-200 p-5 shadow-card hover:shadow-card-md transition-shadow">
-              <div className="flex items-start justify-between mb-4">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${stat.iconBg}`}>
-                  <stat.icon className={`w-4.5 h-4.5 ${stat.iconColor}`} />
+            <Link key={stat.title} href={stat.href} className="block group">
+              <div className={`stat-card ${stat.accent} group-hover:shadow-card-hover`}>
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${stat.iconBg}`}>
+                    <stat.icon className={`w-4 h-4 ${stat.iconColor}`} />
+                  </div>
+                  <ArrowUpRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                </div>
+                <div className="metric-value">{stat.value}</div>
+                <div className="metric-label">{stat.title}</div>
+                <div className={`metric-change ${stat.trend === "up" ? "metric-change-up" : "metric-change-flat"}`}>
+                  {stat.trend === "up" && <ArrowUp className="w-3 h-3" />}
+                  {stat.trend === "down" && <ArrowDown className="w-3 h-3" />}
+                  {stat.change} <span className="font-normal text-slate-400">{stat.note}</span>
                 </div>
               </div>
-              <div className="space-y-0.5">
-                <p className="text-2xl font-bold text-slate-900 tracking-tight">{stat.value}</p>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{stat.title}</p>
-                <p className="text-xs text-slate-400 pt-1">{stat.change}</p>
-              </div>
-            </div>
+            </Link>
           ))}
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Recent campaigns */}
-          <div className="xl:col-span-2 bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">Recent Campaigns</h2>
+        {/* ── Main grid ───────────────────────────────────────── */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+          {/* Recent campaigns — table style */}
+          <div className="xl:col-span-2 inst-panel">
+            <div className="inst-panel-header">
+              <div>
+                <div className="inst-panel-title">Recent Campaigns</div>
+                <div className="inst-panel-subtitle">{campaigns.length} campaign{campaigns.length !== 1 ? "s" : ""} total</div>
+              </div>
               <Link
                 href="/dashboard/campaigns"
-                className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+                className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
               >
                 View all <ArrowUpRight className="w-3.5 h-3.5" />
               </Link>
             </div>
+
             {campaigns.length === 0 ? (
-              <div className="px-6 py-14 text-center">
-                <Megaphone className="w-8 h-8 text-slate-200 mx-auto mb-3" />
-                <p className="text-sm text-slate-400">No campaigns yet.</p>
-                <Link href="/dashboard/campaigns" className="text-xs text-indigo-600 hover:underline mt-1 inline-block">
+              <div className="px-6 py-16 text-center">
+                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
+                  <Megaphone className="w-5 h-5 text-slate-300" />
+                </div>
+                <p className="text-sm font-semibold text-slate-700 mb-1">No campaigns yet</p>
+                <Link href="/dashboard/campaigns" className="text-xs text-indigo-600 hover:underline">
                   Create your first campaign →
                 </Link>
               </div>
             ) : (
-              <div className="divide-y divide-slate-50">
-                {campaigns.map((c) => (
-                  <div key={c.id} className="px-6 py-3.5 flex items-center gap-4 hover:bg-slate-50/60 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">{c.name}</p>
-                      <p className="text-xs text-slate-400 capitalize mt-0.5">
-                        {c.channel.replace("_", " ")} · {formatRelativeDate(c.updated_at)}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold text-slate-800">
-                        {(c.stats as { sent?: number })?.sent?.toLocaleString() ?? 0}
-                        <span className="text-xs font-normal text-slate-400 ml-1">sent</span>
-                      </p>
-                      <Badge
-                        variant={c.status === "active" ? "success" : c.status === "draft" ? "secondary" : "outline"}
-                        className="text-[10px] mt-1"
-                      >
-                        {c.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <table className="inst-table">
+                <thead>
+                  <tr>
+                    <th>Campaign</th>
+                    <th>Channel</th>
+                    <th className="text-right">Sent</th>
+                    <th>Status</th>
+                    <th>Updated</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {campaigns.map((c) => (
+                    <tr key={c.id}>
+                      <td>
+                        <p className="font-medium text-slate-900 text-[13px] truncate max-w-[200px]">{c.name}</p>
+                      </td>
+                      <td>
+                        <span className="text-xs text-slate-500 capitalize">{c.channel.replace("_", " ")}</span>
+                      </td>
+                      <td className="text-right tabular-nums font-semibold text-slate-900">
+                        {(c.stats as { sent?: number })?.sent?.toLocaleString() ?? "0"}
+                      </td>
+                      <td>
+                        <span className={campaignStatusStyle[c.status] ?? "chip chip-slate"}>
+                          {c.status}
+                        </span>
+                      </td>
+                      <td className="text-slate-400 text-xs">{formatRelativeDate(c.updated_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
 
           {/* Right column */}
           <div className="space-y-4">
+
             {/* Customer health */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-card p-5">
-              <h2 className="text-sm font-semibold text-slate-900 mb-4">Customer Health</h2>
-              <div className="space-y-3.5">
+            <div className="inst-panel">
+              <div className="inst-panel-header">
+                <div className="inst-panel-title">Customer Health</div>
+                <span className="text-xs text-slate-400 font-medium tabular-nums">{totalCustomers.toLocaleString()} total</span>
+              </div>
+              <div className="p-5 space-y-4">
                 {segments.map((seg) => (
                   <div key={seg.label}>
                     <div className="flex justify-between items-center text-xs mb-1.5">
                       <span className="text-slate-500 font-medium">{seg.label}</span>
-                      <span className="font-semibold text-slate-700 tabular-nums">{seg.count.toLocaleString()}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400 tabular-nums">{seg.count.toLocaleString()}</span>
+                        <span className="font-semibold text-slate-700 tabular-nums w-9 text-right">{totalCustomers ? Math.round(seg.pct * 100) : 0}%</span>
+                      </div>
                     </div>
                     <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                       <div
@@ -191,9 +239,9 @@ export default async function DashboardPage() {
             </div>
 
             {/* Agent activity */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-slate-900">Agent Activity</h2>
+            <div className="inst-panel">
+              <div className="inst-panel-header">
+                <div className="inst-panel-title">Agent Activity</div>
                 <Sparkles className="w-3.5 h-3.5 text-violet-400" />
               </div>
               <div className="p-3">
@@ -216,10 +264,10 @@ export default async function DashboardPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded capitalize ${agentTypeColors[run.agent_type] ?? "bg-slate-100 text-slate-600"}`}>
+                          <span className={`${agentTypeColors[run.agent_type] ?? "chip chip-slate"} capitalize`}>
                             {run.agent_type}
                           </span>
-                          <span className="text-[10px] text-slate-400">{formatRelativeDate(run.created_at)}</span>
+                          <span className="text-[11px] text-slate-400">{formatRelativeDate(run.created_at)}</span>
                         </div>
                         {run.output_summary && (
                           <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{run.output_summary}</p>
