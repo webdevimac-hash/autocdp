@@ -27,7 +27,6 @@ const SAMPLE_MESSAGES = [
   },
 ];
 
-// Deterministic pseudo-random values per character position
 function charSeed(i: number, code: number) {
   return (i * 7 + code * 3) % 13;
 }
@@ -37,7 +36,6 @@ const TRANSLATE_Y = [-0.6, 0.4, -0.3, 0.7, -0.5, 0.3, -0.8, 0.4, -0.4, 0.6, -0.2
 const SCALES = [0.98, 1.01, 0.99, 1.02, 0.98, 1.01, 0.97, 1.02, 0.99, 1.00, 0.98, 1.01, 0.97];
 const OPACITIES = [0.88, 0.91, 0.86, 0.93, 0.89, 0.92, 0.87, 0.90, 0.88, 0.93, 0.86, 0.91, 0.89];
 
-// Render a single line with character-level variation
 function HandwrittenLine({ text, charOffset = 0 }: { text: string; charOffset?: number }) {
   return (
     <span
@@ -71,16 +69,13 @@ function HandwrittenLine({ text, charOffset = 0 }: { text: string; charOffset?: 
   );
 }
 
-// Render the full body with paragraph and line-break awareness
 function HandwrittenBody({ text }: { text: string }) {
-  // Split into paragraphs on double newlines first
   const paragraphs = text.split(/\n\n+/);
   let charOffset = 0;
 
   return (
     <div className="space-y-4">
       {paragraphs.map((para, pi) => {
-        // Within each paragraph, split on single newlines
         const lines = para.split("\n");
         const paraEl = (
           <div
@@ -94,7 +89,7 @@ function HandwrittenBody({ text }: { text: string }) {
           >
             {lines.map((line, li) => {
               const offset = charOffset;
-              charOffset += line.length + 1; // +1 for the \n
+              charOffset += line.length + 1;
               return (
                 <div key={li}>
                   <HandwrittenLine text={line} charOffset={offset} />
@@ -103,7 +98,7 @@ function HandwrittenBody({ text }: { text: string }) {
             })}
           </div>
         );
-        charOffset += 2; // for the \n\n
+        charOffset += 2;
         return paraEl;
       })}
     </div>
@@ -137,20 +132,20 @@ export function HandwritingPreview() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-800">Handwriting Engine — Preview</h3>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <h3 className="text-[13px] font-semibold text-slate-800">Handwriting Engine — Preview</h3>
+          <p className="text-xs text-slate-400 mt-0.5">
             Character-level variation simulates realistic pen strokes. Each piece is unique per customer.
           </p>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">CSS Demo</span>
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Phase 1</span>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="chip chip-slate">CSS Demo</span>
+          <span className="chip chip-emerald">Phase 1</span>
         </div>
       </div>
 
-      {/* Recipient tabs */}
+      {/* Recipient selector */}
       <div className="flex items-center gap-2">
-        <button onClick={prev} className="w-11 h-11 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors shrink-0">
+        <button onClick={prev} className="w-11 h-11 rounded-[var(--radius)] border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 hover:border-slate-300 active:bg-slate-100 transition-colors shrink-0">
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div className="flex gap-1.5 flex-1 flex-wrap">
@@ -158,24 +153,23 @@ export function HandwritingPreview() {
             <button
               key={i}
               onClick={() => setSelectedIdx(i)}
-              className={`min-h-[44px] px-4 py-2.5 rounded-lg text-xs font-medium transition-all border ${
+              className={`min-h-[44px] px-4 py-2 rounded-[var(--radius)] text-xs font-semibold transition-all border ${
                 selectedIdx === i
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700"
+                  ? "bg-indigo-600 text-white border-indigo-600 shadow-[0_1px_2px_0_rgb(79_70_229/0.22)]"
+                  : "border-slate-200 text-slate-500 hover:border-indigo-200 hover:text-slate-700 bg-white"
               }`}
             >
               {msg.recipient.split(" ")[0]}
             </button>
           ))}
         </div>
-        <button onClick={next} className="w-11 h-11 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors shrink-0">
+        <button onClick={next} className="w-11 h-11 rounded-[var(--radius)] border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 hover:border-slate-300 active:bg-slate-100 transition-colors shrink-0">
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
 
-      {/* Card / Envelope preview */}
+      {/* Paper card */}
       <div className="relative overflow-x-auto">
-        {/* Paper card */}
         <div
           className="rounded-2xl border border-slate-200 bg-white shadow-xl relative overflow-hidden min-w-[300px]"
           style={{
@@ -187,14 +181,12 @@ export function HandwritingPreview() {
             backgroundPositionY: "52px",
           }}
         >
-          {/* Top strip — mimics card header / postmark zone */}
+          {/* Top strip — return address + postmark */}
           <div className="relative flex items-start justify-between px-6 pt-5 pb-4 border-b border-slate-100/80">
-            {/* Return address */}
             <div className="space-y-0.5">
               <SmallHandwritten text="Sunrise Ford" />
               <div><SmallHandwritten text="123 Auto Row, Phoenix AZ 85001" /></div>
             </div>
-            {/* Stamp zone */}
             <div className="flex flex-col items-center gap-1">
               <div className="w-[52px] h-[62px] border-2 border-dashed border-slate-200 rounded-sm flex flex-col items-center justify-center">
                 <span className="text-[8px] font-bold text-slate-300 tracking-widest text-center leading-tight">
@@ -221,30 +213,30 @@ export function HandwritingPreview() {
           </div>
         </div>
 
-        {/* Subtle paper shadow */}
+        {/* Paper shadow */}
         <div className="absolute -bottom-1 left-4 right-4 h-3 rounded-b-2xl bg-slate-200/60 blur-sm -z-10" />
       </div>
 
       {/* Metadata footer */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
-        <div className="space-y-1 text-xs text-slate-500 flex-1">
-          <p><span className="font-medium text-slate-700">Vehicle:</span> {sample.vehicle}</p>
-          <p><span className="font-medium text-slate-700">Format:</span> 6×9 postcard, 100lb uncoated stock</p>
-          <p><span className="font-medium text-slate-700">Fulfillment:</span> PostGrid (robotic pen + USPS First Class)</p>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-white border border-slate-200 rounded-[var(--radius)] shadow-card px-5 py-4">
+        <div className="space-y-1.5 text-xs text-slate-500 flex-1">
+          <p><span className="font-semibold text-slate-700">Vehicle:</span> {sample.vehicle}</p>
+          <p><span className="font-semibold text-slate-700">Format:</span> 6×9 postcard, 100lb uncoated stock</p>
+          <p><span className="font-semibold text-slate-700">Fulfillment:</span> PostGrid (robotic pen + USPS First Class)</p>
         </div>
-        <div className="flex sm:flex-col gap-2">
-          <button className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-white hover:border-slate-300 active:bg-slate-100 transition-all">
+        <div className="flex sm:flex-col gap-2 shrink-0">
+          <button className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2 rounded-[var(--radius)] border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:border-slate-300 active:bg-slate-100 transition-all">
             <RefreshCw className="w-3.5 h-3.5" /> Regenerate
           </button>
-          <button className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-800 active:bg-slate-700 transition-all">
+          <button className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2 rounded-[var(--radius)] bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 active:bg-slate-700 transition-all shadow-[0_1px_2px_0_rgb(15_23_42/0.28)]">
             <Printer className="w-3.5 h-3.5" /> Send to Print
           </button>
         </div>
       </div>
 
       {/* Technical notes */}
-      <div className="bg-slate-900 rounded-xl px-5 py-4">
-        <p className="text-xs font-mono text-slate-500 mb-2">// Handwriting engine — production architecture</p>
+      <div className="bg-slate-900 rounded-[var(--radius)] px-5 py-4">
+        <p className="text-[10px] font-mono text-slate-500 mb-2 uppercase tracking-wider">// Handwriting engine — production architecture</p>
         <pre className="text-xs font-mono text-emerald-400 leading-relaxed whitespace-pre-wrap">{`1. Creative Agent generates personalized copy per customer
 2. Post-processor normalizes spacing, paragraphs, and punctuation
 3. Copy → PostGrid API with custom handwriting font profile

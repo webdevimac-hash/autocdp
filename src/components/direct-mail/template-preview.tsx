@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { buildPreviewQRImageUrl } from "@/lib/qrcode-gen";
 import type { MailTemplateType } from "@/types";
 
@@ -11,10 +10,10 @@ interface TemplatePreviewProps {
   customerName?: string;
   vehicle?: string | null;
   offer?: string | null;
-  qrPreviewUrl?: string;   // override — if not provided, generates from tracking preview URL
+  qrPreviewUrl?: string;
 }
 
-// Character-level transform for handwriting simulation (same technique as handwriting-preview.tsx)
+// Character-level transform for handwriting simulation
 function HandwrittenText({ text }: { text: string }) {
   return (
     <span style={{ fontFamily: "'Caveat', cursive", fontSize: "inherit", lineHeight: "inherit" }}>
@@ -42,12 +41,10 @@ function HandwrittenText({ text }: { text: string }) {
   );
 }
 
-// ── Shared: render content with paragraph + line-break awareness ──
-
 function HandwrittenContent({ text, fontSize = 17, lineHeight = 1.8 }: { text: string; fontSize?: number; lineHeight?: number }) {
   const paragraphs = text.split(/\n\n+/);
   return (
-    <div style={{ fontSize: `${fontSize}px`, lineHeight, color: "#1f2937" }}>
+    <div style={{ fontSize: `${fontSize}px`, lineHeight, color: "#1e293b" }}>
       {paragraphs.map((para, pi) => {
         const lines = para.split("\n");
         return (
@@ -79,7 +76,13 @@ function Postcard6x9Preview({
 }) {
   return (
     <div className="relative" style={{ perspective: "1000px" }}>
-      {/* Front */}
+      {/* Drop shadow layer */}
+      <div
+        className="absolute -bottom-1.5 left-3 right-3 h-4 rounded-b-xl blur-sm -z-10"
+        style={{ background: "rgba(15, 23, 42, 0.10)" }}
+      />
+
+      {/* Card */}
       <div
         className="rounded-xl border border-slate-200 shadow-xl overflow-hidden"
         style={{
@@ -98,10 +101,10 @@ function Postcard6x9Preview({
             fontFamily: "'Inter', sans-serif",
             fontSize: "9px",
             fontWeight: 700,
-            color: "#3b82f6",
-            letterSpacing: "0.08em",
+            color: "#6366F1",
+            letterSpacing: "0.09em",
             textTransform: "uppercase",
-            borderBottom: "1px solid #dbeafe",
+            borderBottom: "1px solid #E0E7FF",
             paddingBottom: "6px",
             marginBottom: "14px",
           }}
@@ -117,13 +120,14 @@ function Postcard6x9Preview({
           <div
             style={{
               marginTop: "12px",
-              padding: "6px 10px",
-              background: "#eff6ff",
-              borderLeft: "3px solid #3b82f6",
-              borderRadius: "3px",
+              padding: "7px 11px",
+              background: "#EEF2FF",
+              borderLeft: "3px solid #6366F1",
+              borderRadius: "4px",
               fontSize: "11px",
-              color: "#1e40af",
+              color: "#3730A3",
               fontFamily: "'Inter', sans-serif",
+              fontWeight: 500,
             }}
           >
             {offer}
@@ -145,19 +149,17 @@ function Postcard6x9Preview({
             alt="Tracking QR"
             width={56}
             height={56}
-            style={{ display: "block", borderRadius: "4px" }}
+            style={{ display: "block", borderRadius: "5px", border: "1px solid #E2E8F0" }}
           />
-          <div style={{ fontSize: "7px", color: "#94a3b8", marginTop: "3px", fontFamily: "'Inter', sans-serif" }}>
-            Scan for offer
+          <div style={{ fontSize: "7px", color: "#94a3b8", marginTop: "3px", fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: "0.04em" }}>
+            SCAN FOR OFFER
           </div>
         </div>
       </div>
 
-      {/* Back side preview — collapsed pill */}
+      {/* Back side badge */}
       <div className="mt-2 text-center">
-        <Badge variant="secondary" className="text-[10px]">
-          ↑ Front · Back has mailing address + postage area
-        </Badge>
+        <span className="chip chip-slate text-[10px]">↑ Front · Back has mailing address + postage area</span>
       </div>
     </div>
   );
@@ -179,7 +181,7 @@ function LetterPreview({
 
   return (
     <div
-      className="rounded-xl border border-gray-200 shadow-xl bg-white overflow-hidden"
+      className="rounded-xl border border-slate-200 shadow-xl bg-white overflow-hidden"
       style={{
         width: "100%",
         maxWidth: templateType === "letter_8.5x11" ? "480px" : "360px",
@@ -194,15 +196,15 @@ function LetterPreview({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "flex-start",
-          borderBottom: "2px solid #2563eb",
+          borderBottom: "2px solid #6366F1",
           paddingBottom: "8px",
           marginBottom: "12px",
         }}
       >
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 700, color: "#1e3a8a" }}>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 700, color: "#1E2937" }}>
           {dealershipName}
         </div>
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", color: "#6b7280", textAlign: "right" }}>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", color: "#94A3B8", textAlign: "right", fontWeight: 500 }}>
           {today}
         </div>
       </div>
@@ -222,7 +224,6 @@ export function TemplatePreview({
   offer,
   qrPreviewUrl: qrPropUrl,
 }: TemplatePreviewProps) {
-  // Use provided URL or fall back to a generic preview URL
   const qrUrl = qrPropUrl ?? buildPreviewQRImageUrl(
     `${typeof window !== "undefined" ? window.location.origin : ""}/track/preview`,
     80
@@ -230,8 +231,14 @@ export function TemplatePreview({
 
   if (!content) {
     return (
-      <div className="flex items-center justify-center h-48 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl">
-        <p className="text-sm text-muted-foreground">Generate copy to preview your mail piece</p>
+      <div className="flex flex-col items-center justify-center h-48 bg-slate-50/60 border-2 border-dashed border-slate-200 rounded-[var(--radius)]">
+        <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center mb-3 shadow-card">
+          <svg className="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <p className="text-[13px] font-semibold text-slate-600">Generate copy to preview your mail piece</p>
+        <p className="text-xs text-slate-400 mt-0.5">AI-personalized content appears here</p>
       </div>
     );
   }
