@@ -1156,3 +1156,32 @@ button, a, [role="button"], input, select, textarea {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px -2px rgba(15,23,42,0.12);
 }
+
+/* ── Hero live badge glow ─────────────────────────────────────── */
+@keyframes hero-live-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(16,185,129,0.07), 0 4px 16px -4px rgba(16,185,129,0.18); }
+  50%       { box-shadow: 0 0 0 6px rgba(16,185,129,0.10), 0 6px 20px -4px rgba(16,185,129,0.28); }
+}
+.hero-live-badge { animation: hero-live-pulse 3s ease-in-out infinite; }
+
+/* ── Floating badges — always on top, no clip ────────────────── */
+.float-badge {
+  position: relative;
+  z-index: 30;
+}
+
+/* ── Stats sub-label ─────────────────────────────────────────── */
+.stat-sub { opacity: 0.5; }
+
+/* ── Mockup: consistent z-index layer ───────────────────────── */
+.mockup-container { position: relative; z-index: 20; }
+.mockup-container > .mockup-ring { z-index: 21; }
+
+/* ── Hero section doesn't clip — only backgrounds clip ──────── */
+.hero-bg-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}

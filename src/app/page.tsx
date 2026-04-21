@@ -207,10 +207,10 @@ const testimonials = [
 ];
 
 const stats = [
-  { value: "18%",  label: "Avg. retention lift",       color: "#059669", arrow: true  },
-  { value: "3×",   label: "Response vs. generic mail",  color: "#4338CA", arrow: true  },
-  { value: "< 2h", label: "Time to first campaign",     color: "#B45309", arrow: false },
-  { value: "0",    label: "Manual steps per send",      color: "#5B21B6", arrow: false },
+  { value: "18%",  label: "Avg. retention lift",       sub: "service lane, 90 days",    color: "#059669", arrow: true  },
+  { value: "3×",   label: "Response vs. generic mail",  sub: "same customer list",       color: "#4338CA", arrow: true  },
+  { value: "< 2h", label: "Time to first campaign",     sub: "DMS connect → first send", color: "#B45309", arrow: false },
+  { value: "0",    label: "Manual steps per send",      sub: "fully automated sends",    color: "#5B21B6", arrow: false },
 ];
 
 const mockAgents = [
@@ -501,38 +501,37 @@ export default function LandingPage() {
       {/* ═══════════════════════════════════════════════════ */}
       {/* HERO                                               */}
       {/* ═══════════════════════════════════════════════════ */}
-      <section className="relative pt-20 pb-16 sm:pt-28 sm:pb-24 px-5 sm:px-8 overflow-hidden">
+      {/* overflow-visible so floating badges aren't clipped; backgrounds contained separately */}
+      <section className="relative pt-20 pb-16 sm:pt-28 sm:pb-24 px-5 sm:px-8">
 
-        {/* Background layers */}
-        <div className="absolute inset-0 hero-grid" style={{ opacity: 0.55 }} />
-
-        {/* Deep indigo radial from top */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 85% 50% at 50% -8%, rgba(99,102,241,0.14), transparent 62%)" }}
-        />
-
-        {/* Right ambient glow */}
-        <div
-          className="absolute -top-32 right-0 w-[700px] h-[600px] rounded-full blur-3xl translate-x-1/3 pointer-events-none"
-          style={{ background: "rgba(99,102,241,0.07)" }}
-        />
-
-        {/* Emerald bottom glow */}
-        <div
-          className="absolute bottom-0 right-1/4 w-[400px] h-[300px] rounded-full blur-3xl pointer-events-none"
-          style={{ background: "rgba(16,185,129,0.05)" }}
-        />
-        <div
-          className="absolute bottom-0 left-0 w-[500px] h-[400px] rounded-full blur-3xl -translate-x-1/3 translate-y-1/3 pointer-events-none"
-          style={{ background: "rgba(16,185,129,0.05)" }}
-        />
-
-        {/* Subtle violet upper-left bloom */}
-        <div
-          className="absolute top-0 -left-32 w-[560px] h-[420px] rounded-full blur-3xl pointer-events-none"
-          style={{ background: "rgba(139,92,246,0.05)" }}
-        />
+        {/* Background layers — isolated overflow-hidden so blobs don't leak */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute inset-0 hero-grid" style={{ opacity: 0.55 }} />
+          {/* Deep indigo radial from top */}
+          <div
+            className="absolute inset-0"
+            style={{ background: "radial-gradient(ellipse 85% 50% at 50% -8%, rgba(99,102,241,0.14), transparent 62%)" }}
+          />
+          {/* Right ambient glow */}
+          <div
+            className="absolute -top-32 right-0 w-[700px] h-[600px] rounded-full blur-3xl translate-x-1/3"
+            style={{ background: "rgba(99,102,241,0.07)" }}
+          />
+          {/* Emerald bottom glows */}
+          <div
+            className="absolute bottom-0 right-1/4 w-[400px] h-[300px] rounded-full blur-3xl"
+            style={{ background: "rgba(16,185,129,0.05)" }}
+          />
+          <div
+            className="absolute bottom-0 left-0 w-[500px] h-[400px] rounded-full blur-3xl -translate-x-1/3 translate-y-1/3"
+            style={{ background: "rgba(16,185,129,0.05)" }}
+          />
+          {/* Violet upper-left bloom */}
+          <div
+            className="absolute top-0 -left-32 w-[560px] h-[420px] rounded-full blur-3xl"
+            style={{ background: "rgba(139,92,246,0.05)" }}
+          />
+        </div>
 
         <div className="relative max-w-7xl mx-auto">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-16 xl:gap-20 items-center">
@@ -542,19 +541,20 @@ export default function LandingPage() {
 
               {/* Live badge */}
               <div
-                className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full mb-7 text-[11px] font-bold uppercase tracking-widest"
+                className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full mb-7 text-[11.5px] font-bold uppercase tracking-widest hero-live-badge"
                 style={{
-                  background: "rgba(16,185,129,0.08)",
-                  border: "1px solid rgba(16,185,129,0.22)",
+                  background: "rgba(16,185,129,0.09)",
+                  border: "1px solid rgba(16,185,129,0.28)",
                   color: "#059669",
-                  boxShadow: "0 0 0 3px rgba(16,185,129,0.06)",
+                  boxShadow: "0 0 0 4px rgba(16,185,129,0.07), 0 4px 16px -4px rgba(16,185,129,0.20)",
                 }}
               >
-                <span className="relative flex h-2 w-2 shrink-0">
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
                 </span>
-                Live · SMS · Email · Direct Mail · All running now
+                Live · SMS · Email · Direct Mail
+                <span className="hidden sm:inline" style={{ color: "rgba(5,150,105,0.60)" }}> · All running now</span>
               </div>
 
               {/* Channel pills */}
@@ -709,7 +709,8 @@ export default function LandingPage() {
             </div>
 
             {/* ── Right: Dashboard mockup ────────────────── */}
-            <div className="relative hidden xl:block stagger-2">
+            {/* pt-8 pb-8 give floating badges at top/bottom room; pr-4 gives right badges room */}
+            <div className="relative hidden xl:block stagger-2 pt-8 pb-8 pr-4">
 
               {/* Ambient glow behind mockup */}
               <div
@@ -1009,8 +1010,8 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                {/* Floating badge: conversions */}
-                <div className="absolute -bottom-6 -left-9 animate-float-delayed">
+                {/* Floating badge: conversions — bottom-left, inside safe zone */}
+                <div className="absolute -bottom-5 left-4 animate-float-delayed" style={{ zIndex: 30 }}>
                   <div className="flex items-center gap-3 px-4 py-3 rounded-2xl float-badge">
                     <div
                       className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
@@ -1025,8 +1026,8 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                {/* Floating badge: QR scan */}
-                <div className="absolute -top-6 -right-7 animate-float-slow">
+                {/* Floating badge: QR scan — top-right, clear of content */}
+                <div className="absolute -top-5 right-6 animate-float-slow" style={{ zIndex: 30 }}>
                   <div className="flex items-center gap-3 px-4 py-3 rounded-2xl float-badge">
                     <div
                       className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
@@ -1041,8 +1042,8 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                {/* Floating badge: mail sent */}
-                <div className="absolute top-[42%] -right-10 animate-float" style={{ animationDelay: "1s" }}>
+                {/* Floating badge: mail sent — right center */}
+                <div className="absolute top-[44%] -right-3 animate-float" style={{ animationDelay: "1s", zIndex: 30 }}>
                   <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl float-badge">
                     <div
                       className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
@@ -1057,8 +1058,8 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                {/* Floating badge: win-back booking */}
-                <div className="absolute top-[18%] -left-10 animate-float" style={{ animationDelay: "2.4s" }}>
+                {/* Floating badge: win-back — left upper, inside gap */}
+                <div className="absolute top-[20%] -left-4 animate-float" style={{ animationDelay: "2.4s", zIndex: 30 }}>
                   <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl float-badge">
                     <div
                       className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
@@ -1169,7 +1170,8 @@ export default function LandingPage() {
                     <ArrowUp className="w-4 h-4 mt-2 shrink-0" style={{ color: s.color }} />
                   )}
                 </div>
-                <div className="text-[12px] font-medium leading-snug" style={{ color: "rgba(255,255,255,0.32)" }}>{s.label}</div>
+                <div className="text-[12px] font-semibold leading-snug mb-1" style={{ color: "rgba(255,255,255,0.38)" }}>{s.label}</div>
+                <div className="text-[10px] font-medium" style={{ color: "rgba(255,255,255,0.18)" }}>{s.sub}</div>
               </div>
             ))}
           </div>
