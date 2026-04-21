@@ -112,7 +112,7 @@ export default function AgentsPage() {
     <>
       <Header title="AI Agents" subtitle="5-agent swarm powering AutoCDP" />
 
-      <main className="flex-1 p-6 space-y-6 max-w-[1400px]">
+      <main className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6 max-w-[1400px]">
 
         {/* Agent cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

@@ -87,7 +87,7 @@ export default async function BillingPage() {
     <>
       <Header title="Billing" subtitle="Subscription & usage-based pricing" userEmail={user?.email} />
 
-      <main className="flex-1 p-6 space-y-6">
+      <main className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Current plan banner */}
         <Card className="border-0 shadow-sm bg-gradient-to-r from-brand-600 to-brand-700 text-white">
           <CardContent className="p-6 flex items-center justify-between">

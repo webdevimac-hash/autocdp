@@ -35,7 +35,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         allDealerships={allDealerships}
         activeDealershipId={activeDealershipId}
       />
-      <div className="flex-1 ml-60 flex flex-col min-h-screen">
+      <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
         <UsageBanner dealershipId={activeDealershipId} />
         {children}
       </div>

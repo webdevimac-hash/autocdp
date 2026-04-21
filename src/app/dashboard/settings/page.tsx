@@ -31,7 +31,7 @@ export default async function SettingsPage() {
     <>
       <Header title="Settings" subtitle="Dealership & account configuration" userEmail={user?.email} />
 
-      <main className="flex-1 p-6 space-y-6 max-w-3xl">
+      <main className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6 max-w-3xl">
         {/* Dealership profile */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3">

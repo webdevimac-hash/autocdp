@@ -81,6 +81,31 @@
 /* ── Smooth scroll ────────────────────────────────────────── */
 html { scroll-behavior: smooth; }
 
+/* ── Mobile base ──────────────────────────────────────────── */
+/* Prevent horizontal overflow on every screen */
+html, body { overflow-x: hidden; }
+
+/* Touch optimization — remove tap highlight, prevent double-tap zoom */
+button, a, [role="button"], input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Safe area padding for iPhone notch / home indicator */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .pb-safe  { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+  .pb-safe-sm { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* Mobile sidebar overlay animation */
+.mobile-nav-overlay {
+  animation: fade-in 0.2s ease-out;
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* ── Utility classes ─────────────────────────────────────── */
 @layer components {
   .stat-value    { @apply text-2xl font-bold text-slate-900 tracking-tight; }

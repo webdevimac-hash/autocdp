@@ -130,7 +130,7 @@ export default async function AnalyticsPage() {
     <>
       <Header title="Analytics" subtitle="Real-time performance across all channels" userEmail={user?.email} />
 
-      <main className="flex-1 p-6 space-y-6 max-w-[1400px]">
+      <main className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6 max-w-[1400px]">
 
         {/* Key metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -154,7 +154,7 @@ export default async function AnalyticsPage() {
             <h2 className="text-sm font-semibold text-slate-900">QR Scans — Last 30 Days</h2>
             <p className="text-xs text-slate-400 mt-0.5">Daily scan counts from live mail pieces</p>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {scans.length === 0 ? (
               <div className="py-8 text-center">
                 <ScanLine className="w-8 h-8 text-slate-200 mx-auto mb-3" />
@@ -163,15 +163,18 @@ export default async function AnalyticsPage() {
               </div>
             ) : (
               <>
-                <div className="flex items-end gap-0.5 h-28">
-                  {scanChartData.map((d) => (
-                    <div
-                      key={d.date}
-                      title={`${d.date}: ${d.count} scans`}
-                      className="flex-1 bg-indigo-500 rounded-sm hover:bg-indigo-600 transition-colors"
-                      style={{ height: `${(d.count / maxScans) * 100}%`, minHeight: d.count > 0 ? "3px" : "1px" }}
-                    />
-                  ))}
+                {/* Scrollable container on very small screens */}
+                <div className="overflow-x-auto">
+                  <div className="flex items-end gap-0.5 h-28 min-w-[280px]">
+                    {scanChartData.map((d) => (
+                      <div
+                        key={d.date}
+                        title={`${d.date}: ${d.count} scans`}
+                        className="flex-1 bg-indigo-500 rounded-sm hover:bg-indigo-600 transition-colors"
+                        style={{ height: `${(d.count / maxScans) * 100}%`, minHeight: d.count > 0 ? "3px" : "1px" }}
+                      />
+                    ))}
+                  </div>
                 </div>
                 <div className="flex justify-between mt-2 text-[10px] text-slate-400">
                   <span>30 days ago</span>
@@ -197,14 +200,14 @@ export default async function AnalyticsPage() {
                       <div className={`w-2 h-2 rounded-full ${ch.color}`} />
                       <span className="text-sm font-medium text-slate-700">{ch.channel}</span>
                     </div>
-                    <span className="text-xs text-slate-400 tabular-nums">
-                      {ch.sent.toLocaleString()} sent
+                    <div className="text-right">
+                      <span className="text-xs text-slate-400 tabular-nums block">{ch.sent.toLocaleString()} sent</span>
                       {ch.sent > 0 && (
-                        <span className="ml-2 text-emerald-600 font-semibold">
+                        <span className="text-[11px] text-emerald-600 font-semibold block">
                           {ch.rate.toFixed(1)}% {ch.rateLabel}
                         </span>
                       )}
-                    </span>
+                    </div>
                   </div>
                   <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div

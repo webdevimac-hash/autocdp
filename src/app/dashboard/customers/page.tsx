@@ -43,7 +43,7 @@ export default async function CustomersPage() {
     <>
       <Header title="Customers" subtitle={`${count ?? 0} total records`} userEmail={user?.email} />
 
-      <main className="flex-1 p-6 space-y-5 max-w-[1400px]">
+      <main className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-5 max-w-[1400px]">
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-3">

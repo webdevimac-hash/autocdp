@@ -6,12 +6,12 @@ import {
   LayoutDashboard, Users, Megaphone, Bot, BarChart3,
   CreditCard, Settings, Car, LogOut, ChevronRight, Mail,
   Upload, Package, Phone, Target, Plug, ChevronDown,
-  Activity, Building2,
+  Activity, Building2, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Dealership } from "@/types";
 import type { DealershipMembership } from "@/lib/dealership";
 
@@ -50,8 +50,21 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId }:
   const router = useRouter();
   const supabase = createClient();
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const hasMultiple = allDealerships.length > 1;
+
+  // Listen for the hamburger trigger dispatched by <Header>
+  useEffect(() => {
+    const handler = () => setMobileOpen(true);
+    window.addEventListener("open-mobile-nav", handler);
+    return () => window.removeEventListener("open-mobile-nav", handler);
+  }, []);
+
+  // Close drawer on route change (navigation completed)
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -61,12 +74,26 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId }:
 
   function handleSwitch(dealershipId: string) {
     if (dealershipId === activeDealershipId) { setSwitcherOpen(false); return; }
-    // Full navigation so the layout server component re-runs with the new cookie
     window.location.href = `/api/switch-dealership?id=${dealershipId}`;
   }
 
-  return (
-    <aside className="sidebar-gradient flex h-screen w-60 flex-col fixed left-0 top-0 z-40">
+  const sidebarContent = (
+    <aside
+      className={cn(
+        "sidebar-gradient flex h-full w-64 flex-col",
+      )}
+    >
+      {/* Mobile close button */}
+      <div className="md:hidden absolute top-3 right-3">
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 text-white/70 hover:bg-white/20 transition-colors"
+          aria-label="Close menu"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
       {/* Logo + dealership name */}
       <div className="border-b border-white/8">
         <div
@@ -133,7 +160,7 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId }:
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all group",
+                "flex items-center gap-3 px-3 py-2.5 md:py-2 rounded-lg text-sm font-medium transition-all group",
                 isActive
                   ? "bg-white/12 text-white"
                   : "text-slate-400 hover:bg-white/8 hover:text-slate-100"
@@ -160,15 +187,47 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId }:
       </nav>
 
       {/* Sign out */}
-      <div className="p-3 border-t border-white/8">
+      <div className="p-3 border-t border-white/8 pb-safe-sm">
         <button
           onClick={handleSignOut}
-          className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-white/8 hover:text-slate-100 transition-all"
+          className="flex w-full items-center gap-3 px-3 py-2.5 md:py-2 rounded-lg text-sm text-slate-400 hover:bg-white/8 hover:text-slate-100 transition-all"
         >
           <LogOut className="w-4 h-4" />
           Sign out
         </button>
       </div>
     </aside>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar — always visible */}
+      <div className="hidden md:block fixed left-0 top-0 h-screen w-64 z-40">
+        {sidebarContent}
+      </div>
+
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <div
+          className="mobile-nav-overlay fixed inset-0 bg-black/60 z-40 md:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mobile drawer */}
+      <div
+        className={cn(
+          "fixed left-0 top-0 h-full w-72 z-50 md:hidden transition-transform duration-300 ease-in-out",
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+        aria-modal="true"
+        role="dialog"
+      >
+        <div className="relative h-full">
+          {sidebarContent}
+        </div>
+      </div>
+    </>
   );
 }

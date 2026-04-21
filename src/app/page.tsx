@@ -202,13 +202,13 @@ export default function LandingPage() {
               </div>
 
               {/* Headline */}
-              <h1 className="text-5xl lg:text-[3.6rem] font-bold text-slate-900 leading-[1.06] tracking-tight mb-6">
+              <h1 className="text-4xl sm:text-5xl lg:text-[3.6rem] font-bold text-slate-900 leading-[1.08] tracking-tight mb-5 sm:mb-6">
                 The CRM that
                 <br />
                 <span className="gradient-text">markets itself.</span>
               </h1>
 
-              <p className="text-xl text-slate-500 leading-relaxed mb-10 max-w-lg">
+              <p className="text-lg sm:text-xl text-slate-500 leading-relaxed mb-8 sm:mb-10 max-w-lg">
                 AutoCDP runs AI agents across your customer data, writes personalized campaigns, and drops physical mail in the mailbox — automatically, after every DMS sync.
               </p>
 
@@ -373,7 +373,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-xs font-semibold mb-5 uppercase tracking-wider">
               Platform Features
             </div>
-            <h2 className="text-4xl font-bold text-slate-900 tracking-tight mb-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight mb-4">
               Everything in one platform
             </h2>
             <p className="text-lg text-slate-500 max-w-xl mx-auto leading-relaxed">
@@ -408,7 +408,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 text-white/70 text-xs font-semibold mb-5 uppercase tracking-wider">
               How It Works
             </div>
-            <h2 className="text-4xl font-bold text-white tracking-tight mb-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-4">
               Connect. Set a goal. Ship.
             </h2>
             <p className="text-slate-400 text-lg max-w-xl mx-auto">
@@ -461,7 +461,7 @@ export default function LandingPage() {
               <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
               Real Results
             </div>
-            <h2 className="text-4xl font-bold text-slate-900 tracking-tight mb-3">
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight mb-3">
               Real results from real dealers
             </h2>
             <p className="text-slate-500 text-lg">Not projections. Actual outcomes from pilot dealerships.</p>
@@ -507,7 +507,7 @@ export default function LandingPage() {
         <div className="absolute inset-0 dark-grid" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
         <div className="relative max-w-2xl mx-auto text-center">
-          <h2 className="text-4xl font-bold text-white tracking-tight mb-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-4">
             Ready to run your first AI campaign?
           </h2>
           <p className="text-lg text-slate-400 mb-10 leading-relaxed">
