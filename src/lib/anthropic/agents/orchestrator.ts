@@ -29,6 +29,7 @@ import {
   type SendEmailToolResult,
 } from "../tools/send-email";
 import { createServiceClient } from "@/lib/supabase/server";
+import { filterAndRankCustomers } from "@/lib/scoring";
 import type {
   AgentContext, Customer, Visit, CampaignChannel,
   SendDirectMailToolInput, SendDirectMailToolResult,
@@ -273,10 +274,18 @@ export async function runDirectMailOrchestrator(
 
     if (!customers?.length) throw new Error("No valid customers found");
 
+    // Deterministic pre-filter: skip low-signal customers before agent calls
+    const { customers: filteredCustomers, filtered: preFiltered } =
+      filterAndRankCustomers(customers as Customer[]);
+    if (preFiltered > 0) {
+      console.info(`[direct-mail-orchestrator] Pre-filter removed ${preFiltered} low-score customers`);
+    }
+    if (!filteredCustomers.length) throw new Error("All selected customers scored below threshold");
+
     const { data: visits } = await supabase
       .from("visits")
       .select("*")
-      .in("customer_id", input.customerIds)
+      .in("customer_id", filteredCustomers.map((c) => c.id))
       .eq("dealership_id", input.context.dealershipId)
       .order("visit_date", { ascending: false });
 
@@ -290,7 +299,7 @@ export async function runDirectMailOrchestrator(
     const results: DirectMailResult[] = [];
 
     // Process each customer — each gets its own tool-use conversation
-    for (const customer of customers as Customer[]) {
+    for (const customer of filteredCustomers) {
       const lastVisit = visitsByCustomer.get(customer.id);
       const visitContext = lastVisit
         ? `Last visit: ${lastVisit.visit_date?.slice(0, 10)} | Vehicle: ${[lastVisit.year, lastVisit.make, lastVisit.model].filter(Boolean).join(" ")} | Mileage: ${lastVisit.mileage?.toLocaleString() ?? "unknown"} | Service: ${lastVisit.service_type ?? "general"} | Notes: ${lastVisit.service_notes ?? "none"}`
@@ -585,10 +594,18 @@ export async function runOmnichannelOrchestrator(
 
     if (!customers?.length) throw new Error("No valid customers found");
 
+    // Deterministic pre-filter: skip low-signal customers before agent calls
+    const { customers: filteredCustomers, filtered: preFiltered } =
+      filterAndRankCustomers(customers as Customer[]);
+    if (preFiltered > 0) {
+      console.info(`[omnichannel-orchestrator] Pre-filter removed ${preFiltered} low-score customers`);
+    }
+    if (!filteredCustomers.length) throw new Error("All selected customers scored below threshold");
+
     const { data: visits } = await supabase
       .from("visits")
       .select("*")
-      .in("customer_id", input.customerIds)
+      .in("customer_id", filteredCustomers.map((c) => c.id))
       .eq("dealership_id", input.context.dealershipId)
       .order("visit_date", { ascending: false });
 
@@ -612,7 +629,7 @@ export async function runOmnichannelOrchestrator(
 
     const results: OmnichannelResult[] = [];
 
-    for (const customer of customers as Customer[]) {
+    for (const customer of filteredCustomers) {
       const lastVisit = visitsByCustomer.get(customer.id);
       const visitContext = lastVisit
         ? `Last visit: ${lastVisit.visit_date?.slice(0, 10)} | Vehicle: ${[lastVisit.year, lastVisit.make, lastVisit.model].filter(Boolean).join(" ")} | Service: ${lastVisit.service_type ?? "general"}`
