@@ -783,3 +783,25 @@ button, a, [role="button"], input, select, textarea {
   transform: translateY(-1px);
   box-shadow: 0 3px 8px -2px rgba(15,23,42,0.10);
 }
+
+/* ── Trust pill shimmer on hover ─────────────────────────────── */
+@keyframes trust-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.trust-pill-lg:hover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: trust-shimmer 0.7s ease forwards;
+  pointer-events: none;
+}
+.trust-pill-lg { position: relative; overflow: hidden; }
+
+/* ── Hero feature card agent panel ──────────────────────────── */
+.feature-hero-panel {
+  background: linear-gradient(160deg, #0B1526 0%, #111E35 100%);
+}

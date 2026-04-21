@@ -568,20 +568,15 @@ export default function LandingPage() {
                               key={s.label}
                               className="rounded-lg p-2 relative overflow-hidden"
                               style={{
-                                background: "#FFFFFF",
-                                border: "1px solid rgba(15,23,42,0.08)",
-                                boxShadow: "0 1px 2px 0 rgba(15,23,42,0.04)",
+                                background: `linear-gradient(145deg, #FFFFFF 0%, rgba(248,250,252,0.9) 100%)`,
+                                border: `1px solid rgba(15,23,42,0.08)`,
+                                borderTop: `2px solid ${s.leftBorder}`,
+                                boxShadow: "0 2px 6px -1px rgba(15,23,42,0.07)",
                               }}
                             >
-                              <div
-                                className="absolute left-0 top-2 bottom-2 w-[2.5px] rounded-r"
-                                style={{ background: s.leftBorder }}
-                              />
-                              <p className="text-[7px] font-bold uppercase tracking-wider pl-1" style={{ color: "#94A3B8" }}>{s.label}</p>
-                              <p className="text-[13px] font-black mt-0.5 tabular-nums pl-1" style={{ color: s.color }}>{s.value}</p>
-                              <div className="pl-1">
-                                <MiniSpark bars={s.spark} color={s.leftBorder} />
-                              </div>
+                              <p className="text-[7px] font-bold uppercase tracking-wider" style={{ color: "#94A3B8" }}>{s.label}</p>
+                              <p className="text-[13px] font-black mt-0.5 tabular-nums" style={{ color: s.color }}>{s.value}</p>
+                              <MiniSpark bars={s.spark} color={s.leftBorder} />
                             </div>
                           ))}
                         </div>
@@ -875,25 +870,103 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {features.map((f, i) => (
+
+            {/* ── Hero card: AI Swarm — full width ─────────────────── */}
+            {(() => {
+              const f = features[0];
+              return (
+                <div
+                  key={f.title}
+                  className={`feature-card feature-card-premium ${f.glowClass} group col-span-1 sm:col-span-2 lg:col-span-3 rounded-2xl border border-slate-200 bg-white shadow-card stagger-1 flex flex-col lg:flex-row overflow-hidden`}
+                >
+                  <div className="absolute top-0 left-0 right-0 h-[2.5px] rounded-t-2xl" style={{ background: f.topColor }} />
+
+                  {/* Left: content */}
+                  <div className="p-7 lg:p-9 flex flex-col justify-between flex-1">
+                    <div>
+                      <div
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 ${f.iconBgClass} group-hover:scale-110 transition-transform duration-200`}
+                        style={{ boxShadow: "0 2px 6px -2px rgba(0,0,0,0.08)" }}
+                      >
+                        <f.icon className={`w-5 h-5 ${f.iconColor}`} />
+                      </div>
+                      <h3 className="font-black text-[19px] mb-2 tracking-tight" style={{ color: "#0F172A" }}>{f.title}</h3>
+                      <p className="text-[14px] leading-relaxed max-w-sm" style={{ color: "#64748B" }}>{f.desc}</p>
+                    </div>
+                    <div
+                      className="flex items-baseline gap-2 pt-5 mt-5"
+                      style={{ borderTop: "1px solid rgba(15,23,42,0.06)" }}
+                    >
+                      <span className="text-[28px] font-black tracking-tight" style={{ color: f.statColor }}>{f.stat}</span>
+                      <span className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: "#94A3B8" }}>{f.statLabel}</span>
+                    </div>
+                  </div>
+
+                  {/* Right: dark mini-agent panel */}
+                  <div
+                    className="lg:w-[340px] shrink-0 p-6 flex flex-col justify-between"
+                    style={{ background: "#0B1526", borderLeft: "1px solid rgba(255,255,255,0.06)" }}
+                  >
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.12em] mb-4" style={{ color: "rgba(255,255,255,0.28)" }}>
+                        Live agent status
+                      </p>
+                      <div className="space-y-2.5">
+                        {mockAgents.map((a) => (
+                          <div
+                            key={a.name}
+                            className="flex items-center justify-between px-3.5 py-2.5 rounded-xl"
+                            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className={`w-2 h-2 rounded-full shrink-0 ${a.dot}`} style={a.dotStyle} />
+                              <span className="text-[12px] font-semibold" style={{ color: "rgba(255,255,255,0.72)" }}>{a.name}</span>
+                            </div>
+                            <span
+                              className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md"
+                              style={
+                                a.state === "done"
+                                  ? { background: "rgba(16,185,129,0.12)", color: "#34D399" }
+                                  : a.state === "running"
+                                  ? { background: "rgba(99,102,241,0.14)", color: "#818CF8" }
+                                  : { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.28)" }
+                              }
+                            >
+                              {a.state}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div
+                      className="mt-5 pt-4"
+                      style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+                    >
+                      <p className="text-[10px] font-bold uppercase tracking-[0.12em] mb-2" style={{ color: "rgba(255,255,255,0.28)" }}>
+                        Next campaign fires in
+                      </p>
+                      <p className="text-[22px] font-black tabular-nums" style={{ color: "#818CF8" }}>4h 12m</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ── Remaining 5 feature cards ─────────────────────────── */}
+            {features.slice(1).map((f, i) => (
               <div
                 key={f.title}
-                className={`feature-card feature-card-premium ${f.glowClass} group p-7 rounded-2xl border border-slate-200 bg-white shadow-card stagger-${Math.min(i + 1, 6)}`}
+                className={`feature-card feature-card-premium ${f.glowClass} group p-7 rounded-2xl border border-slate-200 bg-white shadow-card stagger-${Math.min(i + 2, 6)}`}
               >
-                {/* Colored top accent */}
                 <div className="absolute top-0 left-0 right-0 h-[2.5px] rounded-t-2xl" style={{ background: f.topColor }} />
-
-                {/* Gradient icon background */}
                 <div
                   className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 ${f.iconBgClass} group-hover:scale-110 transition-transform duration-200`}
                   style={{ boxShadow: "0 2px 6px -2px rgba(0,0,0,0.08)" }}
                 >
                   <f.icon className={`w-5 h-5 ${f.iconColor}`} />
                 </div>
-
                 <h3 className="font-bold text-[15px] mb-2 tracking-tight" style={{ color: "#0F172A" }}>{f.title}</h3>
                 <p className="text-[13px] leading-relaxed mb-5" style={{ color: "#64748B" }}>{f.desc}</p>
-
                 <div
                   className="flex items-baseline gap-2 pt-4"
                   style={{ borderTop: "1px solid rgba(15,23,42,0.06)" }}
@@ -1073,6 +1146,16 @@ export default function LandingPage() {
                   className="absolute top-4 right-6 text-[80px] font-black leading-none pointer-events-none select-none"
                   style={{ color: "rgba(99,102,241,0.13)", fontFamily: "Georgia, 'Times New Roman', serif" }}
                 >&ldquo;</div>
+
+                {/* Verified chip */}
+                <div className="mb-4 relative">
+                  <div
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9.5px] font-bold uppercase tracking-wider"
+                    style={{ background: "rgba(16,185,129,0.10)", border: "1px solid rgba(16,185,129,0.22)", color: "#34D399" }}
+                  >
+                    <CheckCircle2 className="w-3 h-3" /> Verified pilot dealer
+                  </div>
+                </div>
 
                 {/* Stars + stat badge */}
                 <div className="flex items-start justify-between mb-5 relative">
