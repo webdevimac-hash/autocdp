@@ -11,17 +11,18 @@ import {
 } from "lucide-react";
 
 // ── Mini sparkline ─────────────────────────────────────────────
-function MiniSpark({ bars, color }: { bars: number[]; color: string }) {
+function MiniSpark({ bars, color, animKey = 0 }: { bars: number[]; color: string; animKey?: number }) {
   return (
     <div className="flex items-end gap-px" style={{ height: 13, marginTop: 4 }}>
       {bars.map((h, i) => (
         <div
-          key={i}
-          className="flex-1 rounded-sm"
+          key={`${animKey}-${i}`}
+          className="flex-1 rounded-sm spark-bar"
           style={{
             height: `${h}%`,
             background: color,
             opacity: 0.28 + (i / (bars.length - 1)) * 0.72,
+            animationDelay: `${i * 0.06}s`,
           }}
         />
       ))}
@@ -220,6 +221,27 @@ const mockStats = [
   { label: "Revenue",     value: "$84k",  leftBorder: "#F59E0B", color: "#92400E", spark: [44, 53, 61, 57, 69, 75, 88] },
 ];
 
+const MOCK_STAT_CYCLES = [
+  [
+    { label: "Mail Sent",  value: "1,847", leftBorder: "#0EA5E9", color: "#0284C7", spark: [38, 52, 45, 63, 58, 70, 84] },
+    { label: "SMS Sent",   value: "892",   leftBorder: "#8B5CF6", color: "#6D28D9", spark: [45, 58, 52, 67, 71, 79, 88] },
+    { label: "Email Open", value: "41%",   leftBorder: "#10B981", color: "#065F46", spark: [55, 62, 58, 68, 72, 78, 83] },
+    { label: "Revenue",    value: "$84k",  leftBorder: "#F59E0B", color: "#92400E", spark: [44, 53, 61, 57, 69, 75, 88] },
+  ],
+  [
+    { label: "Mail Sent",  value: "2,013", leftBorder: "#0EA5E9", color: "#0284C7", spark: [52, 45, 63, 58, 70, 78, 91] },
+    { label: "SMS Sent",   value: "1,047", leftBorder: "#8B5CF6", color: "#6D28D9", spark: [58, 52, 67, 71, 79, 85, 92] },
+    { label: "Email Open", value: "43%",   leftBorder: "#10B981", color: "#065F46", spark: [62, 58, 68, 72, 78, 81, 87] },
+    { label: "Revenue",    value: "$91k",  leftBorder: "#F59E0B", color: "#92400E", spark: [53, 61, 57, 69, 75, 82, 94] },
+  ],
+  [
+    { label: "Mail Sent",  value: "1,624", leftBorder: "#0EA5E9", color: "#0284C7", spark: [45, 38, 55, 48, 65, 72, 80] },
+    { label: "SMS Sent",   value: "743",   leftBorder: "#8B5CF6", color: "#6D28D9", spark: [38, 50, 45, 60, 65, 74, 83] },
+    { label: "Email Open", value: "39%",   leftBorder: "#10B981", color: "#065F46", spark: [48, 54, 50, 62, 68, 75, 80] },
+    { label: "Revenue",    value: "$76k",  leftBorder: "#F59E0B", color: "#92400E", spark: [40, 47, 55, 51, 63, 71, 84] },
+  ],
+];
+
 const mockCampaigns = [
   { name: "Win-back SMS · Q2",      pct: 84, sent: "892",   dotColor: "#8B5CF6" },
   { name: "Service Email — May",    pct: 61, sent: "1,243", dotColor: "#10B981" },
@@ -289,6 +311,7 @@ export default function LandingPage() {
   const [agentIdx, setAgentIdx] = useState(0);
   const [tickerIdx, setTickerIdx] = useState(0);
   const [tickerKey, setTickerKey] = useState(0);
+  const [statsIdx, setStatsIdx] = useState(0);
   const [countdown, setCountdown] = useState({ d: 9, h: 14, m: 33 });
   const [nextCampaign, setNextCampaign] = useState({ h: 4, m: 12, s: 7 });
 
@@ -297,6 +320,7 @@ export default function LandingPage() {
     const tId = setInterval(() => {
       setTickerIdx(i => (i + 1) % TICKER_EVENTS.length);
       setTickerKey(k => k + 1);
+      setStatsIdx(i => (i + 1) % MOCK_STAT_CYCLES.length);
     }, 4000);
     return () => { clearInterval(aId); clearInterval(tId); };
   }, []);
@@ -329,6 +353,7 @@ export default function LandingPage() {
 
   const liveAgents = AGENT_CYCLES[agentIdx];
   const liveTicker = TICKER_EVENTS[tickerIdx];
+  const liveStats  = MOCK_STAT_CYCLES[statsIdx];
 
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
@@ -340,8 +365,8 @@ export default function LandingPage() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
           </span>
-          <span className="text-white/50">Now live:</span>
-          <span className="text-white/80">SMS + Email + Direct Mail — one platform, all channels</span>
+          <span className="text-white/50">Pilot results:</span>
+          <span className="text-white/80">Dealers average <strong className="text-emerald-400 font-bold">+18% service retention</strong> in 90 days — <span className="text-white/60 font-normal">3 channels, zero extra vendors</span></span>
           <Link href="/signup" className="hidden sm:inline-flex items-center gap-1 font-semibold text-emerald-400 hover:text-emerald-300 transition-colors ml-0.5">
             Get access <ArrowRight className="w-3 h-3" />
           </Link>
@@ -497,9 +522,9 @@ export default function LandingPage() {
                 className="text-[2.75rem] sm:text-[3.4rem] xl:text-[3.85rem] font-black leading-[1.04] tracking-[-0.034em] mb-6"
                 style={{ color: "#0F172A" }}
               >
-                SMS. Email. Direct mail.
+                Turn your DMS data into
                 <br />
-                <span className="gradient-text">One AI platform.</span>
+                <span className="gradient-text">service appointments.</span>
               </h1>
 
               <p className="text-[17px] sm:text-[18px] leading-[1.68] mb-8 max-w-lg" style={{ color: "#64748B" }}>
@@ -764,10 +789,10 @@ export default function LandingPage() {
 
                         {/* Stat cards with sparklines */}
                         <div className="grid grid-cols-4 gap-1.5">
-                          {mockStats.map((s) => (
+                          {liveStats.map((s) => (
                             <div
-                              key={s.label}
-                              className="rounded-lg p-2 relative overflow-hidden"
+                              key={`${tickerKey}-${s.label}`}
+                              className="rounded-lg p-2 relative overflow-hidden stat-card-flash"
                               style={{
                                 background: `linear-gradient(145deg, #FFFFFF 0%, rgba(248,250,252,0.9) 100%)`,
                                 border: `1px solid rgba(15,23,42,0.08)`,
@@ -777,7 +802,7 @@ export default function LandingPage() {
                             >
                               <p className="text-[7px] font-bold uppercase tracking-wider" style={{ color: "#94A3B8" }}>{s.label}</p>
                               <p className="text-[13px] font-black mt-0.5 tabular-nums" style={{ color: s.color }}>{s.value}</p>
-                              <MiniSpark bars={s.spark} color={s.leftBorder} />
+                              <MiniSpark bars={s.spark} color={s.leftBorder} animKey={tickerKey} />
                             </div>
                           ))}
                         </div>
@@ -973,6 +998,22 @@ export default function LandingPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Floating badge: win-back booking */}
+                <div className="absolute top-[18%] -left-10 animate-float" style={{ animationDelay: "2.4s" }}>
+                  <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl float-badge">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: "rgba(16,185,129,0.10)", border: "1px solid rgba(16,185,129,0.22)" }}
+                    >
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-medium" style={{ color: "#94A3B8" }}>Win-back SMS</p>
+                      <p className="text-[11px] font-bold" style={{ color: "#059669" }}>Booked: David K. ✓</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1061,8 +1102,8 @@ export default function LandingPage() {
                 />
                 <div className="flex items-start justify-center gap-1.5 mb-2">
                   <div
-                    className={`text-[2.8rem] sm:text-[3.2rem] font-black tracking-tight leading-none stat-pop stat-pop-${i + 1}`}
-                    style={{ color: s.color, filter: `drop-shadow(0 0 20px ${s.color}55)` }}
+                    className={`text-[2.8rem] sm:text-[3.2rem] font-black tracking-tight leading-none stat-pop stat-pop-${i + 1} stat-glow`}
+                    style={{ color: s.color }}
                   >
                     {s.value}
                   </div>
