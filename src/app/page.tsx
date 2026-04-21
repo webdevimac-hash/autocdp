@@ -534,7 +534,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white overflow-x-hidden">
 
       {/* ── Announcement bar ──────────────────────────────── */}
-      <div className="relative py-2.5 px-4 text-center overflow-hidden" style={{ background: "#060D18" }}>
+      <div className="relative py-2.5 px-4 text-center overflow-hidden" style={{ background: "linear-gradient(90deg, #060D18 0%, #0D1526 40%, #060D18 100%)" }}>
         <div key={`progress-${announcementKey}`} className="announcement-progress" />
         <div key={announcementKey} className="announcement-cycle flex items-center justify-center gap-2.5 text-xs font-medium">
           <span className="relative flex h-1.5 w-1.5 shrink-0">
@@ -754,17 +754,18 @@ export default function LandingPage() {
               </h1>
 
               <p className="text-[17px] sm:text-[18px] leading-[1.68] mb-8 max-w-lg" style={{ color: "#64748B" }}>
-                Five AI agents watch your DMS around the clock — instantly writing and sending{" "}
+                Stop paying three separate vendors for mail, SMS, and email that never talk to each other.
+                Five AI agents watch your DMS and instantly fire{" "}
                 <span style={{ color: "#334155", fontWeight: 600 }}>personalized SMS, email, and QR-tracked direct mail</span>{" "}
-                the moment a service trigger fires.{" "}
-                <span style={{ color: "#334155", fontWeight: 600 }}>Three channels. Zero manual steps. Zero extra vendors.</span>
+                in one automated swarm.{" "}
+                <span style={{ color: "#334155", fontWeight: 600 }}>One platform. Zero manual steps. Live in under 2 hours.</span>
               </p>
 
               {/* CTA row */}
               <div className="flex flex-col sm:flex-row gap-3 mb-7">
                 <Link
                   href="/signup"
-                  className="btn-press btn-beacon inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-white font-semibold text-[15px] transition-all"
+                  className="btn-press btn-beacon btn-shimmer inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-white font-semibold text-[15px] transition-all"
                   style={{
                     background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)",
                     boxShadow: "0 8px 28px -4px rgba(79,70,229,0.55), inset 0 1px 0 rgba(255,255,255,0.12)",
@@ -810,7 +811,7 @@ export default function LandingPage() {
                       boxShadow: "0 2px 8px rgba(15,23,42,0.06)",
                     }}
                   >
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: t.bg, border: `1px solid ${t.color}22` }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: t.bg, border: `1px solid ${t.color}44`, boxShadow: `0 2px 8px -2px ${t.color}22` }}>
                       <t.icon className="w-4 h-4" style={{ color: t.color }} />
                     </div>
                     <div>
@@ -824,17 +825,18 @@ export default function LandingPage() {
               {/* Mobile-only live stats preview (mockup hidden on mobile) */}
               <div className="xl:hidden grid grid-cols-2 gap-2 mb-7">
                 {[
-                  { value: "1,847", label: "Mail sent today",  color: "#0EA5E9", bg: "rgba(14,165,233,0.07)" },
-                  { value: "892",   label: "SMS delivered",    color: "#8B5CF6", bg: "rgba(139,92,246,0.07)" },
-                  { value: "41%",   label: "Email open rate",  color: "#10B981", bg: "rgba(16,185,129,0.07)" },
-                  { value: "$84k",  label: "Rev. attributed",  color: "#F59E0B", bg: "rgba(245,158,11,0.07)" },
+                  { value: "1,847", label: "Mail sent today",  color: "#0EA5E9", bg: "rgba(14,165,233,0.07)", border: "rgba(14,165,233,0.15)", icon: Mail },
+                  { value: "892",   label: "SMS delivered",    color: "#8B5CF6", bg: "rgba(139,92,246,0.07)", border: "rgba(139,92,246,0.15)", icon: MessageSquare },
+                  { value: "41%",   label: "Email open rate",  color: "#10B981", bg: "rgba(16,185,129,0.07)", border: "rgba(16,185,129,0.15)", icon: AtSign },
+                  { value: "$84k",  label: "Rev. attributed",  color: "#F59E0B", bg: "rgba(245,158,11,0.07)", border: "rgba(245,158,11,0.15)", icon: TrendingUp },
                 ].map((s) => (
                   <div
                     key={s.label}
-                    className="rounded-xl p-3 text-center"
-                    style={{ background: s.bg, border: "1px solid rgba(15,23,42,0.06)" }}
+                    className="rounded-xl p-3.5 text-center"
+                    style={{ background: s.bg, border: `1px solid ${s.border}` }}
                   >
-                    <p className="text-[20px] font-black tabular-nums leading-none mb-0.5" style={{ color: s.color }}>{s.value}</p>
+                    <s.icon className="w-4 h-4 mx-auto mb-1.5" style={{ color: s.color, opacity: 0.7 }} />
+                    <p className="text-[22px] font-black tabular-nums leading-none mb-0.5" style={{ color: s.color }}>{s.value}</p>
                     <p className="text-[9px] font-semibold leading-tight" style={{ color: "#94A3B8" }}>{s.label}</p>
                   </div>
                 ))}
@@ -1005,6 +1007,10 @@ export default function LandingPage() {
                           <div className="flex items-center gap-1 h-5 px-2 rounded-md" style={{ background: "rgba(16,185,129,0.09)", border: "1px solid rgba(16,185,129,0.20)" }}>
                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" style={{ boxShadow: "0 0 4px rgba(16,185,129,0.60)" }} />
                             <span className="text-[7px] font-bold" style={{ color: "#059669" }}>DMS synced</span>
+                          </div>
+                          <div className="flex items-center gap-1 h-5 px-2 rounded-md" style={{ background: "rgba(99,102,241,0.09)", border: "1px solid rgba(99,102,241,0.22)" }}>
+                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                            <span className="text-[7px] font-bold" style={{ color: "#6366F1" }}>3 live</span>
                           </div>
                           <div
                             className="flex items-center gap-1.5 h-5 px-2 rounded-md"
@@ -1412,7 +1418,7 @@ export default function LandingPage() {
                     <div>
                       <div
                         className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 ${f.iconBgClass} group-hover:scale-110 transition-transform duration-200`}
-                        style={{ boxShadow: "0 2px 6px -2px rgba(0,0,0,0.08)" }}
+                        style={{ boxShadow: `0 4px 14px -4px ${f.topColor}55` }}
                       >
                         <f.icon className={`w-5 h-5 ${f.iconColor}`} />
                       </div>
@@ -1511,7 +1517,7 @@ export default function LandingPage() {
 
                 <div
                   className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 ${f.iconBgClass} group-hover:scale-110 transition-transform duration-200`}
-                  style={{ boxShadow: "0 2px 6px -2px rgba(0,0,0,0.08)" }}
+                  style={{ boxShadow: `0 4px 14px -4px ${f.topColor}55` }}
                 >
                   <f.icon className={`w-5 h-5 ${f.iconColor}`} />
                 </div>
@@ -1714,8 +1720,8 @@ export default function LandingPage() {
               >
                 {/* Decorative large quote mark — color-matched */}
                 <div
-                  className="absolute top-4 right-6 text-[80px] font-black leading-none pointer-events-none select-none"
-                  style={{ color: `${t.statColor}22`, fontFamily: "Georgia, 'Times New Roman', serif" }}
+                  className="absolute top-3 right-5 text-[100px] font-black leading-none pointer-events-none select-none testimonial-quote-mark"
+                  style={{ color: `${t.statColor}30`, fontFamily: "Georgia, 'Times New Roman', serif", lineHeight: 0.85 }}
                 >&ldquo;</div>
 
                 {/* Verified chip */}
@@ -2160,7 +2166,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
             <Link
               href="/signup"
-              className="btn-press w-full sm:w-auto inline-flex items-center justify-center gap-2 px-9 py-4 rounded-xl text-white font-bold text-[15px] transition-all"
+              className="btn-press btn-shimmer w-full sm:w-auto inline-flex items-center justify-center gap-2 px-9 py-4 rounded-xl text-white font-bold text-[15px] transition-all"
               style={{
                 background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)",
                 boxShadow: "0 0 0 4px rgba(99,102,241,0.18), 0 12px 40px -8px rgba(79,70,229,0.70), inset 0 1px 0 rgba(255,255,255,0.12)",
