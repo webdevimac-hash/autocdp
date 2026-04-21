@@ -7,7 +7,7 @@ import {
   CheckCircle, ArrowRight, Star, Cpu, Target, Database,
   Sparkles, ArrowUpRight, CheckCircle2,
   Megaphone, ScanLine, ArrowUp, Play,
-  MessageSquare, BarChart2, AtSign,
+  MessageSquare, BarChart2, AtSign, Menu, X,
 } from "lucide-react";
 
 // ── Mini sparkline ─────────────────────────────────────────────
@@ -315,6 +315,7 @@ const integrations = [
 // ── Page ──────────────────────────────────────────────────────
 
 export default function LandingPage() {
+  const [navOpen, setNavOpen] = useState(false);
   const [agentIdx, setAgentIdx] = useState(0);
   const [tickerIdx, setTickerIdx] = useState(0);
   const [tickerKey, setTickerKey] = useState(0);
@@ -373,7 +374,7 @@ export default function LandingPage() {
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
           </span>
           <span className="text-white/50">Pilot results:</span>
-          <span className="text-white/80">Dealers average <strong className="text-emerald-400 font-bold">+18% service retention</strong> in 90 days — <span className="text-white/60 font-normal">3 channels, zero extra vendors</span></span>
+          <span className="text-white/80">Dealers average <strong className="announcement-highlight font-bold">+18% service retention</strong> in 90 days — <span className="text-white/60 font-normal">SMS + email + direct mail, zero extra vendors</span></span>
           <Link href="/signup" className="hidden sm:inline-flex items-center gap-1 font-semibold text-emerald-400 hover:text-emerald-300 transition-colors ml-0.5">
             Get access <ArrowRight className="w-3 h-3" />
           </Link>
@@ -382,7 +383,7 @@ export default function LandingPage() {
 
       {/* ── Nav ───────────────────────────────────────────── */}
       <nav
-        className="sticky top-0 z-50"
+        className="sticky top-0 z-50 relative"
         style={{
           background: "rgba(255,255,255,0.92)",
           backdropFilter: "blur(14px) saturate(180%)",
@@ -436,7 +437,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/signup"
-              className="btn-press inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-[13px] font-semibold transition-all"
+              className="btn-press hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-[13px] font-semibold transition-all"
               style={{
                 background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)",
                 boxShadow: "0 1px 3px 0 rgba(79,70,229,0.30), inset 0 1px 0 rgba(255,255,255,0.10)",
@@ -444,8 +445,57 @@ export default function LandingPage() {
             >
               Get started <ArrowRight className="w-3.5 h-3.5" />
             </Link>
+            {/* Mobile hamburger */}
+            <button
+              className="sm:hidden w-9 h-9 flex items-center justify-center rounded-lg transition-colors"
+              style={{ color: "#475569", background: navOpen ? "#F1F5F9" : "transparent" }}
+              onClick={() => setNavOpen(o => !o)}
+              aria-label={navOpen ? "Close menu" : "Open menu"}
+            >
+              {navOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile dropdown menu */}
+        {navOpen && (
+          <div className="nav-mobile-menu sm:hidden">
+            <div className="flex flex-col gap-1 mb-4">
+              {["Features", "How it works", "Results"].map((item) => (
+                <a
+                  key={item}
+                  href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
+                  className="px-3 py-3 text-[14px] font-semibold rounded-lg transition-colors"
+                  style={{ color: "#334155" }}
+                  onClick={() => setNavOpen(false)}
+                >
+                  {item}
+                </a>
+              ))}
+            </div>
+            <div className="flex flex-col gap-2 pt-3" style={{ borderTop: "1px solid rgba(15,23,42,0.07)" }}>
+              <Link
+                href="/login"
+                className="px-3 py-3 text-[14px] font-semibold rounded-lg text-center transition-colors"
+                style={{ color: "#475569", background: "#F8FAFC", border: "1px solid rgba(15,23,42,0.08)" }}
+                onClick={() => setNavOpen(false)}
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/signup"
+                className="px-3 py-3 text-[14px] font-bold rounded-lg text-center text-white transition-all"
+                style={{
+                  background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)",
+                  boxShadow: "0 4px 16px -4px rgba(79,70,229,0.45)",
+                }}
+                onClick={() => setNavOpen(false)}
+              >
+                Get started — free
+              </Link>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* ═══════════════════════════════════════════════════ */}
@@ -529,17 +579,16 @@ export default function LandingPage() {
                 className="text-[2.75rem] sm:text-[3.4rem] xl:text-[3.85rem] font-black leading-[1.04] tracking-[-0.034em] mb-6"
                 style={{ color: "#0F172A" }}
               >
-                Turn your DMS data into
+                Your DMS fires the trigger.
                 <br />
-                <span className="gradient-text">service appointments.</span>
+                <span className="gradient-text">We fire the campaign.</span>
               </h1>
 
               <p className="text-[17px] sm:text-[18px] leading-[1.68] mb-8 max-w-lg" style={{ color: "#64748B" }}>
-                Five AI agents monitor your DMS 24/7 — writing, sending, and self-optimizing{" "}
+                Five AI agents watch your DMS around the clock — instantly writing and sending{" "}
                 <span style={{ color: "#334155", fontWeight: 600 }}>personalized SMS, email, and QR-tracked direct mail</span>{" "}
-                the moment a customer trigger fires.{" "}
-                <span style={{ color: "#334155", fontWeight: 600 }}>No manual steps. No extra vendors.</span>{" "}
-                Your competitors are still doing this by hand.
+                the moment a service trigger fires.{" "}
+                <span style={{ color: "#334155", fontWeight: 600 }}>Three channels. Zero manual steps. Zero extra vendors.</span>
               </p>
 
               {/* CTA row */}
@@ -668,7 +717,9 @@ export default function LandingPage() {
                 style={{ background: "radial-gradient(ellipse at 55% 45%, rgba(99,102,241,0.11), transparent 65%)" }}
               />
 
-              <div className="relative animate-float-slow">
+              <div className="relative animate-float-slow mockup-container">
+                {/* Gradient ring hover effect */}
+                <div className="mockup-ring" />
                 {/* Main window */}
                 <div className="rounded-2xl overflow-hidden mockup-shadow">
 
@@ -1095,7 +1146,7 @@ export default function LandingPage() {
             {stats.map((s, i) => (
               <div
                 key={s.label}
-                className="px-6 py-10 text-center relative"
+                className="px-6 py-10 text-center relative stat-cell-glow"
                 style={{
                   background: "#060D18",
                   borderRight: i < stats.length - 1 ? "1px solid rgba(255,255,255,0.05)" : undefined,
@@ -1450,10 +1501,10 @@ export default function LandingPage() {
                 className={`${t.hoverClass} relative p-8 rounded-2xl overflow-hidden`}
                 style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderLeft: `3px solid ${t.statColor}55` }}
               >
-                {/* Decorative large quote mark */}
+                {/* Decorative large quote mark — color-matched */}
                 <div
                   className="absolute top-4 right-6 text-[80px] font-black leading-none pointer-events-none select-none"
-                  style={{ color: "rgba(99,102,241,0.13)", fontFamily: "Georgia, 'Times New Roman', serif" }}
+                  style={{ color: `${t.statColor}22`, fontFamily: "Georgia, 'Times New Roman', serif" }}
                 >&ldquo;</div>
 
                 {/* Verified chip */}
@@ -1561,15 +1612,25 @@ export default function LandingPage() {
               ].map((col) => (
                 <div
                   key={col.label}
-                  className="px-6 py-5"
+                  className={`px-6 py-5${col.ok ? " comparison-winner-col" : ""}`}
                   style={col.ok ? { background: "rgba(99,102,241,0.06)" } : {}}
                 >
-                  <p
-                    className="text-[11px] font-bold uppercase tracking-wider mb-4"
-                    style={{ color: col.ok ? "#818CF8" : "rgba(255,255,255,0.22)" }}
-                  >
-                    {col.label}
-                  </p>
+                  <div className="flex items-center gap-2 mb-4">
+                    <p
+                      className="text-[11px] font-bold uppercase tracking-wider"
+                      style={{ color: col.ok ? "#818CF8" : "rgba(255,255,255,0.22)" }}
+                    >
+                      {col.label}
+                    </p>
+                    {col.ok && (
+                      <span
+                        className="text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full"
+                        style={{ background: "rgba(16,185,129,0.15)", color: "#34D399", border: "1px solid rgba(16,185,129,0.25)" }}
+                      >
+                        ★ Winner
+                      </span>
+                    )}
+                  </div>
                   <ul className="space-y-2.5">
                     {col.items.map((item) => (
                       <li key={item} className="flex items-center gap-2 text-[12px]">
