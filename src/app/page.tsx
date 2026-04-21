@@ -136,6 +136,7 @@ const testimonials = [
     statColor: "#059669", statBg: "rgba(16,185,129,0.07)", statBorder: "rgba(16,185,129,0.18)",
     avatarGrad: "linear-gradient(135deg, #059669, #0B1526)",
     avatarRing: "rgba(16,185,129,0.40)",
+    channels: ["Direct Mail", "SMS", "Email"],
   },
   {
     quote: "The AI writes better win-back copy than our ad agency did. And it sends automatically the moment a customer goes lapsed. Set it and forget it.",
@@ -144,6 +145,7 @@ const testimonials = [
     statColor: "#4338CA", statBg: "rgba(99,102,241,0.07)", statBorder: "rgba(99,102,241,0.18)",
     avatarGrad: "linear-gradient(135deg, #6366F1, #0B1526)",
     avatarRing: "rgba(99,102,241,0.40)",
+    channels: ["Direct Mail", "Email"],
   },
   {
     quote: "We ran AutoCDP alongside Fullpath for 60 days. AutoCDP generated 3.4× more service appointments from the same customer list. The QR tracking alone changed how we budget.",
@@ -152,6 +154,7 @@ const testimonials = [
     statColor: "#0EA5E9", statBg: "rgba(14,165,233,0.07)", statBorder: "rgba(14,165,233,0.18)",
     avatarGrad: "linear-gradient(135deg, #0EA5E9, #0B1526)",
     avatarRing: "rgba(14,165,233,0.40)",
+    channels: ["Direct Mail", "SMS"],
   },
 ];
 
@@ -342,6 +345,24 @@ export default function LandingPage() {
                 Live · SMS · Email · Direct Mail · All running now
               </div>
 
+              {/* Channel pills */}
+              <div className="flex flex-wrap gap-2 mb-6">
+                {[
+                  { icon: Mail,           label: "Direct Mail", color: "#0EA5E9", bg: "rgba(14,165,233,0.10)", border: "rgba(14,165,233,0.30)" },
+                  { icon: MessageSquare,  label: "SMS",         color: "#8B5CF6", bg: "rgba(139,92,246,0.10)", border: "rgba(139,92,246,0.30)" },
+                  { icon: AtSign,         label: "Email",       color: "#10B981", bg: "rgba(16,185,129,0.10)", border: "rgba(16,185,129,0.30)" },
+                ].map((ch) => (
+                  <div
+                    key={ch.label}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold"
+                    style={{ background: ch.bg, border: `1px solid ${ch.border}`, color: ch.color }}
+                  >
+                    <ch.icon className="w-3 h-3" />
+                    {ch.label}
+                  </div>
+                ))}
+              </div>
+
               <h1
                 className="text-[2.75rem] sm:text-[3.4rem] xl:text-[3.85rem] font-black leading-[1.04] tracking-[-0.034em] mb-6"
                 style={{ color: "#0F172A" }}
@@ -420,11 +441,12 @@ export default function LandingPage() {
               </div>
 
               {/* Mobile-only live stats preview (mockup hidden on mobile) */}
-              <div className="xl:hidden grid grid-cols-3 gap-2 mb-7">
+              <div className="xl:hidden grid grid-cols-2 gap-2 mb-7">
                 {[
-                  { value: "2,847", label: "Pieces sent today", color: "#6366F1", bg: "rgba(99,102,241,0.06)" },
-                  { value: "18.3%", label: "Avg. scan rate",    color: "#10B981", bg: "rgba(16,185,129,0.06)" },
-                  { value: "$84k",  label: "Rev. attributed",   color: "#F59E0B", bg: "rgba(245,158,11,0.06)" },
+                  { value: "1,847", label: "Mail sent today",  color: "#0EA5E9", bg: "rgba(14,165,233,0.07)" },
+                  { value: "892",   label: "SMS delivered",    color: "#8B5CF6", bg: "rgba(139,92,246,0.07)" },
+                  { value: "41%",   label: "Email open rate",  color: "#10B981", bg: "rgba(16,185,129,0.07)" },
+                  { value: "$84k",  label: "Rev. attributed",  color: "#F59E0B", bg: "rgba(245,158,11,0.07)" },
                 ].map((s) => (
                   <div
                     key={s.label}
@@ -557,10 +579,15 @@ export default function LandingPage() {
                           </div>
                         ))}
                         <div className="px-2 pt-2 pb-0.5 text-[7px] font-bold uppercase tracking-[0.12em]" style={{ color: "rgba(255,255,255,0.18)" }}>Channels</div>
-                        {["Direct Mail", "Analytics", "AI Agents"].map((label) => (
-                          <div key={label} className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[9px]" style={{ color: "rgba(255,255,255,0.28)" }}>
-                            <div className="w-2 h-2 rounded-sm shrink-0" style={{ background: "rgba(255,255,255,0.08)" }} />
-                            {label}
+                        {[
+                          { label: "SMS",         dot: "#8B5CF6" },
+                          { label: "Email",       dot: "#10B981" },
+                          { label: "Direct Mail", dot: "#0EA5E9" },
+                          { label: "Analytics",   dot: "rgba(255,255,255,0.15)" },
+                        ].map((item) => (
+                          <div key={item.label} className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[9px]" style={{ color: "rgba(255,255,255,0.38)" }}>
+                            <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: item.dot }} />
+                            {item.label}
                           </div>
                         ))}
                       </div>
@@ -731,7 +758,7 @@ export default function LandingPage() {
                               style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.12)" }}
                             >
                               <div className="flex items-center gap-1 mb-0.5">
-                                <p className="text-[6px] font-bold uppercase tracking-wider" style={{ color: "#6366F1" }}>Creative · Writing</p>
+                                <p className="text-[6px] font-bold uppercase tracking-wider" style={{ color: "#6366F1" }}>Creative · SMS Draft</p>
                                 <div className="flex items-end gap-px ml-1" style={{ height: 6 }}>
                                   {[1, 2, 3].map((n) => (
                                     <div key={n} className={`typing-dot w-0.5 rounded-full`} style={{ height: 4, background: "#6366F1" }} />
@@ -739,7 +766,7 @@ export default function LandingPage() {
                                 </div>
                               </div>
                               <p className="text-[7px] leading-relaxed" style={{ color: "#4338CA" }}>
-                                "Marcus, your 2021 Tacoma is due…"
+                                SMS: "Hi Marcus, your Tacoma is due for its 30k—"
                               </p>
                             </div>
                           </div>
@@ -755,11 +782,11 @@ export default function LandingPage() {
                             <span className="text-[7px] font-bold uppercase tracking-wider" style={{ color: "#34D399" }}>LIVE</span>
                           </div>
                           <div className="flex items-center gap-2.5 text-[8px] overflow-hidden">
-                            <span className="font-semibold" style={{ color: "#34D399" }}>↑ 3 pieces sent</span>
+                            <span className="font-semibold" style={{ color: "#34D399" }}>↑ SMS: 47 sent</span>
                             <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
-                            <span style={{ color: "rgba(255,255,255,0.45)" }}>QR scan: Marcus C. (Scottsdale)</span>
+                            <span style={{ color: "#818CF8", fontWeight: 600 }}>Email opens: 23</span>
                             <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
-                            <span style={{ color: "rgba(255,255,255,0.45)" }}>Win-back: 127 conversions</span>
+                            <span style={{ color: "#38BDF8", fontWeight: 600 }}>Mail in-transit: 504</span>
                           </div>
                         </div>
                       </div>
@@ -1031,12 +1058,17 @@ export default function LandingPage() {
 
                 {/* Exclusive badge (Direct Mail only) */}
                 {f.badge && (
-                  <div className="absolute top-5 right-5">
+                  <div className="absolute top-4 right-4">
                     <span
-                      className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full"
-                      style={{ background: `${f.topColor}15`, border: `1px solid ${f.topColor}40`, color: f.topColor }}
+                      className="text-[9px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-lg"
+                      style={{
+                        background: f.topColor,
+                        color: "#FFFFFF",
+                        boxShadow: `0 2px 10px ${f.topColor}55`,
+                        letterSpacing: "0.07em",
+                      }}
                     >
-                      {f.badge}
+                      ★ {f.badge}
                     </span>
                   </div>
                 )}
@@ -1286,6 +1318,18 @@ export default function LandingPage() {
                     <p className="text-[13px] font-semibold text-white">{t.name}</p>
                     <p className="text-[11px] font-medium" style={{ color: "rgba(255,255,255,0.35)" }}>{t.title}</p>
                   </div>
+                </div>
+                {/* Channels used */}
+                <div className="flex items-center gap-1.5 flex-wrap mt-3">
+                  {t.channels.map((ch: string) => (
+                    <span
+                      key={ch}
+                      className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
+                      style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.38)", border: "1px solid rgba(255,255,255,0.08)" }}
+                    >
+                      {ch}
+                    </span>
+                  ))}
                 </div>
               </div>
             ))}
