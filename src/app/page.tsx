@@ -1,11 +1,13 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import {
   Car, Mail, Bot, Shield, Zap, TrendingUp,
   CheckCircle, ArrowRight, Star, Cpu, Target, Database,
   Sparkles, ArrowUpRight, CheckCircle2,
   Megaphone, ScanLine, ArrowUp, Play,
+  MessageSquare, BarChart2, AtSign,
 } from "lucide-react";
 
 // ── Mini sparkline ─────────────────────────────────────────────
@@ -29,11 +31,16 @@ function MiniSpark({ bars, color }: { bars: number[]; color: string }) {
 
 // ── Data ──────────────────────────────────────────────────────
 
-const features = [
+const features: Array<{
+  icon: React.ElementType; title: string; desc: string;
+  iconBgClass: string; iconColor: string; glowClass: string;
+  topColor: string; stat: string; statLabel: string; statColor: string;
+  badge?: string;
+}> = [
   {
     icon: Bot,
     title: "5-Agent AI Swarm",
-    desc: "Orchestrator, Data, Targeting, Creative, and Optimization agents work in sequence — no prompts, no babysitting, no vendor wrangling.",
+    desc: "Orchestrator, Data, Targeting, Creative, and Optimization agents run 24/7 against your DMS — picking the best channel per customer, writing personalized copy, and learning from every result to make the next campaign better.",
     iconBgClass: "icon-bg-indigo",
     iconColor: "text-indigo-600",
     glowClass: "feature-card-indigo",
@@ -42,53 +49,54 @@ const features = [
   },
   {
     icon: Mail,
-    title: "Native Direct Mail",
-    desc: "PostGrid-powered postcards and letters with QR tracking. Personalized per customer, printed, and fulfilled automatically.",
+    title: "AI Direct Mail",
+    desc: "PostGrid-powered postcards with QR tracking — personalized per customer, printed, and fulfilled automatically. The one channel Fullpath and CDK can't touch.",
     iconBgClass: "icon-bg-sky",
     iconColor: "text-sky-600",
     glowClass: "feature-card-sky",
     topColor: "#0EA5E9",
-    stat: "< $1.60", statLabel: "per piece", statColor: "#0284C7",
+    stat: "< $1.60", statLabel: "per piece delivered", statColor: "#0284C7",
+    badge: "Only AutoCDP",
   },
   {
-    icon: TrendingUp,
-    title: "Self-Learning Optimization",
-    desc: "Every campaign result trains the next one. Response patterns improve across your entire customer base over time.",
-    iconBgClass: "icon-bg-amber",
-    iconColor: "text-amber-600",
-    glowClass: "feature-card-amber",
-    topColor: "#F59E0B",
-    stat: "3×", statLabel: "response rate", statColor: "#B45309",
-  },
-  {
-    icon: Database,
-    title: "Last-Visit Memory",
-    desc: "Knows exactly what each customer drove in for, what they spent, and when they're likely to return — updated every sync.",
-    iconBgClass: "icon-bg-emerald",
-    iconColor: "text-emerald-600",
-    glowClass: "feature-card-emerald",
-    topColor: "#10B981",
-    stat: "360°", statLabel: "customer view", statColor: "#059669",
-  },
-  {
-    icon: Zap,
-    title: "DMS Integration",
-    desc: "CDK Fortellis and Reynolds & Reynolds sync automatically. Customer, RO, and inventory data — always current, zero exports.",
+    icon: MessageSquare,
+    title: "SMS Campaigns",
+    desc: "Twilio-powered, AI-written text messages triggered instantly by DMS events. Win-back sequences, service reminders, and conquest — all personalized and TCPA-compliant.",
     iconBgClass: "icon-bg-violet",
     iconColor: "text-violet-600",
     glowClass: "feature-card-violet",
     topColor: "#8B5CF6",
-    stat: "30 min", statLabel: "sync interval", statColor: "#7C3AED",
+    stat: "98%", statLabel: "open rate", statColor: "#7C3AED",
   },
   {
-    icon: Shield,
-    title: "Hybrid Pricing",
-    desc: "Pay for what you send. No per-seat licenses, no long-term contracts. Scale up during conquest, scale down in slow months.",
+    icon: AtSign,
+    title: "Email Campaigns",
+    desc: "Resend-powered marketing and transactional emails with AI-written copy. Auto-segmented by vehicle type, visit history, and RO spend — not batch-and-blast.",
+    iconBgClass: "icon-bg-emerald",
+    iconColor: "text-emerald-600",
+    glowClass: "feature-card-emerald",
+    topColor: "#10B981",
+    stat: "42%", statLabel: "avg. open rate", statColor: "#059669",
+  },
+  {
+    icon: BarChart2,
+    title: "Unified Analytics",
+    desc: "Cross-channel attribution in one dashboard. See exactly which campaign, channel, and creative drove each service appointment — updated every sync.",
+    iconBgClass: "icon-bg-amber",
+    iconColor: "text-amber-600",
+    glowClass: "feature-card-amber",
+    topColor: "#F59E0B",
+    stat: "360°", statLabel: "attribution", statColor: "#B45309",
+  },
+  {
+    icon: Database,
+    title: "DMS Integration",
+    desc: "CDK Fortellis and Reynolds & Reynolds sync every 30–60 minutes. Customer, RO, and inventory data always current — zero exports, zero manual steps.",
     iconBgClass: "icon-bg-rose",
     iconColor: "text-rose-600",
     glowClass: "feature-card-rose",
     topColor: "#F43F5E",
-    stat: "$0", statLabel: "setup fee", statColor: "#E11D48",
+    stat: "30 min", statLabel: "sync interval", statColor: "#E11D48",
   },
 ];
 
@@ -108,15 +116,15 @@ const steps = [
   {
     step: "03", icon: Cpu,
     title: "Agents do the work",
-    desc: "Data → Targeting → Creative → Print → Mail. Personalized per customer, QR-tracked, optimized after every campaign.",
+    desc: "Data → Targeting → Creative → SMS / Email / Mail. Every message personalized, every channel tracked, every result fed back to improve the next campaign.",
     time: "< 48h to mailbox",
   },
 ];
 
 const differentiators = [
-  "Direct mail fulfilled, tracked, and optimized — no vendor wrangling",
-  "AI agents re-run after every DMS sync, not on a monthly schedule",
-  "Global learnings shared across the platform improve every dealer",
+  "SMS, email, and QR-tracked direct mail — all from one platform, not three vendors",
+  "AI agents pick the best channel per customer, re-running on every DMS sync",
+  "Cross-channel attribution: see exactly which channel drove each appointment",
   "RLS-enforced data isolation — your data never crosses dealership lines",
 ];
 
@@ -163,16 +171,16 @@ const mockAgents = [
 ];
 
 const mockStats = [
-  { label: "Sent (30d)", value: "2,847", leftBorder: "#6366F1", color: "#4338CA", spark: [38, 52, 45, 63, 58, 70, 84] },
-  { label: "Scan Rate",  value: "18.3%", leftBorder: "#10B981", color: "#065F46", spark: [55, 62, 58, 68, 72, 78, 83] },
-  { label: "Conv.",      value: "127",   leftBorder: "#8B5CF6", color: "#5B21B6", spark: [28, 40, 35, 52, 48, 61, 73] },
-  { label: "Revenue",    value: "$84k",  leftBorder: "#F59E0B", color: "#92400E", spark: [44, 53, 61, 57, 69, 75, 88] },
+  { label: "Mail Sent",   value: "1,847", leftBorder: "#0EA5E9", color: "#0284C7", spark: [38, 52, 45, 63, 58, 70, 84] },
+  { label: "SMS Sent",    value: "892",   leftBorder: "#8B5CF6", color: "#6D28D9", spark: [45, 58, 52, 67, 71, 79, 88] },
+  { label: "Email Open",  value: "41%",   leftBorder: "#10B981", color: "#065F46", spark: [55, 62, 58, 68, 72, 78, 83] },
+  { label: "Revenue",     value: "$84k",  leftBorder: "#F59E0B", color: "#92400E", spark: [44, 53, 61, 57, 69, 75, 88] },
 ];
 
 const mockCampaigns = [
-  { name: "VIP Win-back Q2",      pct: 84, sent: "1,243", dotColor: "#10B981" },
-  { name: "Service Due — May",    pct: 61, sent: "892",   dotColor: "#6366F1" },
-  { name: "Conquest — 48304",     pct: 37, sent: "504",   dotColor: "#0EA5E9" },
+  { name: "Win-back SMS · Q2",      pct: 84, sent: "892",   dotColor: "#8B5CF6" },
+  { name: "Service Email — May",    pct: 61, sent: "1,243", dotColor: "#10B981" },
+  { name: "Direct Mail — Conquest", pct: 37, sent: "504",   dotColor: "#0EA5E9" },
 ];
 
 const integrations = [
@@ -200,7 +208,7 @@ export default function LandingPage() {
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
           </span>
           <span className="text-white/50">Now live:</span>
-          <span className="text-white/80">CDK Fortellis &amp; Reynolds native integration</span>
+          <span className="text-white/80">SMS + Email + Direct Mail — one platform, all channels</span>
           <Link href="/signup" className="hidden sm:inline-flex items-center gap-1 font-semibold text-emerald-400 hover:text-emerald-300 transition-colors ml-0.5">
             Get access <ArrowRight className="w-3 h-3" />
           </Link>
@@ -331,23 +339,23 @@ export default function LandingPage() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                 </span>
-                Agents running now · 2,847 pieces sent today
+                Live · SMS · Email · Direct Mail · All running now
               </div>
 
               <h1
                 className="text-[2.75rem] sm:text-[3.4rem] xl:text-[3.85rem] font-black leading-[1.04] tracking-[-0.034em] mb-6"
                 style={{ color: "#0F172A" }}
               >
-                Win back lapsed customers.
+                SMS. Email. Direct mail.
                 <br />
-                <span className="gradient-text">Zero manual work.</span>
+                <span className="gradient-text">One AI platform.</span>
               </h1>
 
               <p className="text-[17px] sm:text-[18px] leading-[1.68] mb-8 max-w-lg" style={{ color: "#64748B" }}>
-                AutoCDP's five AI agents scan your DMS daily, find every overdue or lapsed customer,
-                write personalized QR-tracked postcards, and ship them automatically.{" "}
-                <span style={{ color: "#334155", fontWeight: 600 }}>No prompts. No vendor calls. No spreadsheets.</span>{" "}
-                Just revenue that compounds while you sleep.
+                AutoCDP connects to your DMS and runs every channel automatically —{" "}
+                <span style={{ color: "#334155", fontWeight: 600 }}>AI-written SMS, personalized email, and QR-tracked direct mail</span>{" "}
+                that no other platform offers. Five agents handle writing, sending, tracking, and learning across every channel.{" "}
+                <span style={{ color: "#334155", fontWeight: 600 }}>Zero manual steps. Revenue compounds.</span>
               </p>
 
               {/* CTA row */}
@@ -923,10 +931,10 @@ export default function LandingPage() {
               Platform capabilities
             </div>
             <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4" style={{ color: "#0F172A" }}>
-              Replace 5 vendors. One platform.
+              Every channel. One platform. No headcount.
             </h2>
             <p className="text-[17px] max-w-xl mx-auto leading-relaxed" style={{ color: "#64748B" }}>
-              CDK or Reynolds in. QR-tracked postcards out. AI handles everything in between — automatically, every day.
+              SMS, email, and AI-personalized direct mail — all connected to your DMS, all written and sent by AI agents, all tracked in one dashboard.
             </p>
           </div>
 
@@ -1020,6 +1028,19 @@ export default function LandingPage() {
                 className={`feature-card feature-card-premium ${f.glowClass} group p-7 rounded-2xl border border-slate-200 bg-white shadow-card stagger-${Math.min(i + 2, 6)}`}
               >
                 <div className="absolute top-0 left-0 right-0 h-[2.5px] rounded-t-2xl" style={{ background: f.topColor }} />
+
+                {/* Exclusive badge (Direct Mail only) */}
+                {f.badge && (
+                  <div className="absolute top-5 right-5">
+                    <span
+                      className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full"
+                      style={{ background: `${f.topColor}15`, border: `1px solid ${f.topColor}40`, color: f.topColor }}
+                    >
+                      {f.badge}
+                    </span>
+                  </div>
+                )}
+
                 <div
                   className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 ${f.iconBgClass} group-hover:scale-110 transition-transform duration-200`}
                   style={{ boxShadow: "0 2px 6px -2px rgba(0,0,0,0.08)" }}
@@ -1063,7 +1084,7 @@ export default function LandingPage() {
               Connect once. Run forever.
             </h2>
             <p className="text-[17px] font-medium max-w-xl mx-auto leading-relaxed" style={{ color: "#64748B" }}>
-              The AI swarm handles everything — audience selection, personalized copy, and physical mail fulfillment.
+              The AI swarm handles every channel — audience selection, personalized copy, and omnichannel delivery across SMS, email, and direct mail.
             </p>
           </div>
 
@@ -1145,7 +1166,7 @@ export default function LandingPage() {
                 <CheckCircle className="w-4 h-4 text-emerald-400" />
               </div>
               <p className="text-white font-semibold text-[14px]">
-                Key differentiators vs. Fullpath, CDK, and legacy DMS platforms
+                Why dealers switch from Fullpath, CDK, and their mail house to AutoCDP
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1287,17 +1308,17 @@ export default function LandingPage() {
               {[
                 {
                   label: "Legacy Mail House",
-                  items: ["Manual list pulls", "Generic copy", "No QR tracking", "30-day batch cycles"],
+                  items: ["Mail only — no SMS or email", "Generic batch copy", "No QR or click tracking", "30-day manual cycles"],
                   ok: false,
                 },
                 {
                   label: "Fullpath / CDK Marketing",
-                  items: ["Digital-only focus", "Per-seat pricing", "No direct mail", "Limited personalization"],
+                  items: ["SMS + email only", "Zero direct mail capability", "Per-seat licensing costs", "No self-learning AI"],
                   ok: false,
                 },
                 {
                   label: "AutoCDP",
-                  items: ["Fully automated", "AI-personalized copy", "QR-tracked mail", "Usage-based pricing"],
+                  items: ["SMS + email + direct mail", "AI-personalized per customer", "QR + click + open tracking", "Self-learning across campaigns"],
                   ok: true,
                 },
               ].map((col) => (
@@ -1395,12 +1416,12 @@ export default function LandingPage() {
           </div>
 
           <h2 className="text-3xl sm:text-[2.8rem] font-black text-white tracking-tight mb-4 leading-tight">
-            Launch your first AI campaign
+            One platform. Every channel.
             <br />
-            <span style={{ color: "#818CF8" }}>in under two hours.</span>
+            <span style={{ color: "#818CF8" }}>Live in under two hours.</span>
           </h2>
           <p className="text-[17px] font-medium mb-10 leading-relaxed max-w-xl mx-auto" style={{ color: "#64748B" }}>
-            Most dealerships connect their DMS, set a goal, and have mail in-transit the same day.
+            Connect your DMS, set a goal, and AutoCDP fires SMS, email, and direct mail campaigns the same day — automatically, forever.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
