@@ -436,6 +436,7 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
             campaignGoal,
             templateType,
             dryRun,
+            includeProspects: true,
           }),
         });
         const data = await res.json();
