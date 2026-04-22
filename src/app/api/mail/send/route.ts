@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { customerIds, templateType, campaignGoal, campaignId, dryRun = false, isTest = false, tone } = body;
+    const { customerIds, templateType, campaignGoal, campaignId, dryRun = false, isTest = false, tone, includeProspects = false } = body;
 
     // Validation
     if (!Array.isArray(customerIds) || customerIds.length === 0) {
@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
       dealershipTone: tone,
       dryRun,
       isTest,
+      includeProspects,
       createdBy: user.id,
     });
 

@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       customerIds,
       templateType,
       dealershipTone,
-      dryRun: dryRun ?? true,
+      dryRun: dryRun ?? false,
       createdBy: user.id,
     });
 

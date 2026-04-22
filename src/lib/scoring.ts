@@ -80,10 +80,16 @@ export function scoreCustomer(customer: Customer): CustomerScore {
  * Returns the passing customers sorted by score descending (highest-value
  * customers get their copy generated first), plus a count of how many were
  * filtered out so the caller can log/report it.
+ *
+ * @param respectThreshold  When false, skips the score cut-off and ranks all
+ *   customers by score. Use this for prospect/lead campaigns where the scoring
+ *   model has no signal yet (total_visits=0, lifecycle_stage="prospect").
+ *   Default: true (normal production behaviour).
  */
 export function filterAndRankCustomers(
   customers: Customer[],
-  threshold = SCORE_THRESHOLD
+  threshold = SCORE_THRESHOLD,
+  respectThreshold = true
 ): { customers: Customer[]; scores: CustomerScore[]; filtered: number } {
   const scoreMap = new Map<string, CustomerScore>();
   for (const c of customers) {
@@ -91,7 +97,7 @@ export function filterAndRankCustomers(
   }
 
   const passing = customers
-    .filter((c) => (scoreMap.get(c.id)?.score ?? 0) >= threshold)
+    .filter((c) => !respectThreshold || (scoreMap.get(c.id)?.score ?? 0) >= threshold)
     .sort((a, b) => (scoreMap.get(b.id)?.score ?? 0) - (scoreMap.get(a.id)?.score ?? 0));
 
   return {

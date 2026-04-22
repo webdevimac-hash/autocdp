@@ -29,7 +29,7 @@ import {
   type SendEmailToolResult,
 } from "../tools/send-email";
 import { createServiceClient } from "@/lib/supabase/server";
-import { filterAndRankCustomers } from "@/lib/scoring";
+import { filterAndRankCustomers, SCORE_THRESHOLD } from "@/lib/scoring";
 import type {
   AgentContext, Customer, Visit, CampaignChannel,
   SendDirectMailToolInput, SendDirectMailToolResult,
@@ -222,6 +222,8 @@ export interface DirectMailOrchestratorInput {
   dryRun?: boolean;               // if true: generate copy but skip PostGrid call
   isTest?: boolean;               // if true: marks mail_pieces rows with is_test = true
   createdBy?: string;
+  /** When true, skips the score threshold so prospect/lead customers are included. */
+  includeProspects?: boolean;
 }
 
 export interface DirectMailResult {
@@ -274,13 +276,21 @@ export async function runDirectMailOrchestrator(
 
     if (!customers?.length) throw new Error("No valid customers found");
 
-    // Deterministic pre-filter: skip low-signal customers before agent calls
+    // Deterministic pre-filter: skip low-signal customers before agent calls.
+    // includeProspects bypasses the threshold for lead/prospect-only campaigns
+    // where scoring has no signal (total_visits=0, lifecycle_stage="prospect").
     const { customers: filteredCustomers, filtered: preFiltered } =
-      filterAndRankCustomers(customers as Customer[]);
+      filterAndRankCustomers(customers as Customer[], SCORE_THRESHOLD, !input.includeProspects);
     if (preFiltered > 0) {
       console.info(`[direct-mail-orchestrator] Pre-filter removed ${preFiltered} low-score customers`);
     }
-    if (!filteredCustomers.length) throw new Error("All selected customers scored below threshold");
+    if (!filteredCustomers.length) {
+      throw new Error(
+        input.includeProspects
+          ? "No valid customers found"
+          : "All selected customers scored below threshold — use includeProspects:true for lead campaigns"
+      );
+    }
 
     const { data: visits } = await supabase
       .from("visits")
@@ -354,7 +364,9 @@ Write the personalized copy, choose appropriate variables, then call send_direct
           model: MODELS.standard,
           max_tokens: 1024,
           system: systemPrompt,
-          tools: input.dryRun ? [] : [SEND_DIRECT_MAIL_TOOL_DEFINITION],
+          // Dry run: keep the tool available so Claude writes real copy and calls it —
+          // the executor below intercepts and simulates rather than calling PostGrid.
+          tools: [SEND_DIRECT_MAIL_TOOL_DEFINITION],
           messages,
         });
 
@@ -367,14 +379,23 @@ Write the personalized copy, choose appropriate variables, then call send_direct
           }
         }
 
-        if (response.stop_reason === "end_turn" || input.dryRun) {
-          // No tool call — Claude finished without sending (unusual, but handle gracefully)
-          if (!toolResult && !input.dryRun) {
-            toolResult = {
-              success: false,
-              message: "Agent completed without calling send_direct_mail",
-              error: "NO_TOOL_CALL",
-            };
+        if (response.stop_reason === "end_turn") {
+          // Claude finished without calling the tool (e.g. wrote copy in text form only).
+          // For dry runs: treat the text copy as the result so the run shows success.
+          // For live runs: flag as an unexpected no-tool-call.
+          if (!toolResult) {
+            if (input.dryRun && generatedCopy) {
+              toolResult = {
+                success: true,
+                message: `[DRY RUN] Copy generated for ${customer.first_name} ${customer.last_name} (no tool call made)`,
+              };
+            } else {
+              toolResult = {
+                success: false,
+                message: "Agent completed without calling send_direct_mail",
+                error: "NO_TOOL_CALL",
+              };
+            }
           }
           break;
         }

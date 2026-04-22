@@ -58,9 +58,9 @@ export async function POST(req: NextRequest) {
 
     function normalizePhone(raw: string): string | null {
       const digits = raw.replace(/\D/g, "");
-      // Accept 10-digit US or 11-digit with leading 1
-      if (digits.length === 11 && digits.startsWith("1")) return digits.slice(1);
-      if (digits.length === 10) return digits;
+      // Normalize to E.164 (+1XXXXXXXXXX) — required by Twilio
+      if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+      if (digits.length === 10) return `+1${digits}`;
       return null;
     }
 

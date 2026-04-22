@@ -78,14 +78,22 @@ export async function executeSendSmsTool(
       };
     }
 
-    const phone = (customer as Pick<Customer, "first_name" | "last_name" | "phone">).phone;
-    if (!phone) {
+    const rawPhone = (customer as Pick<Customer, "first_name" | "last_name" | "phone">).phone;
+    if (!rawPhone) {
       return {
         success: false,
         message: `Customer ${customer.first_name} ${customer.last_name} has no phone number`,
         error: "NO_PHONE",
       };
     }
+    // Defensive E.164 normalisation — handles legacy rows stored before the
+    // onboard/upload fix that saved 10-digit strings without the +1 prefix.
+    const digits = rawPhone.replace(/\D/g, "");
+    const phone =
+      rawPhone.startsWith("+") ? rawPhone
+      : digits.length === 11 && digits.startsWith("1") ? `+${digits}`
+      : digits.length === 10 ? `+1${digits}`
+      : rawPhone; // pass through unchanged; Twilio will surface a clear error
 
     // Insert communication record
     const { data: comm, error: insertErr } = await supabase
