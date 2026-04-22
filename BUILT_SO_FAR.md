@@ -432,7 +432,97 @@ Shared data-mapping and upsert layer used by both providers:
 | Orb usage metering | `billing_events` table live and fully populated; Orb API call not added |
 | pgvector embedding generation | Column, index, and dimension ready; `text-embedding-3-small` not triggered on visit insert |
 | Twilio Programmable Voice | `call_logs` table ready; voice call initiation not wired |
-| DMS native connectors | ✅ CDK Fortellis (OAuth) + Reynolds (API key) — full and delta sync, webhook support |
+| DMS native connectors | ✅ CDK Fortellis (OAuth) + Reynolds (API key) + VinSolutions + vAuto + 700Credit + General CRM |
+
+---
+
+## Section 15 — New DMS/CRM Integrations (April 2026)
+
+Four additional provider integrations added following the exact CDK/Reynolds sync-engine pattern.
+
+### Architecture (same as CDK/Reynolds)
+
+- Credentials encrypted via AES-256-GCM and stored in `dms_connections.encrypted_tokens`
+- `unique(dealership_id, provider)` constraint — one connection per provider per dealership
+- `dms_external_id` format: `"<provider>:<record_id>"` with partial unique index per `(dealership_id, dms_external_id)`
+- Idempotent upserts via `.upsert({ onConflict: "dealership_id,dms_external_id" })`
+- Fire-and-forget initial sync on connect; delta syncs determined by `last_sync_at` cursor
+- Data Agent triggered post-sync for AI re-analysis
+
+### 1. VinSolutions (CRM)
+
+**Provider key:** `"vinsolutions"`  
+**Auth:** API key + dealer ID (X-Api-Key + X-Dealer-Id headers)  
+**API base:** `VINSOLUTIONS_API_BASE` env var (default: `https://api.vinsolutions.com/v2`)
+
+Data pulled:
+- Contacts → `customers` table (dms_external_id: `vinsolutions:<contactId>`)
+- Leads → `customers` table with `lifecycle_stage = "prospect"` (dms_external_id: `vinsolutions:lead:<leadId>`)
+- Activities → `visits` table with `service_type = "crm_activity"`
+- Email open/click events → `visits` table with `service_type = "email_engagement"`
+
+Files: `src/lib/dms/vinsolutions.ts`, `src/app/api/integrations/vinsolutions/connect/route.ts`, `src/app/api/integrations/vinsolutions/sync/route.ts`
+
+### 2. vAuto (Inventory)
+
+**Provider key:** `"vauto"`  
+**Auth:** Bearer API key + dealer ID  
+**API base:** `VAUTO_API_BASE` env var (default: `https://api.vauto.com/v1`)
+
+Data pulled:
+- Vehicle inventory → `inventory` table (VIN, make, model, year, price, days_on_lot, condition)
+- `appraisalValue` stored in `metadata`
+- Inventory-only — no customer or visit data
+
+Files: `src/lib/dms/vauto.ts`, `src/app/api/integrations/vauto/connect/route.ts`, `src/app/api/integrations/vauto/sync/route.ts`
+
+### 3. 700Credit (Conquest / Credit Bureau)
+
+**Provider key:** `"seven_hundred_credit"`  
+**Auth:** API key (X-Api-Key header)  
+**API base:** `SEVEN_HUNDRED_CREDIT_API_BASE` env var (default: `https://api.700credit.com/v2`)
+
+FCRA compliance:
+- Soft-pull only (no hard inquiry on consumer credit file)
+- Only performed for customers with `total_visits > 0` (existing relationship = permissible purpose)
+- Stores `credit_tier` label only (`excellent` / `good` / `fair` / `poor` / `unknown`) — no raw score or bureau data
+
+Schema: `migration 010` adds `credit_tier TEXT CHECK (...)` column to `customers` table with index on `(dealership_id, credit_tier)`.
+
+Batch pull: up to 50 consumers per API call. Fallback to individual lookups if batch endpoint unavailable.
+
+Files: `src/lib/dms/seven-hundred-credit.ts`, `src/app/api/integrations/700credit/connect/route.ts`, `src/app/api/integrations/700credit/sync/route.ts`
+
+### 4. General CRM (Dealertrack, Elead, DealerSocket, etc.)
+
+**Provider key:** `"general_crm"`  
+**Auth:** Bearer API key + configurable base URL  
+**API base:** per-dealership `baseUrl` in encrypted tokens (dealer provides their CRM's endpoint)
+
+Two ingestion paths:
+
+**Path A — REST API:** Generic leads + activities endpoints. Dealers configure base URL during connect. Leads → `customers` (prospects), activities → `visits` (crm_activity).
+
+**Path B — CSV Upload:** `POST /api/integrations/general-crm/upload` accepts multipart `file` field. `parseLeadsCsv()` normalizes column headers (case-insensitive, snake_case). Directly upserts to `customers` with `lifecycle_stage = "prospect"` and `metadata.csv_import = true`. Returns `{ parsed, upserted }`.
+
+UI: `/dashboard/integrations` shows "Connect via API" button (opens ApiKeyModal) plus a separate "Upload CRM leads CSV" dashed button below the card.
+
+Files: `src/lib/dms/general-crm.ts`, `src/app/api/integrations/general-crm/connect/route.ts`, `src/app/api/integrations/general-crm/sync/route.ts`, `src/app/api/integrations/general-crm/upload/route.ts`
+
+### Migration 010
+
+`supabase/migrations/010_new_integrations.sql`:
+- Adds `credit_tier TEXT CHECK (...)` + index to `customers`
+- Drops any `CHECK` constraints on `dms_connections.provider` and `sync_jobs.provider` so new provider strings are accepted without schema changes
+
+### UI Changes
+
+`/dashboard/integrations` page reorganized into three sections:
+1. **DMS Systems** — CDK Fortellis, Reynolds & Reynolds
+2. **CRM Systems** — VinSolutions, General CRM
+3. **Inventory & Enrichment** — vAuto, 700Credit
+
+`ReynoldsModal` refactored into a generic `ApiKeyModal` accepting a `fields` array. All API-key providers share this component. `SyncHistory` provider name lookup uses a `PROVIDER_LABELS` map instead of a ternary.
 
 ### Recommended Next Milestones
 
