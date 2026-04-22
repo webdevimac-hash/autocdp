@@ -106,9 +106,9 @@ Output JSON: {"plan": "summary", "priority_segments": ["segment1"], "risk_flags"
       .from("visits")
       .select("*")
       .eq("dealership_id", input.context.dealershipId)
-      .gte("visit_date", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+      .gte("visit_date", new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString())
       .order("visit_date", { ascending: false })
-      .limit(100);
+      .limit(500);
 
     if (!customers?.length) throw new Error("No customers found for this dealership");
 
