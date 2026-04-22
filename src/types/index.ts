@@ -380,10 +380,18 @@ export interface OnboardingData {
 
 // ── DMS Integration types ────────────────────────────────────
 
+export type DmsProviderName =
+  | "cdk_fortellis"
+  | "reynolds"
+  | "vinsolutions"
+  | "vauto"
+  | "seven_hundred_credit"
+  | "general_crm";
+
 export interface DmsConnection {
   id: string;
   dealership_id: string;
-  provider: "cdk_fortellis" | "reynolds";
+  provider: DmsProviderName;
   status: "pending" | "active" | "error" | "disconnected";
   encrypted_tokens: string | null;
   last_sync_at: string | null;
@@ -397,7 +405,7 @@ export interface SyncJob {
   id: string;
   dealership_id: string;
   connection_id: string;
-  provider: "cdk_fortellis" | "reynolds";
+  provider: DmsProviderName;
   job_type: "full" | "delta";
   status: "running" | "completed" | "failed";
   started_at: string;

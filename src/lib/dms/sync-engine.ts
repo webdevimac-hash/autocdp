@@ -41,13 +41,43 @@ import {
   type ReynoldsVehicle,
   type ReynoldsDeal,
 } from "./reynolds";
+import {
+  fetchVinContacts,
+  fetchVinLeads,
+  fetchVinActivities,
+  fetchVinEmailEvents,
+  type VinContact,
+  type VinLead,
+  type VinActivity,
+  type VinEmailEvent,
+} from "./vinsolutions";
+import {
+  fetchVAutoInventory,
+  type VAutoVehicle,
+} from "./vauto";
+import {
+  fetchCreditTierBatch,
+  type CreditTier,
+} from "./seven-hundred-credit";
+import {
+  fetchGeneralCrmLeads,
+  fetchGeneralCrmActivities,
+  type GeneralCrmLead,
+  type GeneralCrmActivity,
+} from "./general-crm";
 import { decryptTokens, encryptTokens } from "./encrypt";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export type DmsProvider = "cdk_fortellis" | "reynolds";
+export type DmsProvider =
+  | "cdk_fortellis"
+  | "reynolds"
+  | "vinsolutions"
+  | "vauto"
+  | "seven_hundred_credit"
+  | "general_crm";
 
 export interface SyncContext {
   dealershipId: string;
@@ -552,6 +582,373 @@ async function syncReynoldsFull(ctx: SyncContext, jobId: string): Promise<SyncCo
 }
 
 // ---------------------------------------------------------------------------
+// VinSolutions full sync
+// ---------------------------------------------------------------------------
+
+async function syncVinSolutionsFull(ctx: SyncContext, jobId: string): Promise<SyncCounts> {
+  const supabase = createServiceClient();
+  const counts: SyncCounts = { customers: 0, visits: 0, inventory: 0, deals: 0 };
+  const provider: DmsProvider = "vinsolutions";
+
+  const { data: conn } = await supabase
+    .from("dms_connections")
+    .select("encrypted_tokens")
+    .eq("id", ctx.connectionId)
+    .single();
+  if (!conn?.encrypted_tokens) throw new Error("No tokens for VinSolutions connection");
+
+  const { apiKey, dealerId } = await decryptTokens<{ apiKey: string; dealerId: string }>(
+    conn.encrypted_tokens
+  );
+
+  // --- Contacts → customers ---
+  await log(jobId, "info", "Fetching VinSolutions contacts…");
+  const contacts = await paginateAll<
+    VinContact,
+    Awaited<ReturnType<typeof fetchVinContacts>>
+  >((_, cursor) => fetchVinContacts(apiKey, dealerId, ctx.since, cursor));
+
+  for (const batch of chunk(contacts, 100)) {
+    const rows = batch.map((c) => ({
+      dealership_id: ctx.dealershipId,
+      dms_external_id: dmsId(provider, c.contactId),
+      first_name: c.firstName,
+      last_name: c.lastName,
+      email: c.email ?? null,
+      phone: c.phone ?? null,
+      address: {
+        street: c.address?.street ?? null,
+        city: c.address?.city ?? null,
+        state: c.address?.state ?? null,
+        zip: c.address?.zip ?? null,
+      },
+      metadata: { dms_source: { provider, id: c.contactId } },
+    }));
+    const { error } = await supabase
+      .from("customers")
+      .upsert(rows, { onConflict: "dealership_id,dms_external_id" });
+    if (error) await log(jobId, "warn", `Contact upsert error: ${error.message}`);
+    else counts.customers += batch.length;
+  }
+
+  // --- Leads → customers (lifecycle_stage = prospect) ---
+  await log(jobId, "info", "Fetching VinSolutions leads…");
+  const leads = await paginateAll<
+    VinLead,
+    Awaited<ReturnType<typeof fetchVinLeads>>
+  >((_, cursor) => fetchVinLeads(apiKey, dealerId, ctx.since, cursor));
+
+  for (const batch of chunk(leads, 100)) {
+    const rows = batch.map((l) => ({
+      dealership_id: ctx.dealershipId,
+      dms_external_id: dmsId(provider, `lead:${l.leadId}`),
+      first_name: l.firstName,
+      last_name: l.lastName,
+      email: l.email ?? null,
+      phone: l.phone ?? null,
+      address: null,
+      lifecycle_stage: "prospect" as const,
+      metadata: {
+        dms_source: { provider, id: l.leadId },
+        lead_source: l.leadSource ?? null,
+        lead_status: l.leadStatus ?? null,
+        vehicle_interest: l.vehicleInterest ?? null,
+      },
+    }));
+    const { error } = await supabase
+      .from("customers")
+      .upsert(rows, { onConflict: "dealership_id,dms_external_id" });
+    if (error) await log(jobId, "warn", `Lead upsert error: ${error.message}`);
+    else counts.customers += batch.length;
+  }
+
+  // --- Activities → visits ---
+  await log(jobId, "info", "Fetching VinSolutions activities…");
+  const activities = await paginateAll<
+    VinActivity,
+    Awaited<ReturnType<typeof fetchVinActivities>>
+  >((_, cursor) => fetchVinActivities(apiKey, dealerId, ctx.since, cursor));
+
+  const actDmsIds = [...new Set(activities.map((a) => a.contactId))];
+  const actCustomerIdMap = await buildCustomerIdMap(ctx.dealershipId, provider, actDmsIds);
+
+  for (const batch of chunk(activities, 100)) {
+    const rows = batch
+      .map((a) => {
+        const dbCustId = actCustomerIdMap.get(a.contactId);
+        if (!dbCustId) return null;
+        return {
+          dealership_id: ctx.dealershipId,
+          dms_external_id: dmsId(provider, `act:${a.activityId}`),
+          customer_id: dbCustId,
+          visit_date: a.activityDate,
+          service_type: "crm_activity",
+          service_notes: a.subject
+            ? `${a.activityType}: ${a.subject}${a.notes ? ` — ${a.notes}` : ""}`
+            : a.notes ?? null,
+          metadata: { dms_source: { provider, id: a.activityId }, activity_type: a.activityType },
+        };
+      })
+      .filter(Boolean) as object[];
+
+    if (rows.length === 0) continue;
+    const { error } = await supabase
+      .from("visits")
+      .upsert(rows, { onConflict: "dealership_id,dms_external_id" });
+    if (error) await log(jobId, "warn", `Activity upsert error: ${error.message}`);
+    else counts.visits += rows.length;
+  }
+
+  // --- Email events → visits ---
+  await log(jobId, "info", "Fetching VinSolutions email events…");
+  const emailEvents = await paginateAll<
+    VinEmailEvent,
+    Awaited<ReturnType<typeof fetchVinEmailEvents>>
+  >((_, cursor) => fetchVinEmailEvents(apiKey, dealerId, ctx.since, cursor));
+
+  const emailDmsIds = [...new Set(emailEvents.map((e) => e.contactId))];
+  const emailCustomerIdMap = await buildCustomerIdMap(ctx.dealershipId, provider, emailDmsIds);
+
+  for (const batch of chunk(emailEvents, 100)) {
+    const rows = batch
+      .map((e) => {
+        const dbCustId = emailCustomerIdMap.get(e.contactId);
+        if (!dbCustId) return null;
+        return {
+          dealership_id: ctx.dealershipId,
+          dms_external_id: dmsId(provider, `email:${e.eventId}`),
+          customer_id: dbCustId,
+          visit_date: e.eventDate,
+          service_type: "email_engagement",
+          service_notes: `${e.eventType}${e.campaignName ? ` — ${e.campaignName}` : ""}`,
+          metadata: { dms_source: { provider, id: e.eventId }, event_type: e.eventType },
+        };
+      })
+      .filter(Boolean) as object[];
+
+    if (rows.length === 0) continue;
+    const { error } = await supabase
+      .from("visits")
+      .upsert(rows, { onConflict: "dealership_id,dms_external_id" });
+    if (error) await log(jobId, "warn", `Email event upsert error: ${error.message}`);
+    else counts.visits += rows.length;
+  }
+
+  return counts;
+}
+
+// ---------------------------------------------------------------------------
+// vAuto full sync (inventory only)
+// ---------------------------------------------------------------------------
+
+async function syncVAutoFull(ctx: SyncContext, jobId: string): Promise<SyncCounts> {
+  const supabase = createServiceClient();
+  const counts: SyncCounts = { customers: 0, visits: 0, inventory: 0, deals: 0 };
+  const provider: DmsProvider = "vauto";
+
+  const { data: conn } = await supabase
+    .from("dms_connections")
+    .select("encrypted_tokens")
+    .eq("id", ctx.connectionId)
+    .single();
+  if (!conn?.encrypted_tokens) throw new Error("No tokens for vAuto connection");
+
+  const { apiKey, dealerId } = await decryptTokens<{ apiKey: string; dealerId: string }>(
+    conn.encrypted_tokens
+  );
+
+  await log(jobId, "info", "Fetching vAuto inventory…");
+  const vehicles = await paginateAll<
+    VAutoVehicle,
+    Awaited<ReturnType<typeof fetchVAutoInventory>>
+  >((_, cursor) => fetchVAutoInventory(apiKey, dealerId, ctx.since, cursor));
+
+  for (const batch of chunk(vehicles, 100)) {
+    const rows = batch.map((v) => ({
+      dealership_id: ctx.dealershipId,
+      dms_external_id: dmsId(provider, v.stockNumber),
+      vin: v.vin,
+      year: v.year,
+      make: v.make,
+      model: v.model,
+      trim: v.trim ?? null,
+      condition: normalizeCondition(v.condition),
+      status: v.status,
+      price: v.listPrice ?? v.msrp ?? null,
+      mileage: v.mileage ?? null,
+      color: v.color ?? null,
+      days_on_lot: v.daysOnLot ?? null,
+      metadata: { dms_source: { provider, id: v.stockNumber }, appraisal_value: v.appraisalValue ?? null },
+    }));
+    const { error } = await supabase
+      .from("inventory")
+      .upsert(rows, { onConflict: "dealership_id,dms_external_id" });
+    if (error) await log(jobId, "warn", `Inventory upsert error: ${error.message}`);
+    else counts.inventory += batch.length;
+  }
+
+  return counts;
+}
+
+// ---------------------------------------------------------------------------
+// 700Credit sync — soft-pull credit tier enrichment
+// ---------------------------------------------------------------------------
+
+async function sync700CreditFull(ctx: SyncContext, jobId: string): Promise<SyncCounts> {
+  const supabase = createServiceClient();
+  const counts: SyncCounts = { customers: 0, visits: 0, inventory: 0, deals: 0 };
+
+  const { data: conn } = await supabase
+    .from("dms_connections")
+    .select("encrypted_tokens")
+    .eq("id", ctx.connectionId)
+    .single();
+  if (!conn?.encrypted_tokens) throw new Error("No tokens for 700Credit connection");
+
+  const { apiKey } = await decryptTokens<{ apiKey: string }>(conn.encrypted_tokens);
+
+  // FCRA: only enrich customers with at least 1 prior visit (existing relationship)
+  await log(jobId, "info", "Loading customers with existing relationship for 700Credit…");
+  const { data: customers } = await supabase
+    .from("customers")
+    .select("id, first_name, last_name, email, phone, address, credit_tier")
+    .eq("dealership_id", ctx.dealershipId)
+    .gt("total_visits", 0)
+    .is("credit_tier", null)
+    .limit(500);
+
+  if (!customers || customers.length === 0) {
+    await log(jobId, "info", "No customers needing credit enrichment.");
+    return counts;
+  }
+
+  await log(jobId, "info", `Soft-pulling credit tiers for ${customers.length} customers…`);
+
+  const inputs = customers.map((c) => ({
+    externalId: c.id as string,
+    consumer: {
+      firstName: c.first_name as string,
+      lastName: c.last_name as string,
+      email: (c.email ?? undefined) as string | undefined,
+      phone: (c.phone ?? undefined) as string | undefined,
+      address: (c.address as { street?: string; city?: string; state?: string; zip?: string } | null) ?? undefined,
+    },
+  }));
+
+  // Batch in groups of 50 (API limit)
+  for (const batch of chunk(inputs, 50)) {
+    const results = await fetchCreditTierBatch(batch, apiKey);
+    for (const res of results) {
+      await supabase
+        .from("customers")
+        .update({ credit_tier: res.tier as CreditTier })
+        .eq("id", res.externalId)
+        .eq("dealership_id", ctx.dealershipId);
+      counts.customers++;
+    }
+  }
+
+  return counts;
+}
+
+// ---------------------------------------------------------------------------
+// General CRM full sync
+// ---------------------------------------------------------------------------
+
+async function syncGeneralCrmFull(ctx: SyncContext, jobId: string): Promise<SyncCounts> {
+  const supabase = createServiceClient();
+  const counts: SyncCounts = { customers: 0, visits: 0, inventory: 0, deals: 0 };
+  const provider: DmsProvider = "general_crm";
+
+  const { data: conn } = await supabase
+    .from("dms_connections")
+    .select("encrypted_tokens")
+    .eq("id", ctx.connectionId)
+    .single();
+  if (!conn?.encrypted_tokens) throw new Error("No tokens for General CRM connection");
+
+  const { apiKey, baseUrl } = await decryptTokens<{ apiKey: string; baseUrl?: string }>(
+    conn.encrypted_tokens
+  );
+  const resolvedBase = baseUrl ?? (process.env.GENERAL_CRM_API_BASE ?? "");
+
+  // --- Leads → customers ---
+  await log(jobId, "info", "Fetching General CRM leads…");
+  const leads = await paginateAll<
+    GeneralCrmLead,
+    Awaited<ReturnType<typeof fetchGeneralCrmLeads>>
+  >((_, cursor) => fetchGeneralCrmLeads(apiKey, resolvedBase, ctx.since, cursor));
+
+  for (const batch of chunk(leads, 100)) {
+    const rows = batch.map((l) => ({
+      dealership_id: ctx.dealershipId,
+      dms_external_id: dmsId(provider, l.leadId),
+      first_name: l.firstName,
+      last_name: l.lastName,
+      email: l.email ?? null,
+      phone: l.phone ?? null,
+      address: l.address
+        ? {
+            street: l.address.street ?? null,
+            city: l.address.city ?? null,
+            state: l.address.state ?? null,
+            zip: l.address.zip ?? null,
+          }
+        : null,
+      lifecycle_stage: "prospect" as const,
+      metadata: {
+        dms_source: { provider, id: l.leadId },
+        lead_source: l.leadSource ?? null,
+        lead_status: l.leadStatus ?? null,
+        vehicle_interest: l.vehicleInterest ?? null,
+      },
+    }));
+    const { error } = await supabase
+      .from("customers")
+      .upsert(rows, { onConflict: "dealership_id,dms_external_id" });
+    if (error) await log(jobId, "warn", `Lead upsert error: ${error.message}`);
+    else counts.customers += batch.length;
+  }
+
+  // --- Activities → visits ---
+  await log(jobId, "info", "Fetching General CRM activities…");
+  const activities = await paginateAll<
+    GeneralCrmActivity,
+    Awaited<ReturnType<typeof fetchGeneralCrmActivities>>
+  >((_, cursor) => fetchGeneralCrmActivities(apiKey, resolvedBase, ctx.since, cursor));
+
+  const actDmsIds = [...new Set(activities.map((a) => a.leadId))];
+  const customerIdMap = await buildCustomerIdMap(ctx.dealershipId, provider, actDmsIds);
+
+  for (const batch of chunk(activities, 100)) {
+    const rows = batch
+      .map((a) => {
+        const dbCustId = customerIdMap.get(a.leadId);
+        if (!dbCustId) return null;
+        return {
+          dealership_id: ctx.dealershipId,
+          dms_external_id: dmsId(provider, `act:${a.activityId}`),
+          customer_id: dbCustId,
+          visit_date: a.activityDate,
+          service_type: "crm_activity",
+          service_notes: a.notes ?? null,
+          metadata: { dms_source: { provider, id: a.activityId }, activity_type: a.activityType },
+        };
+      })
+      .filter(Boolean) as object[];
+
+    if (rows.length === 0) continue;
+    const { error } = await supabase
+      .from("visits")
+      .upsert(rows, { onConflict: "dealership_id,dms_external_id" });
+    if (error) await log(jobId, "warn", `Activity upsert error: ${error.message}`);
+    else counts.visits += rows.length;
+  }
+
+  return counts;
+}
+
+// ---------------------------------------------------------------------------
 // Main public function: runSync
 // ---------------------------------------------------------------------------
 
@@ -584,8 +981,16 @@ export async function runSync(
   try {
     if (ctx.provider === "cdk_fortellis") {
       counts = await syncCdkFull(ctx, jobId);
-    } else {
+    } else if (ctx.provider === "reynolds") {
       counts = await syncReynoldsFull(ctx, jobId);
+    } else if (ctx.provider === "vinsolutions") {
+      counts = await syncVinSolutionsFull(ctx, jobId);
+    } else if (ctx.provider === "vauto") {
+      counts = await syncVAutoFull(ctx, jobId);
+    } else if (ctx.provider === "seven_hundred_credit") {
+      counts = await sync700CreditFull(ctx, jobId);
+    } else if (ctx.provider === "general_crm") {
+      counts = await syncGeneralCrmFull(ctx, jobId);
     }
 
     await supabase

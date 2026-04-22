@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export type ConnectionStatus = "not_connected" | "pending" | "active" | "error" | "disconnected";
 
 interface ConnectionCardProps {
-  provider: "cdk_fortellis" | "reynolds";
+  provider: "cdk_fortellis" | "reynolds" | "vinsolutions" | "vauto" | "seven_hundred_credit" | "general_crm";
   name: string;
   description: string;
   logo: React.ReactNode;

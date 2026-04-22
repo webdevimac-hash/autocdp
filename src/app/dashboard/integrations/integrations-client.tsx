@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ConnectionCard, type ConnectionStatus } from "@/components/integrations/connection-card";
-import { Database, RefreshCw, AlertCircle, CheckCircle2, Info } from "lucide-react";
+import { Database, RefreshCw, AlertCircle, CheckCircle2, Info, Car, CreditCard, FileText } from "lucide-react";
+
+type DmsProvider = "cdk_fortellis" | "reynolds" | "vinsolutions" | "vauto" | "seven_hundred_credit" | "general_crm";
 
 interface DmsConnection {
   id: string;
@@ -21,17 +23,38 @@ interface Props {
   errorParam?: string;
 }
 
-// Reynolds connect modal
-function ReynoldsModal({
-  open,
-  onClose,
-  onConnect,
-}: {
+// ---------------------------------------------------------------------------
+// Provider display config
+// ---------------------------------------------------------------------------
+
+const PROVIDER_LABELS: Record<DmsProvider, string> = {
+  cdk_fortellis: "CDK Fortellis",
+  reynolds: "Reynolds & Reynolds",
+  vinsolutions: "VinSolutions",
+  vauto: "vAuto",
+  seven_hundred_credit: "700Credit",
+  general_crm: "General CRM",
+};
+
+function providerLabel(provider: string): string {
+  return PROVIDER_LABELS[provider as DmsProvider] ?? provider;
+}
+
+// ---------------------------------------------------------------------------
+// Generic API key modal (used for Reynolds, VinSolutions+dealerId, vAuto+dealerId, 700Credit, General CRM)
+// ---------------------------------------------------------------------------
+
+interface ApiKeyModalProps {
   open: boolean;
+  title: string;
+  description: string;
+  fields: Array<{ name: string; label: string; placeholder: string; type?: string }>;
   onClose: () => void;
-  onConnect: (apiKey: string) => Promise<void>;
-}) {
-  const [apiKey, setApiKey] = useState("");
+  onConnect: (values: Record<string, string>) => Promise<void>;
+}
+
+function ApiKeyModal({ open, title, description, fields, onClose, onConnect }: ApiKeyModalProps) {
+  const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
@@ -40,8 +63,8 @@ function ReynoldsModal({
     setLoading(true);
     setErr("");
     try {
-      await onConnect(apiKey.trim());
-      setApiKey("");
+      await onConnect(values);
+      setValues({});
       onClose();
     } catch (error) {
       setErr(error instanceof Error ? error.message : "Connection failed");
@@ -50,27 +73,29 @@ function ReynoldsModal({
     }
   }
 
+  const allFilled = fields.every((f) => (values[f.name] ?? "").trim().length > 0);
+
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">Connect Reynolds & Reynolds</h2>
-        <p className="text-sm text-gray-500 mb-5">
-          Enter your Reynolds DealerLink API key from the ERA-IGNITE portal.
-        </p>
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">{title}</h2>
+        <p className="text-sm text-gray-500 mb-5">{description}</p>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">DealerLink API Key</label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="rr_live_…"
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-          </div>
+          {fields.map((f) => (
+            <div key={f.name}>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
+              <input
+                type={f.type ?? "text"}
+                value={values[f.name] ?? ""}
+                onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
+                placeholder={f.placeholder}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+          ))}
           {err && (
             <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -87,7 +112,7 @@ function ReynoldsModal({
             </button>
             <button
               type="submit"
-              disabled={loading || !apiKey}
+              disabled={loading || !allFilled}
               className="flex-1 px-4 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors"
             >
               {loading ? "Connecting…" : "Connect"}
@@ -99,9 +124,101 @@ function ReynoldsModal({
   );
 }
 
+// ---------------------------------------------------------------------------
+// CSV Upload modal (General CRM fallback)
+// ---------------------------------------------------------------------------
+
+function CsvUploadModal({
+  open,
+  onClose,
+  onUpload,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onUpload: (file: File) => Promise<void>;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const [result, setResult] = useState<{ parsed: number; upserted: number } | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!file) return;
+    setLoading(true);
+    setErr("");
+    setResult(null);
+    try {
+      await onUpload(file);
+      setResult({ parsed: 0, upserted: 0 }); // server returns actual counts
+      setFile(null);
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : "Upload failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">Upload CRM Leads CSV</h2>
+        <p className="text-sm text-gray-500 mb-3">
+          Export your leads from Dealertrack, Elead, DealerSocket, or any CRM and upload the CSV here.
+        </p>
+        <p className="text-xs text-gray-400 mb-5">
+          Expected columns: first_name, last_name, email, phone, lead_source, lead_status, street, city, state, zip, vehicle_year, vehicle_make, vehicle_model, vehicle_vin, created_date
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="file"
+            accept=".csv,text/csv"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="w-full text-sm text-gray-600 file:mr-3 file:px-3 file:py-1.5 file:rounded file:border file:border-gray-300 file:text-sm file:bg-gray-50 hover:file:bg-gray-100"
+          />
+          {err && (
+            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {err}
+            </div>
+          )}
+          {result && (
+            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              Upload complete. Leads imported successfully.
+            </div>
+          )}
+          <div className="flex gap-3 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              {result ? "Close" : "Cancel"}
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !file}
+              className="flex-1 px-4 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors"
+            >
+              {loading ? "Uploading…" : "Upload"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main client component
+// ---------------------------------------------------------------------------
+
 export function IntegrationsClient({ connections, latestCounts, successParam, errorParam }: Props) {
   const router = useRouter();
-  const [reynoldsModalOpen, setReynoldsModalOpen] = useState(false);
+  const [openModal, setOpenModal] = useState<DmsProvider | "csv_upload" | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
@@ -134,35 +251,56 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
     return conn.status as ConnectionStatus;
   }
 
-  async function handleSync(provider: "cdk_fortellis" | "reynolds") {
-    const res = await fetch(`/api/integrations/${provider === "cdk_fortellis" ? "cdk" : "reynolds"}/sync`, {
-      method: "POST",
-    });
+  async function handleSync(provider: DmsProvider) {
+    const slugMap: Record<DmsProvider, string> = {
+      cdk_fortellis: "cdk",
+      reynolds: "reynolds",
+      vinsolutions: "vinsolutions",
+      vauto: "vauto",
+      seven_hundred_credit: "700credit",
+      general_crm: "general-crm",
+    };
+    const res = await fetch(`/api/integrations/${slugMap[provider]}/sync`, { method: "POST" });
     if (!res.ok) {
       const data = await res.json() as { error?: string };
       throw new Error(data.error ?? "Sync failed");
     }
-    setToast({ type: "success", message: `${provider === "cdk_fortellis" ? "CDK" : "Reynolds"} sync triggered.` });
+    setToast({ type: "success", message: `${providerLabel(provider)} sync triggered.` });
     setTimeout(() => router.refresh(), 1500);
   }
 
-  async function handleReynoldsConnect(apiKey: string) {
-    const res = await fetch("/api/integrations/reynolds/connect", {
+  async function handleConnect(provider: DmsProvider, values: Record<string, string>) {
+    const slugMap: Record<DmsProvider, string> = {
+      cdk_fortellis: "cdk",
+      reynolds: "reynolds",
+      vinsolutions: "vinsolutions",
+      vauto: "vauto",
+      seven_hundred_credit: "700credit",
+      general_crm: "general-crm",
+    };
+    const res = await fetch(`/api/integrations/${slugMap[provider]}/connect`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ apiKey }),
+      body: JSON.stringify(values),
     });
     if (!res.ok) {
       const data = await res.json() as { error?: string };
       throw new Error(data.error ?? "Connection failed");
     }
-    setToast({ type: "success", message: "Reynolds connected! Initial sync is running in the background." });
+    setToast({ type: "success", message: `${providerLabel(provider)} connected! Initial sync is running.` });
     setTimeout(() => router.refresh(), 1000);
   }
 
-  async function handleDisconnect(provider: "cdk_fortellis" | "reynolds") {
-    const slug = provider === "cdk_fortellis" ? "cdk" : "reynolds";
-    const res = await fetch(`/api/integrations/${slug}/sync`, { method: "DELETE" });
+  async function handleDisconnect(provider: DmsProvider) {
+    const slugMap: Record<DmsProvider, string> = {
+      cdk_fortellis: "cdk",
+      reynolds: "reynolds",
+      vinsolutions: "vinsolutions",
+      vauto: "vauto",
+      seven_hundred_credit: "700credit",
+      general_crm: "general-crm",
+    };
+    const res = await fetch(`/api/integrations/${slugMap[provider]}/sync`, { method: "DELETE" });
     if (res.ok) {
       setToast({ type: "success", message: "Integration disconnected." });
       router.refresh();
@@ -172,8 +310,28 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
     }
   }
 
+  async function handleCsvUpload(file: File) {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch("/api/integrations/general-crm/upload", {
+      method: "POST",
+      body: form,
+    });
+    if (!res.ok) {
+      const data = await res.json() as { error?: string };
+      throw new Error(data.error ?? "Upload failed");
+    }
+    const data = await res.json() as { upserted: number };
+    setToast({ type: "success", message: `CSV uploaded — ${data.upserted} leads imported.` });
+    setTimeout(() => router.refresh(), 1000);
+  }
+
   const cdkConn = getConnection("cdk_fortellis");
   const reynoldsConn = getConnection("reynolds");
+  const vinConn = getConnection("vinsolutions");
+  const vautoConn = getConnection("vauto");
+  const creditConn = getConnection("seven_hundred_credit");
+  const crmConn = getConnection("general_crm");
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
@@ -199,8 +357,8 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
       <div>
         <h1 className="text-2xl font-bold text-gray-900">DMS Integrations</h1>
         <p className="text-gray-500 mt-1 text-sm">
-          Connect your Dealer Management System for automatic real-time data sync.
-          Customer records, service ROs, inventory, and deal data flow in automatically.
+          Connect your Dealer Management System and CRM tools for automatic real-time data sync.
+          Customer records, leads, inventory, and deal data flow in automatically.
         </p>
       </div>
 
@@ -208,52 +366,124 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
       <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl p-4">
         <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
         <p className="text-sm text-blue-700">
-          After connecting, AutoCDP runs an initial full sync and then delta syncs every 30–60 minutes.
+          After connecting, AutoCDP runs an initial full sync then delta syncs every 30–60 minutes.
           The AI swarm re-analyzes your data after each sync so campaigns stay fresh.
         </p>
       </div>
 
-      {/* Provider cards */}
-      <div className="space-y-4">
-        {/* CDK Fortellis */}
-        <ConnectionCard
-          provider="cdk_fortellis"
-          name="CDK Fortellis"
-          description="OAuth 2.0 • Customers, Service ROs, Inventory, F&I Deals"
-          logo={
-            <div className="w-8 h-8 flex items-center justify-center">
-              <Database className="w-5 h-5 text-blue-600" />
-            </div>
-          }
-          status={getStatus("cdk_fortellis")}
-          lastSyncAt={cdkConn?.last_sync_at}
-          lastError={cdkConn?.last_error}
-          syncCounts={latestCounts["cdk_fortellis"] ?? null}
-          onConnect={() => { window.location.href = "/api/integrations/cdk/connect"; }}
-          onSync={() => handleSync("cdk_fortellis")}
-          onDisconnect={() => handleDisconnect("cdk_fortellis")}
-          connectLabel="Connect with CDK Fortellis"
-        />
+      {/* DMS providers */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">DMS Systems</h2>
+        <div className="space-y-4">
+          <ConnectionCard
+            provider="cdk_fortellis"
+            name="CDK Fortellis"
+            description="OAuth 2.0 • Customers, Service ROs, Inventory, F&I Deals"
+            logo={<div className="w-8 h-8 flex items-center justify-center"><Database className="w-5 h-5 text-blue-600" /></div>}
+            status={getStatus("cdk_fortellis")}
+            lastSyncAt={cdkConn?.last_sync_at}
+            lastError={cdkConn?.last_error}
+            syncCounts={latestCounts["cdk_fortellis"] ?? null}
+            onConnect={() => { window.location.href = "/api/integrations/cdk/connect"; }}
+            onSync={() => handleSync("cdk_fortellis")}
+            onDisconnect={() => handleDisconnect("cdk_fortellis")}
+            connectLabel="Connect with CDK Fortellis"
+          />
 
-        {/* Reynolds */}
-        <ConnectionCard
-          provider="reynolds"
-          name="Reynolds & Reynolds"
-          description="API Key • ERA-IGNITE DealerLink • Customers, Service ROs, Inventory, Sales"
-          logo={
-            <div className="w-8 h-8 flex items-center justify-center">
-              <Database className="w-5 h-5 text-orange-500" />
-            </div>
-          }
-          status={getStatus("reynolds")}
-          lastSyncAt={reynoldsConn?.last_sync_at}
-          lastError={reynoldsConn?.last_error}
-          syncCounts={latestCounts["reynolds"] ?? null}
-          onConnect={() => setReynoldsModalOpen(true)}
-          onSync={() => handleSync("reynolds")}
-          onDisconnect={() => handleDisconnect("reynolds")}
-          connectLabel="Connect Reynolds"
-        />
+          <ConnectionCard
+            provider="reynolds"
+            name="Reynolds & Reynolds"
+            description="API Key • ERA-IGNITE DealerLink • Customers, Service ROs, Inventory, Sales"
+            logo={<div className="w-8 h-8 flex items-center justify-center"><Database className="w-5 h-5 text-orange-500" /></div>}
+            status={getStatus("reynolds")}
+            lastSyncAt={reynoldsConn?.last_sync_at}
+            lastError={reynoldsConn?.last_error}
+            syncCounts={latestCounts["reynolds"] ?? null}
+            onConnect={() => setOpenModal("reynolds")}
+            onSync={() => handleSync("reynolds")}
+            onDisconnect={() => handleDisconnect("reynolds")}
+            connectLabel="Connect Reynolds"
+          />
+        </div>
+      </div>
+
+      {/* CRM providers */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">CRM Systems</h2>
+        <div className="space-y-4">
+          <ConnectionCard
+            provider="vinsolutions"
+            name="VinSolutions"
+            description="API Key + Dealer ID • Contacts, Leads, Activities, Email History"
+            logo={<div className="w-8 h-8 flex items-center justify-center"><Database className="w-5 h-5 text-green-600" /></div>}
+            status={getStatus("vinsolutions")}
+            lastSyncAt={vinConn?.last_sync_at}
+            lastError={vinConn?.last_error}
+            syncCounts={latestCounts["vinsolutions"] ?? null}
+            onConnect={() => setOpenModal("vinsolutions")}
+            onSync={() => handleSync("vinsolutions")}
+            onDisconnect={() => handleDisconnect("vinsolutions")}
+            connectLabel="Connect VinSolutions"
+          />
+
+          <ConnectionCard
+            provider="general_crm"
+            name="General CRM (Dealertrack, Elead, DealerSocket)"
+            description="API Key or CSV upload • Leads, Activities — works with most CRMs"
+            logo={<div className="w-8 h-8 flex items-center justify-center"><FileText className="w-5 h-5 text-purple-600" /></div>}
+            status={getStatus("general_crm")}
+            lastSyncAt={crmConn?.last_sync_at}
+            lastError={crmConn?.last_error}
+            syncCounts={latestCounts["general_crm"] ?? null}
+            onConnect={() => setOpenModal("general_crm")}
+            onSync={() => handleSync("general_crm")}
+            onDisconnect={() => handleDisconnect("general_crm")}
+            connectLabel="Connect via API"
+          />
+          <button
+            onClick={() => setOpenModal("csv_upload")}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-purple-300 text-sm font-medium text-purple-600 hover:bg-purple-50 transition-colors"
+          >
+            <FileText className="w-4 h-4" />
+            Or upload a CRM leads CSV (Dealertrack, Elead, etc.)
+          </button>
+        </div>
+      </div>
+
+      {/* Inventory + enrichment */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Inventory & Enrichment</h2>
+        <div className="space-y-4">
+          <ConnectionCard
+            provider="vauto"
+            name="vAuto"
+            description="API Key + Dealer ID • Vehicle Inventory — VIN, pricing, days on lot, condition"
+            logo={<div className="w-8 h-8 flex items-center justify-center"><Car className="w-5 h-5 text-indigo-600" /></div>}
+            status={getStatus("vauto")}
+            lastSyncAt={vautoConn?.last_sync_at}
+            lastError={vautoConn?.last_error}
+            syncCounts={latestCounts["vauto"] ?? null}
+            onConnect={() => setOpenModal("vauto")}
+            onSync={() => handleSync("vauto")}
+            onDisconnect={() => handleDisconnect("vauto")}
+            connectLabel="Connect vAuto"
+          />
+
+          <ConnectionCard
+            provider="seven_hundred_credit"
+            name="700Credit"
+            description="API Key • Soft-pull credit tier enrichment for existing customers (FCRA-compliant)"
+            logo={<div className="w-8 h-8 flex items-center justify-center"><CreditCard className="w-5 h-5 text-yellow-600" /></div>}
+            status={getStatus("seven_hundred_credit")}
+            lastSyncAt={creditConn?.last_sync_at}
+            lastError={creditConn?.last_error}
+            syncCounts={latestCounts["seven_hundred_credit"] ?? null}
+            onConnect={() => setOpenModal("seven_hundred_credit")}
+            onSync={() => handleSync("seven_hundred_credit")}
+            onDisconnect={() => handleDisconnect("seven_hundred_credit")}
+            connectLabel="Connect 700Credit"
+          />
+        </div>
       </div>
 
       {/* Sync history */}
@@ -264,10 +494,65 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
         </div>
       )}
 
-      <ReynoldsModal
-        open={reynoldsModalOpen}
-        onClose={() => setReynoldsModalOpen(false)}
-        onConnect={handleReynoldsConnect}
+      {/* Modals */}
+      <ApiKeyModal
+        open={openModal === "reynolds"}
+        title="Connect Reynolds & Reynolds"
+        description="Enter your Reynolds DealerLink API key from the ERA-IGNITE portal."
+        fields={[{ name: "apiKey", label: "DealerLink API Key", placeholder: "rr_live_…", type: "password" }]}
+        onClose={() => setOpenModal(null)}
+        onConnect={(v) => handleConnect("reynolds", v)}
+      />
+
+      <ApiKeyModal
+        open={openModal === "vinsolutions"}
+        title="Connect VinSolutions"
+        description="Enter your VinSolutions API key and Dealer ID from the VinSolutions admin portal."
+        fields={[
+          { name: "apiKey", label: "API Key", placeholder: "vs_live_…", type: "password" },
+          { name: "dealerId", label: "Dealer ID", placeholder: "DLR-12345" },
+        ]}
+        onClose={() => setOpenModal(null)}
+        onConnect={(v) => handleConnect("vinsolutions", v)}
+      />
+
+      <ApiKeyModal
+        open={openModal === "vauto"}
+        title="Connect vAuto"
+        description="Enter your vAuto API key and Dealer ID from the vAuto Integration Center."
+        fields={[
+          { name: "apiKey", label: "API Key", placeholder: "va_live_…", type: "password" },
+          { name: "dealerId", label: "Dealer ID", placeholder: "DLR-12345" },
+        ]}
+        onClose={() => setOpenModal(null)}
+        onConnect={(v) => handleConnect("vauto", v)}
+      />
+
+      <ApiKeyModal
+        open={openModal === "seven_hundred_credit"}
+        title="Connect 700Credit"
+        description="Enter your 700Credit API key. AutoCDP performs soft-pull credit tier lookups only on customers with an existing dealership relationship (FCRA permissible purpose)."
+        fields={[{ name: "apiKey", label: "700Credit API Key", placeholder: "7c_live_…", type: "password" }]}
+        onClose={() => setOpenModal(null)}
+        onConnect={(v) => handleConnect("seven_hundred_credit", v)}
+      />
+
+      <ApiKeyModal
+        open={openModal === "general_crm"}
+        title="Connect General CRM"
+        description="Enter your CRM API key and base URL (Dealertrack, Elead, DealerSocket, etc.). No API? Use the CSV upload option instead."
+        fields={[
+          { name: "apiKey", label: "API Key", placeholder: "crm_live_…", type: "password" },
+          { name: "baseUrl", label: "API Base URL", placeholder: "https://api.yourcrm.com/v1" },
+        ]}
+        onClose={() => setOpenModal(null)}
+        onConnect={(v) => handleConnect("general_crm", v)}
+      />
+
+      <CsvUploadModal
+        open={openModal === "csv_upload"}
+        onClose={() => setOpenModal(null)}
+        onUpload={handleCsvUpload}
       />
     </div>
   );
@@ -316,7 +601,7 @@ function SyncHistory() {
             return (
               <tr key={job.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium text-gray-900">
-                  {job.provider === "cdk_fortellis" ? "CDK Fortellis" : "Reynolds"}
+                  {providerLabel(job.provider)}
                 </td>
                 <td className="px-4 py-3 text-gray-500 capitalize">{job.job_type}</td>
                 <td className="px-4 py-3">
