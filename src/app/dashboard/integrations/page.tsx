@@ -15,12 +15,15 @@ export default async function IntegrationsPage({
   if (!user) redirect("/login");
 
   const svc = createServiceClient();
-  const { data: dealership } = await svc
-    .from("dealerships")
-    .select("id, name")
-    .eq("owner_id", user.id)
-    .maybeSingle();
+  const { data: ud } = await svc
+    .from("user_dealerships")
+    .select("dealership_id, dealerships(id, name)")
+    .eq("user_id", user.id)
+    .maybeSingle() as {
+      data: { dealership_id: string; dealerships: { id: string; name: string } | null } | null;
+    };
 
+  const dealership = ud?.dealerships ?? null;
   if (!dealership) redirect("/login");
 
   // Load DMS connections
