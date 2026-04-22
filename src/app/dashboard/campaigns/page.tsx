@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Header } from "@/components/layout/header";
 import {
@@ -89,9 +90,12 @@ export default async function CampaignsPage() {
               ))}
             </div>
 
-            <button className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors shadow-[0_1px_2px_0_rgb(79_70_229/0.22),inset_0_1px_0_rgb(255_255_255/0.10)] active:scale-[0.97]">
+            <Link
+              href="/dashboard/direct-mail"
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors shadow-[0_1px_2px_0_rgb(79_70_229/0.22),inset_0_1px_0_rgb(255_255_255/0.10)] active:scale-[0.97]"
+            >
               <Plus className="w-3.5 h-3.5" /> New Campaign
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -108,9 +112,12 @@ export default async function CampaignsPage() {
             <p className="text-xs text-slate-400 mb-6 max-w-xs mx-auto leading-relaxed">
               Create your first AI-powered campaign to start reaching customers across mail, SMS, and email.
             </p>
-            <button className="inline-flex items-center gap-1.5 h-9 px-5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors shadow-sm">
+            <Link
+              href="/dashboard/direct-mail"
+              className="inline-flex items-center gap-1.5 h-9 px-5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
+            >
               <Plus className="w-3.5 h-3.5" /> Create Campaign
-            </button>
+            </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
