@@ -210,11 +210,15 @@ interface ChannelResult {
 interface CampaignBuilderProps {
   customers: Customer[];
   dealershipName: string;
+  dealershipLogoUrl?: string | null;
+  dealershipPhone?: string | null;
+  dealershipAddress?: Record<string, string> | null;
+  dealershipHours?: Record<string, string> | null;
 }
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
-export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderProps) {
+export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, dealershipPhone, dealershipAddress, dealershipHours }: CampaignBuilderProps) {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<Step>(1);
 
@@ -549,7 +553,7 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
                 <div className="p-3.5 bg-indigo-50 border border-indigo-100 rounded-[var(--radius)] text-xs text-indigo-800">
                   <strong>AI reasoning:</strong> {testPreview.reasoning}
                 </div>
-                <TemplatePreview templateType={testTemplateType} content={testPreview.content} dealershipName={dealershipName} vehicle={testPreview.vehicle} qrPreviewUrl={testPreview.previewQrUrl ?? undefined} />
+                <TemplatePreview templateType={testTemplateType} content={testPreview.content} dealershipName={dealershipName} vehicle={testPreview.vehicle} qrPreviewUrl={testPreview.previewQrUrl ?? undefined} logoUrl={dealershipLogoUrl} />
                 <div className="p-3.5 bg-amber-50 border border-amber-100 rounded-[var(--radius)] flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                   <p className="text-xs text-amber-800">
@@ -946,6 +950,7 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
                 dealershipName={dealershipName}
                 vehicle={previewResult.vehicle}
                 qrPreviewUrl={previewResult.previewQrUrl}
+                logoUrl={dealershipLogoUrl}
               />
             )}
 

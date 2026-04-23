@@ -37,9 +37,9 @@ export async function POST(req: NextRequest) {
 
     const { data: dealership } = await supabase
       .from("dealerships")
-      .select("name")
+      .select("name, phone, address, hours, logo_url, website_url")
       .eq("id", ud.dealership_id)
-      .single() as { data: Record<string, string | null> | null };
+      .single() as { data: Record<string, unknown> | null };
 
     const body = await req.json();
     const { customerId, templateType, campaignGoal, channel = "direct_mail", tone } = body;
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
     const creative = await runCreativeAgent({
       context: {
         dealershipId: ud.dealership_id,
-        dealershipName: dealership?.name ?? "Your Dealership",
+        dealershipName: (dealership?.name as string) ?? "Your Dealership",
       },
       customer: customer as Customer,
       recentVisit: (visits?.[0] as Visit | undefined) ?? null,
@@ -96,6 +96,13 @@ export async function POST(req: NextRequest) {
       campaignGoal,
       dealershipTone: tone,
       template: templateHint,
+      dealershipProfile: {
+        phone: dealership?.phone as string | null,
+        address: dealership?.address as { street?: string; city?: string; state?: string; zip?: string } | null,
+        hours: dealership?.hours as Record<string, string> | null,
+        logo_url: dealership?.logo_url as string | null,
+        website_url: dealership?.website_url as string | null,
+      },
     });
 
     // QR preview URL — only relevant for direct mail

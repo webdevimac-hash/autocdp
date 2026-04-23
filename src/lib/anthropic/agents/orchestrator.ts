@@ -97,12 +97,12 @@ Output JSON: {"plan": "summary", "priority_segments": ["segment1"], "risk_flags"
     });
     totalTokens += planResponse.usage.input_tokens + planResponse.usage.output_tokens;
 
-    const { data: customers } = await supabase
-      .from("customers")
-      .select("*")
-      .eq("dealership_id", input.context.dealershipId)
-      .order("last_visit_date", { ascending: false })
-      .limit(200);
+    const [customersRes, dealershipRes] = await Promise.all([
+      supabase.from("customers").select("*").eq("dealership_id", input.context.dealershipId).order("last_visit_date", { ascending: false }).limit(200),
+      supabase.from("dealerships").select("phone, address, hours, logo_url, website_url").eq("id", input.context.dealershipId).single(),
+    ]);
+    const customers = customersRes.data;
+    const dealershipProfile = dealershipRes.data ?? undefined;
 
     const { data: recentVisits } = await supabase
       .from("visits")
@@ -146,6 +146,7 @@ Output JSON: {"plan": "summary", "priority_segments": ["segment1"], "risk_flags"
         channel: input.channel === "multi_channel" ? "email" : input.channel,
         campaignGoal: input.campaignGoal,
         dealershipTone: input.dealershipTone,
+        dealershipProfile,
       });
       totalTokens += creative.tokensUsed;
 
@@ -269,14 +270,35 @@ export async function runDirectMailOrchestrator(
     .single();
 
   try {
-    // Load the selected customers + their most recent visits
-    const { data: customers } = await supabase
-      .from("customers")
-      .select("*")
-      .in("id", input.customerIds)
-      .eq("dealership_id", input.context.dealershipId);
+    // Load the selected customers + their most recent visits + dealership profile
+    const [{ data: customers }, { data: dealershipProfile }] = await Promise.all([
+      supabase
+        .from("customers")
+        .select("*")
+        .in("id", input.customerIds)
+        .eq("dealership_id", input.context.dealershipId),
+      supabase
+        .from("dealerships")
+        .select("phone, address, hours, website_url")
+        .eq("id", input.context.dealershipId)
+        .single() as Promise<{ data: { phone?: string | null; address?: Record<string, string> | null; hours?: Record<string, string> | null; website_url?: string | null } | null }>,
+    ]);
 
     if (!customers?.length) throw new Error("No valid customers found");
+
+    const dealershipContactLines = [
+      dealershipProfile?.phone ? `Phone: ${dealershipProfile.phone}` : null,
+      dealershipProfile?.address?.street
+        ? `Address: ${[dealershipProfile.address.street, dealershipProfile.address.city, dealershipProfile.address.state, dealershipProfile.address.zip].filter(Boolean).join(", ")}`
+        : null,
+      dealershipProfile?.hours
+        ? `Hours: ${Object.entries(dealershipProfile.hours).slice(0, 4).map(([d, h]) => `${d}: ${h}`).join(", ")}`
+        : null,
+      dealershipProfile?.website_url ? `Website: ${dealershipProfile.website_url}` : null,
+    ].filter(Boolean);
+    const dealershipContactSection = dealershipContactLines.length
+      ? `\nDEALERSHIP CONTACT (use in CTAs when relevant):\n${dealershipContactLines.join("\n")}\n`
+      : "";
 
     // Deterministic pre-filter: skip low-signal customers before agent calls.
     // includeProspects bypasses the threshold for lead/prospect-only campaigns
@@ -357,6 +379,7 @@ export async function runDirectMailOrchestrator(
         (input.campaignType === "aged_inventory"
           ? `\nCAMPAIGN TYPE: Aged Inventory — move specific vehicles that have been on the lot 45+ days.\n`
           : "") +
+        dealershipContactSection +
         `\nPostcard guidelines (50–100 words, warm, personal, ends with soft CTA):\n` +
         `- Reference specific vehicle or service if known\n` +
         `- Include a clear offer or reason to return\n` +
@@ -641,13 +664,34 @@ export async function runOmnichannelOrchestrator(
     .single();
 
   try {
-    const { data: customers } = await supabase
-      .from("customers")
-      .select("*")
-      .in("id", input.customerIds)
-      .eq("dealership_id", input.context.dealershipId);
+    const [{ data: customers }, { data: omnichannelDealershipProfile }] = await Promise.all([
+      supabase
+        .from("customers")
+        .select("*")
+        .in("id", input.customerIds)
+        .eq("dealership_id", input.context.dealershipId),
+      supabase
+        .from("dealerships")
+        .select("phone, address, hours, website_url")
+        .eq("id", input.context.dealershipId)
+        .single() as Promise<{ data: { phone?: string | null; address?: Record<string, string> | null; hours?: Record<string, string> | null; website_url?: string | null } | null }>,
+    ]);
 
     if (!customers?.length) throw new Error("No valid customers found");
+
+    const omnichannelContactLines = [
+      omnichannelDealershipProfile?.phone ? `Phone: ${omnichannelDealershipProfile.phone}` : null,
+      omnichannelDealershipProfile?.address?.street
+        ? `Address: ${[omnichannelDealershipProfile.address.street, omnichannelDealershipProfile.address.city, omnichannelDealershipProfile.address.state, omnichannelDealershipProfile.address.zip].filter(Boolean).join(", ")}`
+        : null,
+      omnichannelDealershipProfile?.hours
+        ? `Hours: ${Object.entries(omnichannelDealershipProfile.hours).slice(0, 4).map(([d, h]) => `${d}: ${h}`).join(", ")}`
+        : null,
+      omnichannelDealershipProfile?.website_url ? `Website: ${omnichannelDealershipProfile.website_url}` : null,
+    ].filter(Boolean);
+    const omnichannelContactSection = omnichannelContactLines.length
+      ? `\nDEALERSHIP CONTACT (use in CTAs when relevant):\n${omnichannelContactLines.join("\n")}\n`
+      : "";
 
     // Deterministic pre-filter: skip low-signal customers before agent calls
     const { customers: filteredCustomers, filtered: preFiltered } =
@@ -736,6 +780,7 @@ export async function runOmnichannelOrchestrator(
         (input.campaignType === "aged_inventory"
           ? `CAMPAIGN TYPE: Aged Inventory — move specific vehicles that have been on lot 45+ days.\n`
           : "") +
+        omnichannelContactSection +
         agedVehicleSystemNote +
         `\nPer-channel guidelines:\n` +
         `- SMS: Max 160 chars, first name, soft CTA, no HTML\n` +

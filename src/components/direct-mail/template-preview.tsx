@@ -11,6 +11,7 @@ interface TemplatePreviewProps {
   vehicle?: string | null;
   offer?: string | null;
   qrPreviewUrl?: string;
+  logoUrl?: string | null;
 }
 
 // Character-level transform for handwriting simulation
@@ -68,11 +69,13 @@ function Postcard6x9Preview({
   dealershipName,
   offer,
   qrPreviewUrl,
+  logoUrl,
 }: {
   content: string;
   dealershipName: string;
   offer?: string | null;
   qrPreviewUrl: string;
+  logoUrl?: string | null;
 }) {
   return (
     <div className="relative" style={{ perspective: "1000px" }}>
@@ -98,18 +101,33 @@ function Postcard6x9Preview({
         {/* Dealership header */}
         <div
           style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            borderBottom: "1px solid #E0E7FF",
+            paddingBottom: "6px",
+            marginBottom: "14px",
+          }}
+        >
+          {logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt={dealershipName}
+              style={{ height: "22px", width: "auto", maxWidth: "64px", objectFit: "contain", display: "block" }}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            />
+          )}
+          <span style={{
             fontFamily: "'Inter', sans-serif",
             fontSize: "9px",
             fontWeight: 700,
             color: "#6366F1",
             letterSpacing: "0.09em",
             textTransform: "uppercase",
-            borderBottom: "1px solid #E0E7FF",
-            paddingBottom: "6px",
-            marginBottom: "14px",
-          }}
-        >
-          {dealershipName}
+          }}>
+            {dealershipName}
+          </span>
         </div>
 
         {/* Handwritten message */}
@@ -171,10 +189,12 @@ function LetterPreview({
   content,
   dealershipName,
   templateType,
+  logoUrl,
 }: {
   content: string;
   dealershipName: string;
   templateType: MailTemplateType;
+  logoUrl?: string | null;
 }) {
   const aspectRatio = templateType === "letter_8.5x11" ? "8.5/11" : "6/9";
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
@@ -201,8 +221,19 @@ function LetterPreview({
           marginBottom: "12px",
         }}
       >
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 700, color: "#1E2937" }}>
-          {dealershipName}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt={dealershipName}
+              style={{ height: "30px", width: "auto", maxWidth: "80px", objectFit: "contain", display: "block" }}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            />
+          )}
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 700, color: "#1E2937" }}>
+            {dealershipName}
+          </span>
         </div>
         <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", color: "#94A3B8", textAlign: "right", fontWeight: 500 }}>
           {today}
@@ -223,6 +254,7 @@ export function TemplatePreview({
   dealershipName,
   offer,
   qrPreviewUrl: qrPropUrl,
+  logoUrl,
 }: TemplatePreviewProps) {
   const qrUrl = qrPropUrl ?? buildPreviewQRImageUrl(
     `${typeof window !== "undefined" ? window.location.origin : ""}/track/preview`,
@@ -251,12 +283,14 @@ export function TemplatePreview({
           dealershipName={dealershipName}
           offer={offer}
           qrPreviewUrl={qrUrl}
+          logoUrl={logoUrl}
         />
       ) : (
         <LetterPreview
           content={content}
           dealershipName={dealershipName}
           templateType={templateType}
+          logoUrl={logoUrl}
         />
       )}
     </div>

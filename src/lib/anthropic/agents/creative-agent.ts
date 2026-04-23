@@ -13,6 +13,14 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { applyGuardrails } from "../guardrails";
 import type { AgentContext, Customer, Visit, PersonalizedMessage, CommunicationChannel, InventoryVehicle } from "@/types";
 
+export interface DealershipProfile {
+  phone?: string | null;
+  address?: { street?: string; city?: string; state?: string; zip?: string } | null;
+  hours?: Record<string, string> | null;
+  logo_url?: string | null;
+  website_url?: string | null;
+}
+
 export interface CreativeAgentInput {
   context: AgentContext;
   customer: Customer;
@@ -21,6 +29,7 @@ export interface CreativeAgentInput {
   campaignGoal: string;
   template?: string;
   dealershipTone?: string;
+  dealershipProfile?: DealershipProfile;
   /** Aged inventory campaign: skip inventory lookup and use this exact vehicle. */
   assignedVehicle?: InventoryVehicle;
 }
@@ -279,11 +288,26 @@ export async function runCreativeAgent(
         `Apply the most relevant ones naturally:\n${patternLines.join("\n")}\n`
       : "";
 
+  const profile = input.dealershipProfile;
+  const profileSection = profile
+    ? [
+        profile.phone    ? `Phone: ${profile.phone}` : null,
+        profile.address?.street
+          ? `Address: ${[profile.address.street, profile.address.city, profile.address.state, profile.address.zip].filter(Boolean).join(", ")}`
+          : null,
+        profile.hours
+          ? `Hours: ${Object.entries(profile.hours).slice(0, 4).map(([d, h]) => `${d}: ${h}`).join(", ")}`
+          : null,
+        profile.website_url ? `Website: ${profile.website_url}` : null,
+      ].filter(Boolean).join("\n")
+    : null;
+
   const systemPrompt =
     `You are the Creative Agent for AutoCDP. You write hyper-personalized outreach ` +
     `messages for auto dealership customers. Your copy feels human, warm, and specific — never generic.\n\n` +
     `Tone: ${input.dealershipTone || "friendly and professional"}\n` +
     `Dealership: ${input.context.dealershipName}\n` +
+    (profileSection ? `\nDEALERSHIP CONTACT INFO (use in CTAs when relevant):\n${profileSection}\n` : "") +
     `${learningsSection}${inventorySection}\n` +
     `Rules:\n` +
     `- Reference specific details from the customer's visit history when available\n` +
@@ -291,6 +315,7 @@ export async function runCreativeAgent(
     `- Never be pushy or sales-heavy in the opening\n` +
     `- For direct mail: write as if hand-penned by a service advisor\n` +
     `- Use the customer's first name\n` +
+    `- When including a CTA with a phone number, use the dealership phone above\n` +
     `- End with a clear but soft call-to-action`;
 
   const userPrompt =

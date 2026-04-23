@@ -63,7 +63,7 @@ export default async function DirectMailPage() {
 
   const { data: dealership } = await supabase
     .from("dealerships")
-    .select("name")
+    .select("name, logo_url, phone, address, hours, settings")
     .eq("id", dealershipId)
     .single();
 
@@ -234,6 +234,10 @@ export default async function DirectMailPage() {
                 <CampaignBuilder
                   customers={customers}
                   dealershipName={dealership?.name ?? "Your Dealership"}
+                  dealershipLogoUrl={dealership?.logo_url ?? null}
+                  dealershipPhone={dealership?.phone ?? null}
+                  dealershipAddress={dealership?.address as Record<string, string> ?? null}
+                  dealershipHours={dealership?.hours as Record<string, string> ?? null}
                 />
               </div>
             </div>

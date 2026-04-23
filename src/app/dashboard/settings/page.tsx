@@ -3,10 +3,10 @@ import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Key, Bell, Shield, Webhook, Save } from "lucide-react";
+import { Building2, Key, Bell, Shield, Webhook } from "lucide-react";
+import { SettingsForm } from "@/components/settings/settings-form";
 import type { Dealership } from "@/types";
 
 export const metadata = { title: "Settings" };
@@ -40,43 +40,15 @@ export default async function SettingsPage() {
               <CardTitle className="text-base">Dealership Profile</CardTitle>
             </div>
             <CardDescription className="text-xs">
-              This information is used in AI-generated messages and on your account.
+              Used in AI-generated messages, direct mail templates, and your account. Re-scrape anytime to refresh from your website.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Dealership Name</Label>
-                <Input defaultValue={dealership?.name ?? ""} placeholder="Sunrise Ford" />
-              </div>
-              <div className="space-y-2">
-                <Label>Phone Number</Label>
-                <Input defaultValue={dealership?.phone ?? ""} placeholder="(555) 100-2000" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Website URL</Label>
-              <Input defaultValue={dealership?.website_url ?? ""} placeholder="https://yourdealership.com" type="url" />
-            </div>
-            <div className="space-y-2">
-              <Label>Street Address</Label>
-              <Input
-                defaultValue={(dealership?.address as { street?: string })?.street ?? ""}
-                placeholder="123 Auto Row, Phoenix, AZ 85001"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>AI Tone / Personality</Label>
-              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <option value="friendly">Friendly & Approachable</option>
-                <option value="professional">Professional & Direct</option>
-                <option value="luxury">Luxury & White Glove</option>
-                <option value="hometown">Hometown & Personal</option>
-              </select>
-            </div>
-            <Button size="sm" className="text-xs h-8">
-              <Save className="w-3.5 h-3.5 mr-1.5" /> Save Changes
-            </Button>
+          <CardContent>
+            {dealership ? (
+              <SettingsForm dealership={dealership} />
+            ) : (
+              <p className="text-sm text-muted-foreground">No dealership profile found.</p>
+            )}
           </CardContent>
         </Card>
 
