@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       .single() as { data: { name: string } | null };
 
     const body = await req.json().catch(() => ({}));
-    const { campaignGoal, channels, customerIds, templateType, dryRun, dealershipTone, includeProspects } = body;
+    const { campaignGoal, channels, customerIds, templateType, dryRun, dealershipTone, includeProspects, campaignType } = body;
 
     if (!campaignGoal || !channels?.length || !customerIds?.length) {
       return NextResponse.json({ error: "campaignGoal, channels, and customerIds are required" }, { status: 400 });
@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
       dealershipTone,
       dryRun: dryRun ?? false,
       includeProspects: includeProspects ?? false,
+      campaignType: campaignType ?? "standard",
       createdBy: user.id,
     });
 

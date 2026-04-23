@@ -1,15 +1,17 @@
 /**
  * Data Agent — Analyzes customer records and visit history.
- * Responsibilities: segmentation insights, churn risk scoring, lifetime value estimation.
+ * Responsibilities: segmentation insights, churn risk scoring, vehicle interest patterns.
  */
 import { getAnthropicClient, MODELS } from "../client";
-import type { Customer, Visit, AgentContext } from "@/types";
+import type { Customer, Visit, AgentContext, CampaignType, InventoryVehicle } from "@/types";
 
 export interface DataAgentInput {
   context: AgentContext;
   customers: Customer[];
   recentVisits: Visit[];
   question?: string;
+  campaignType?: CampaignType;
+  agedInventory?: InventoryVehicle[];
 }
 
 export interface DataAgentOutput {
@@ -22,6 +24,7 @@ export interface DataAgentOutput {
   };
   churnRiskCustomerIds: string[];
   topRecommendations: string[];
+  vehicleInterestSummary?: string;
   tokensUsed: number;
 }
 
@@ -38,35 +41,73 @@ export async function runDataAgent(input: DataAgentInput): Promise<DataAgentOutp
     tags: c.tags,
   }));
 
-  const systemPrompt = `You are the Data Agent for AutoCDP, an AI-powered Customer Data Platform for auto dealerships.
+  // For aged inventory campaigns, extract make/model distribution from visits
+  const visitMakeSummary =
+    input.campaignType === "aged_inventory" && input.recentVisits.length > 0
+      ? (() => {
+          const makeCounts: Record<string, number> = {};
+          const modelCounts: Record<string, number> = {};
+          for (const v of input.recentVisits) {
+            if (v.make) makeCounts[v.make] = (makeCounts[v.make] ?? 0) + 1;
+            if (v.model) modelCounts[v.model] = (modelCounts[v.model] ?? 0) + 1;
+          }
+          const topMakes = Object.entries(makeCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([m, n]) => `${m} (${n} visits)`);
+          const topModels = Object.entries(modelCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([m, n]) => `${m} (${n} visits)`);
+          return `Top makes in service history: ${topMakes.join(", ")}\nTop models in service history: ${topModels.join(", ")}`;
+        })()
+      : null;
 
-Your role is to analyze customer data and extract actionable insights for ${input.context.dealershipName}.
-Focus on:
-1. Customer lifecycle stage distribution and trends
-2. Churn risk signals (customers overdue for service)
-3. Revenue concentration and VIP identification
-4. Seasonal patterns in service visits
+  const agedInventorySection =
+    input.campaignType === "aged_inventory" && input.agedInventory?.length
+      ? `\nAGED INVENTORY (${input.agedInventory.length} vehicles, 45+ days on lot):\n` +
+        input.agedInventory
+          .slice(0, 10)
+          .map((v) =>
+            `  • ${[v.year, v.make, v.model, v.trim].filter(Boolean).join(" ")} — ${v.days_on_lot}d on lot, ${v.price ? "$" + Number(v.price).toLocaleString() : "price TBD"}`
+          )
+          .join("\n")
+      : "";
 
-Return structured JSON matching the DataAgentOutput interface.
-Be concise and data-driven. Always include specific customer IDs for churn risk.`;
+  const systemPrompt =
+    `You are the Data Agent for AutoCDP, an AI-powered Customer Data Platform for auto dealerships.\n\n` +
+    `Your role is to analyze customer data and extract actionable insights for ${input.context.dealershipName}.\n` +
+    `Focus on:\n` +
+    `1. Customer lifecycle stage distribution and trends\n` +
+    `2. Churn risk signals (customers overdue for service)\n` +
+    `3. Revenue concentration and VIP identification\n` +
+    `4. Seasonal patterns in service visits\n` +
+    (input.campaignType === "aged_inventory"
+      ? `5. Vehicle brand/model affinity — which makes/models appear most in service history\n` +
+        `6. Match aged inventory to customer vehicle interests\n`
+      : "") +
+    `\nReturn structured JSON matching the DataAgentOutput interface.\n` +
+    `Be concise and data-driven. Always include specific customer IDs for churn risk.`;
 
-  const userPrompt = `Analyze this customer dataset for ${input.context.dealershipName}:
-
-CUSTOMERS (${input.customers.length} total, showing first 50):
-${JSON.stringify(customerSummary, null, 2)}
-
-RECENT VISITS (last 30 days, ${input.recentVisits.length} total):
-${JSON.stringify(input.recentVisits.slice(0, 20), null, 2)}
-
-${input.question ? `SPECIFIC QUESTION: ${input.question}` : ""}
-
-Respond with JSON:
-{
-  "insights": "narrative summary of key findings",
-  "segmentSummary": {"vip": 0, "active": 0, "atRisk": 0, "lapsed": 0},
-  "churnRiskCustomerIds": ["id1", "id2"],
-  "topRecommendations": ["recommendation 1", "recommendation 2", "recommendation 3"]
-}`;
+  const userPrompt =
+    `Analyze this customer dataset for ${input.context.dealershipName}:\n\n` +
+    `CUSTOMERS (${input.customers.length} total, showing first 50):\n` +
+    JSON.stringify(customerSummary, null, 2) +
+    `\n\nRECENT VISITS (last 2 years, ${input.recentVisits.length} total):\n` +
+    JSON.stringify(input.recentVisits.slice(0, 20), null, 2) +
+    (visitMakeSummary ? `\n\nVEHICLE INTEREST PATTERNS:\n${visitMakeSummary}` : "") +
+    agedInventorySection +
+    (input.question ? `\n\nSPECIFIC QUESTION: ${input.question}` : "") +
+    `\n\nRespond with JSON:\n` +
+    `{\n` +
+    `  "insights": "narrative summary of key findings",\n` +
+    `  "segmentSummary": {"vip": 0, "active": 0, "atRisk": 0, "lapsed": 0},\n` +
+    `  "churnRiskCustomerIds": ["id1", "id2"],\n` +
+    `  "topRecommendations": ["recommendation 1", "recommendation 2", "recommendation 3"]` +
+    (input.campaignType === "aged_inventory"
+      ? `,\n  "vehicleInterestSummary": "which makes/models dominate service history and how they align with aged inventory"`
+      : "") +
+    `\n}`;
 
   const response = await client.messages.create({
     model: MODELS.standard,
@@ -78,7 +119,6 @@ Respond with JSON:
   const content = response.content[0];
   if (content.type !== "text") throw new Error("Unexpected response type from Data Agent");
 
-  // Extract JSON from response (model may wrap in markdown)
   const jsonMatch = content.text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("Data Agent did not return valid JSON");
 

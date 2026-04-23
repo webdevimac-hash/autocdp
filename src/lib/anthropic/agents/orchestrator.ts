@@ -30,8 +30,10 @@ import {
 } from "../tools/send-email";
 import { createServiceClient } from "@/lib/supabase/server";
 import { filterAndRankCustomers, SCORE_THRESHOLD } from "@/lib/scoring";
+import { matchCustomersToVehicles, formatAssignedVehicleForPrompt } from "@/lib/aged-inventory";
 import type {
-  AgentContext, Customer, Visit, CampaignChannel,
+  AgentContext, Customer, Visit, CampaignChannel, CampaignType,
+  InventoryVehicle, AgedInventoryMatch,
   SendDirectMailToolInput, SendDirectMailToolResult,
 } from "@/types";
 
@@ -217,13 +219,13 @@ export interface DirectMailOrchestratorInput {
   context: AgentContext;
   campaignGoal: string;
   templateType: "postcard_6x9" | "letter_6x9" | "letter_8.5x11";
-  customerIds: string[];          // pre-filtered list of customers to mail
+  customerIds: string[];
   dealershipTone?: string;
-  dryRun?: boolean;               // if true: generate copy but skip PostGrid call
-  isTest?: boolean;               // if true: marks mail_pieces rows with is_test = true
+  dryRun?: boolean;
+  isTest?: boolean;
   createdBy?: string;
-  /** When true, skips the score threshold so prospect/lead customers are included. */
   includeProspects?: boolean;
+  campaignType?: CampaignType;
 }
 
 export interface DirectMailResult {
@@ -306,6 +308,28 @@ export async function runDirectMailOrchestrator(
       }
     }
 
+    // ── Aged inventory matching ───────────────────────────────
+    let vehicleAssignments: Map<string, AgedInventoryMatch> | null = null;
+    if (input.campaignType === "aged_inventory") {
+      const { data: agedVehicles } = await supabase
+        .from("inventory")
+        .select("id, dealership_id, vin, year, make, model, trim, color, mileage, condition, price, days_on_lot, status, metadata, created_at, updated_at")
+        .eq("dealership_id", input.context.dealershipId)
+        .eq("status", "available")
+        .gte("days_on_lot", 45)
+        .order("days_on_lot", { ascending: false })
+        .limit(50) as unknown as { data: InventoryVehicle[] | null };
+
+      if (agedVehicles?.length) {
+        vehicleAssignments = matchCustomersToVehicles(
+          filteredCustomers,
+          (visits ?? []) as Visit[],
+          agedVehicles
+        );
+        console.info(`[direct-mail-orchestrator] Aged inventory: ${agedVehicles.length} vehicles, ${vehicleAssignments.size} customers matched`);
+      }
+    }
+
     const results: DirectMailResult[] = [];
 
     // Process each customer — each gets its own tool-use conversation
@@ -315,39 +339,47 @@ export async function runDirectMailOrchestrator(
         ? `Last visit: ${lastVisit.visit_date?.slice(0, 10)} | Vehicle: ${[lastVisit.year, lastVisit.make, lastVisit.model].filter(Boolean).join(" ")} | Mileage: ${lastVisit.mileage?.toLocaleString() ?? "unknown"} | Service: ${lastVisit.service_type ?? "general"} | Notes: ${lastVisit.service_notes ?? "none"}`
         : "No previous visits recorded.";
 
-      const systemPrompt = `You are the AutoCDP Orchestrator for ${input.context.dealershipName}.
-You have one tool available: send_direct_mail.
+      const vehicleMatch = vehicleAssignments?.get(customer.id);
+      const agedVehicleNote = vehicleMatch
+        ? `\n\n${formatAssignedVehicleForPrompt(vehicleMatch)}`
+        : "";
 
-Your task:
-1. Write personalized ${input.templateType} copy for this customer based on their visit history.
-2. Call send_direct_mail with the copy and appropriate variables.
-3. Report the result.
+      const systemPrompt =
+        `You are the AutoCDP Orchestrator for ${input.context.dealershipName}.\n` +
+        `You have one tool available: send_direct_mail.\n\n` +
+        `Your task:\n` +
+        `1. Write personalized ${input.templateType} copy for this customer based on their visit history.\n` +
+        `2. Call send_direct_mail with the copy and appropriate variables.\n` +
+        `3. Report the result.\n\n` +
+        `Tone: ${input.dealershipTone ?? "friendly and professional"}\n` +
+        `Template: ${input.templateType}\n` +
+        (input.dryRun ? `⚠ DRY RUN MODE: Generate copy and call the tool, but note this is a simulation.\n` : "") +
+        (input.campaignType === "aged_inventory"
+          ? `\nCAMPAIGN TYPE: Aged Inventory — move specific vehicles that have been on the lot 45+ days.\n`
+          : "") +
+        `\nPostcard guidelines (50–100 words, warm, personal, ends with soft CTA):\n` +
+        `- Reference specific vehicle or service if known\n` +
+        `- Include a clear offer or reason to return\n` +
+        `- Sign off naturally\n\n` +
+        `Letter guidelines (150–250 words, conversational business letter format):\n` +
+        `- Formal but warm opening\n` +
+        `- Reference service history specifically\n` +
+        `- Make an offer or invitation\n` +
+        `- Include next steps` +
+        agedVehicleNote;
 
-Tone: ${input.dealershipTone ?? "friendly and professional"}
-Template: ${input.templateType}
-${input.dryRun ? "⚠ DRY RUN MODE: Generate copy and call the tool, but note this is a simulation." : ""}
-
-Postcard guidelines (50–100 words, warm, personal, ends with soft CTA):
-- Reference specific vehicle or service if known
-- Include a clear offer or reason to return
-- Sign off naturally
-
-Letter guidelines (150–250 words, conversational business letter format):
-- Formal but warm opening
-- Reference service history specifically
-- Make an offer or invitation
-- Include next steps`;
-
-      const userMessage = `Generate and send a personalized ${input.templateType} for:
-
-CUSTOMER: ${customer.first_name} ${customer.last_name}
-CUSTOMER ID: ${customer.id}
-LIFECYCLE: ${customer.lifecycle_stage} | VISITS: ${customer.total_visits} | TOTAL SPEND: $${customer.total_spend.toFixed(0)}
-${visitContext}
-
-CAMPAIGN GOAL: ${input.campaignGoal}
-
-Write the personalized copy, choose appropriate variables, then call send_direct_mail.`;
+      const userMessage =
+        `Generate and send a personalized ${input.templateType} for:\n\n` +
+        `CUSTOMER: ${customer.first_name} ${customer.last_name}\n` +
+        `CUSTOMER ID: ${customer.id}\n` +
+        `LIFECYCLE: ${customer.lifecycle_stage} | VISITS: ${customer.total_visits} | TOTAL SPEND: $${customer.total_spend.toFixed(0)}\n` +
+        `${visitContext}\n\n` +
+        `CAMPAIGN GOAL: ${input.campaignGoal}\n` +
+        (vehicleMatch
+          ? `\nAGED VEHICLE TO REFERENCE: ${[vehicleMatch.vehicle.year, vehicleMatch.vehicle.make, vehicleMatch.vehicle.model, vehicleMatch.vehicle.trim].filter(Boolean).join(" ")} — ${vehicleMatch.vehicle.days_on_lot} days on lot${vehicleMatch.vehicle.price ? ` — $${Number(vehicleMatch.vehicle.price).toLocaleString()}` : ""}\n` +
+            `Match basis: ${vehicleMatch.matchReasons.join(", ")}\n`
+          : "") +
+        `\nWrite the personalized copy, choose appropriate variables, then call send_direct_mail.`;
 
       // Multi-turn tool-use loop
       let messages: Parameters<typeof client.messages.create>[0]["messages"] = [
@@ -562,6 +594,8 @@ export interface OmnichannelOrchestratorInput {
   dealershipTone?: string;
   dryRun?: boolean;
   createdBy?: string;
+  includeProspects?: boolean;
+  campaignType?: CampaignType;
 }
 
 export interface OmnichannelResult {
@@ -617,11 +651,17 @@ export async function runOmnichannelOrchestrator(
 
     // Deterministic pre-filter: skip low-signal customers before agent calls
     const { customers: filteredCustomers, filtered: preFiltered } =
-      filterAndRankCustomers(customers as Customer[]);
+      filterAndRankCustomers(customers as Customer[], SCORE_THRESHOLD, !input.includeProspects);
     if (preFiltered > 0) {
       console.info(`[omnichannel-orchestrator] Pre-filter removed ${preFiltered} low-score customers`);
     }
-    if (!filteredCustomers.length) throw new Error("All selected customers scored below threshold");
+    if (!filteredCustomers.length) {
+      throw new Error(
+        input.includeProspects
+          ? "No valid customers found"
+          : "All selected customers scored below threshold — use includeProspects:true for lead campaigns"
+      );
+    }
 
     const { data: visits } = await supabase
       .from("visits")
@@ -634,6 +674,28 @@ export async function runOmnichannelOrchestrator(
     for (const v of visits ?? []) {
       if (!visitsByCustomer.has(v.customer_id)) {
         visitsByCustomer.set(v.customer_id, v as Visit);
+      }
+    }
+
+    // ── Aged inventory matching ───────────────────────────────
+    let omnichannelVehicleAssignments: Map<string, AgedInventoryMatch> | null = null;
+    if (input.campaignType === "aged_inventory") {
+      const { data: agedVehicles } = await supabase
+        .from("inventory")
+        .select("id, dealership_id, vin, year, make, model, trim, color, mileage, condition, price, days_on_lot, status, metadata, created_at, updated_at")
+        .eq("dealership_id", input.context.dealershipId)
+        .eq("status", "available")
+        .gte("days_on_lot", 45)
+        .order("days_on_lot", { ascending: false })
+        .limit(50) as unknown as { data: InventoryVehicle[] | null };
+
+      if (agedVehicles?.length) {
+        omnichannelVehicleAssignments = matchCustomersToVehicles(
+          filteredCustomers,
+          (visits ?? []) as Visit[],
+          agedVehicles
+        );
+        console.info(`[omnichannel-orchestrator] Aged inventory: ${agedVehicles.length} vehicles, ${omnichannelVehicleAssignments.size} customers matched`);
       }
     }
 
@@ -656,31 +718,42 @@ export async function runOmnichannelOrchestrator(
         ? `Last visit: ${lastVisit.visit_date?.slice(0, 10)} | Vehicle: ${[lastVisit.year, lastVisit.make, lastVisit.model].filter(Boolean).join(" ")} | Service: ${lastVisit.service_type ?? "general"}`
         : "No previous visits.";
 
+      const omnichannelVehicleMatch = omnichannelVehicleAssignments?.get(customer.id);
+      const agedVehicleSystemNote = omnichannelVehicleMatch
+        ? `\n${formatAssignedVehicleForPrompt(omnichannelVehicleMatch)}\n`
+        : "";
+
       const channelNote = input.channels.includes("multi_channel")
         ? "You have access to send_sms, send_email, and send_direct_mail. Choose the best channel for this customer."
         : `Use the ${input.channels.join(" or ")} channel(s) available to you.`;
 
-      const systemPrompt = `You are the AutoCDP Orchestrator for ${input.context.dealershipName}.
-Available tools: ${tools.map((t) => t.name).join(", ")}.
-${channelNote}
-Tone: ${input.dealershipTone ?? "friendly and professional"}
-${input.dryRun ? "⚠ DRY RUN MODE: Generate copy and call the tool — this is a simulation." : ""}
+      const systemPrompt =
+        `You are the AutoCDP Orchestrator for ${input.context.dealershipName}.\n` +
+        `Available tools: ${tools.map((t) => t.name).join(", ")}.\n` +
+        `${channelNote}\n` +
+        `Tone: ${input.dealershipTone ?? "friendly and professional"}\n` +
+        (input.dryRun ? `⚠ DRY RUN MODE: Generate copy and call the tool — this is a simulation.\n` : "") +
+        (input.campaignType === "aged_inventory"
+          ? `CAMPAIGN TYPE: Aged Inventory — move specific vehicles that have been on lot 45+ days.\n`
+          : "") +
+        agedVehicleSystemNote +
+        `\nPer-channel guidelines:\n` +
+        `- SMS: Max 160 chars, first name, soft CTA, no HTML\n` +
+        `- Email: Subject + HTML body, 2–3 short paragraphs, clear CTA\n` +
+        `- Direct mail: Warm 50–120 word note, specific vehicle/service reference`;
 
-Per-channel guidelines:
-- SMS: Max 160 chars, first name, soft CTA, no HTML
-- Email: Subject + HTML body, 2–3 short paragraphs, clear CTA
-- Direct mail: Warm 50–120 word note, specific vehicle/service reference`;
-
-      const userMessage = `Send a personalized outreach to:
-
-CUSTOMER: ${customer.first_name} ${customer.last_name} (ID: ${customer.id})
-LIFECYCLE: ${customer.lifecycle_stage} | VISITS: ${customer.total_visits} | SPEND: $${customer.total_spend.toFixed(0)}
-${visitContext}
-
-CAMPAIGN GOAL: ${input.campaignGoal}
-TEMPLATE TYPE (for mail): ${input.templateType ?? "postcard_6x9"}
-
-Generate personalized copy and call the appropriate tool(s).`;
+      const userMessage =
+        `Send a personalized outreach to:\n\n` +
+        `CUSTOMER: ${customer.first_name} ${customer.last_name} (ID: ${customer.id})\n` +
+        `LIFECYCLE: ${customer.lifecycle_stage} | VISITS: ${customer.total_visits} | SPEND: $${customer.total_spend.toFixed(0)}\n` +
+        `${visitContext}\n\n` +
+        `CAMPAIGN GOAL: ${input.campaignGoal}\n` +
+        `TEMPLATE TYPE (for mail): ${input.templateType ?? "postcard_6x9"}\n` +
+        (omnichannelVehicleMatch
+          ? `\nAGED VEHICLE TO REFERENCE: ${[omnichannelVehicleMatch.vehicle.year, omnichannelVehicleMatch.vehicle.make, omnichannelVehicleMatch.vehicle.model, omnichannelVehicleMatch.vehicle.trim].filter(Boolean).join(" ")} — ${omnichannelVehicleMatch.vehicle.days_on_lot} days on lot${omnichannelVehicleMatch.vehicle.price ? ` — $${Number(omnichannelVehicleMatch.vehicle.price).toLocaleString()}` : ""}\n` +
+            `Match basis: ${omnichannelVehicleMatch.matchReasons.join(", ")}\n`
+          : "") +
+        `\nGenerate personalized copy and call the appropriate tool(s).`;
 
       let messages: Parameters<typeof client.messages.create>[0]["messages"] = [
         { role: "user", content: userMessage },

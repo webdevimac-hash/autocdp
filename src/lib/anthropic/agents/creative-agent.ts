@@ -11,7 +11,7 @@
 import { getAnthropicClient, MODELS } from "../client";
 import { createServiceClient } from "@/lib/supabase/server";
 import { applyGuardrails } from "../guardrails";
-import type { AgentContext, Customer, Visit, PersonalizedMessage, CommunicationChannel } from "@/types";
+import type { AgentContext, Customer, Visit, PersonalizedMessage, CommunicationChannel, InventoryVehicle } from "@/types";
 
 export interface CreativeAgentInput {
   context: AgentContext;
@@ -21,6 +21,8 @@ export interface CreativeAgentInput {
   campaignGoal: string;
   template?: string;
   dealershipTone?: string;
+  /** Aged inventory campaign: skip inventory lookup and use this exact vehicle. */
+  assignedVehicle?: InventoryVehicle;
 }
 
 export interface CreativeAgentOutput extends PersonalizedMessage {
@@ -219,12 +221,28 @@ export async function runCreativeAgent(
   // ── 2. Inventory context ───────────────────────────────────
   let inventorySection = "";
   try {
-    const invCtx = await fetchInventoryContext(
-      supabase,
-      input.context.dealershipId,
-      input.recentVisit
-    );
-    inventorySection = formatInventorySection(invCtx);
+    if (input.assignedVehicle) {
+      // Aged inventory campaign: reference the exact matched vehicle
+      const v = input.assignedVehicle;
+      const name = [v.year, v.make, v.model, v.trim].filter(Boolean).join(" ");
+      const price = v.price ? `$${Number(v.price).toLocaleString()}` : "call for price";
+      const color = v.color ? ` | Color: ${v.color}` : "";
+      const mileage = v.mileage ? ` | ${v.mileage.toLocaleString()} miles` : "";
+      const condition = v.condition ? `${v.condition.toUpperCase()} ` : "";
+      inventorySection =
+        `\nASSIGNED AGED VEHICLE — CRITICAL: You MUST reference this specific vehicle in your message:\n` +
+        `  ${condition}${name}${color}${mileage}\n` +
+        `  Price: ${price} | Days on lot: ${v.days_on_lot} (motivated to move)\n` +
+        `  This vehicle was matched to the customer based on their service history.\n` +
+        `  Name the vehicle year/make/model explicitly. Reference its ${v.days_on_lot} days on the lot naturally.\n`;
+    } else {
+      const invCtx = await fetchInventoryContext(
+        supabase,
+        input.context.dealershipId,
+        input.recentVisit
+      );
+      inventorySection = formatInventorySection(invCtx);
+    }
   } catch {
     // Non-fatal
   }

@@ -74,6 +74,36 @@ export function scoreCustomer(customer: Customer): CustomerScore {
   };
 }
 
+// ── Aged inventory scoring ────────────────────────────────────
+
+export interface AgedInventoryScore extends CustomerScore {
+  inventoryMatchStrength: "perfect" | "strong" | "partial" | "none";
+  inventoryMatchBonus: number;
+  totalWithInventory: number;
+}
+
+/**
+ * Score a customer for an aged inventory campaign.
+ * Adds a match-strength bonus on top of the base RFM score.
+ */
+export function scoreCustomerForAgedInventory(
+  customer: Customer,
+  matchStrength: "perfect" | "strong" | "partial" | "none"
+): AgedInventoryScore {
+  const base = scoreCustomer(customer);
+  const bonus =
+    matchStrength === "perfect" ? 25 :
+    matchStrength === "strong"  ? 15 :
+    matchStrength === "partial" ?  5 : 0;
+
+  return {
+    ...base,
+    inventoryMatchStrength: matchStrength,
+    inventoryMatchBonus: bonus,
+    totalWithInventory: base.score + bonus,
+  };
+}
+
 /**
  * Filter and rank a customer list before running the agent swarm.
  *

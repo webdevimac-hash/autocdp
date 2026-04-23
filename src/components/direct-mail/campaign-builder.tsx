@@ -8,10 +8,10 @@ import {
   FileText, Send, Loader2, CheckCircle, AlertCircle,
   ChevronRight, RefreshCw, Zap, Eye, FlaskConical,
   ExternalLink, Mail, MessageSquare, Layers, Phone,
-  AtSign,
+  AtSign, Car, Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Customer, MailTemplateType } from "@/types";
+import type { Customer, MailTemplateType, CampaignType } from "@/types";
 
 // ── Channel config ────────────────────────────────────────────
 
@@ -226,6 +226,7 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
   // Step 2
   const [channel, setChannel] = useState<BuilderChannel>("direct_mail");
   const [templateType, setTemplateType] = useState<MailTemplateType>("postcard_6x9");
+  const [campaignType, setCampaignType] = useState<CampaignType>("standard");
 
   // Step 3 + 4
   const [campaignGoal, setCampaignGoal] = useState(
@@ -395,7 +396,7 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
         const res = await fetch("/api/mail/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ customerIds, templateType, campaignGoal, dryRun }),
+          body: JSON.stringify({ customerIds, templateType, campaignGoal, dryRun, campaignType }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Send failed");
@@ -437,6 +438,7 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
             templateType,
             dryRun,
             includeProspects: true,
+            campaignType,
           }),
         });
         const data = await res.json();
@@ -696,6 +698,66 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
             <p className="text-[13px] font-semibold text-slate-900">Channel &amp; Format</p>
           </div>
           <div className="p-5 space-y-4">
+
+            {/* Campaign type toggle */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Campaign Type</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => {
+                    setCampaignType("standard");
+                    setCampaignGoal("Win back customers who haven't visited in 6–18 months with a personalized service reminder and discount offer.");
+                  }}
+                  className={cn(
+                    "text-left p-4 rounded-[var(--radius)] border-2 transition-all",
+                    campaignType === "standard"
+                      ? "border-indigo-400 bg-indigo-50/60"
+                      : "bg-white border-slate-200 hover:border-indigo-300"
+                  )}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Zap className={cn("w-4 h-4", campaignType === "standard" ? "text-indigo-600" : "text-slate-400")} />
+                    <p className="text-[13px] font-semibold text-slate-900">Standard</p>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-snug">Service reminders, reactivation, VIP appreciation, and general outreach.</p>
+                </button>
+                <button
+                  onClick={() => {
+                    setCampaignType("aged_inventory");
+                    setCampaignGoal("Move aged inventory by matching specific vehicles (45+ days on lot) to customers with matching make/model service history.");
+                  }}
+                  className={cn(
+                    "text-left p-4 rounded-[var(--radius)] border-2 transition-all relative overflow-hidden",
+                    campaignType === "aged_inventory"
+                      ? "border-amber-400 bg-amber-50/60"
+                      : "bg-white border-slate-200 hover:border-amber-300"
+                  )}
+                >
+                  {campaignType === "aged_inventory" && (
+                    <div className="absolute top-0 left-0 right-0 h-[3px] bg-amber-400" />
+                  )}
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Car className={cn("w-4 h-4", campaignType === "aged_inventory" ? "text-amber-600" : "text-slate-400")} />
+                    <p className="text-[13px] font-semibold text-slate-900">Aged Inventory</p>
+                    <span className="ml-auto text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">vAuto</span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-snug">AI matches customers to specific aging vehicles based on their service history and model interest.</p>
+                  {campaignType === "aged_inventory" && (
+                    <div className="mt-2 flex items-center gap-1.5 text-[10px] text-amber-700 font-medium">
+                      <Clock className="w-3 h-3" /> Vehicles 45+ days on lot prioritized
+                    </div>
+                  )}
+                </button>
+              </div>
+
+              {campaignType === "aged_inventory" && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-100 rounded-[var(--radius)] text-xs text-amber-800">
+                  <Car className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>The AI will match each selected customer to a specific aged vehicle from your vAuto inventory and write copy that references the exact year/make/model.</span>
+                </div>
+              )}
+            </div>
+
             {/* Channel selector */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {(Object.entries(CHANNEL_CONFIG) as [BuilderChannel, typeof CHANNEL_CONFIG[BuilderChannel]][]).map(([ch, cfg]) => {
@@ -793,9 +855,18 @@ export function CampaignBuilder({ customers, dealershipName }: CampaignBuilderPr
             <p className="text-[11px] text-slate-400 mt-1 ml-8">
               Claude writes personalized {channelCfg.label.toLowerCase()} copy for each customer using their visit history
               {channel !== "direct_mail" ? " and contact data" : ""}.
+              {campaignType === "aged_inventory" && " Aged inventory vehicles are automatically matched per customer."}
             </p>
           </div>
           <div className="p-5 space-y-4">
+            {campaignType === "aged_inventory" && (
+              <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-100 rounded-[var(--radius)] text-xs text-amber-800">
+                <Car className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" />
+                <span>
+                  <strong>Aged Inventory mode:</strong> The AI will query your vAuto inventory for vehicles 45+ days on lot, match each customer to their best-fit vehicle by service history, and write copy that names the exact year/make/model.
+                </span>
+              </div>
+            )}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Campaign Goal</label>
               <textarea

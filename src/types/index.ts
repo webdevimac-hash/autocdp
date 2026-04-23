@@ -298,6 +298,27 @@ export interface SendEmailToolResult {
   error?: string;
 }
 
+// Campaign type (standard vs aged inventory)
+export type CampaignType = "standard" | "aged_inventory";
+
+// Vehicle interest extracted from visit history
+export interface CustomerVehicleInterest {
+  customerId: string;
+  makes: string[];
+  models: string[];
+  colors: string[];
+  primaryMake: string | null;
+  primaryModel: string | null;
+}
+
+// Aged inventory vehicle matched to a customer
+export interface AgedInventoryMatch {
+  vehicle: InventoryVehicle;
+  customerId: string;
+  matchStrength: "perfect" | "strong" | "partial";
+  matchReasons: string[];
+}
+
 // Inventory
 export interface InventoryVehicle {
   id: string;
