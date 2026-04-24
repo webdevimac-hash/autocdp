@@ -8,7 +8,7 @@ import type { MailTemplateType } from "@/types";
 
 export type AccentColor = "indigo" | "yellow" | "orange" | "pink" | "green";
 
-const ACCENT: Record<AccentColor, {
+export interface AccentConfig {
   header: string;
   offerBg: string;
   offerBorder: string;
@@ -16,7 +16,9 @@ const ACCENT: Record<AccentColor, {
   letterBorder: string;
   highlightGlow: string;
   isHighlight: boolean;
-}> = {
+}
+
+const ACCENT: Record<AccentColor, AccentConfig> = {
   indigo: {
     header: "#6366F1",
     offerBg: "#EEF2FF",
@@ -164,7 +166,7 @@ function HandwrittenContent({
 
 // ── Offer strip ───────────────────────────────────────────────
 
-function OfferStrip({ offer, accent }: { offer: string; accent: ReturnType<typeof ACCENT[AccentColor]> }) {
+function OfferStrip({ offer, accent }: { offer: string; accent: AccentConfig }) {
   return (
     <div
       style={{
@@ -205,7 +207,7 @@ function PostcardBack({
 }: {
   dealershipName: string;
   customerName?: string;
-  accent: ReturnType<typeof ACCENT[AccentColor]>;
+  accent: AccentConfig;
   logoUrl?: string | null;
 }) {
   return (
@@ -315,7 +317,7 @@ function Postcard6x9Preview({
   offer?: string | null;
   qrPreviewUrl: string;
   logoUrl?: string | null;
-  accent: ReturnType<typeof ACCENT[AccentColor]>;
+  accent: AccentConfig;
 }) {
   const [showBack, setShowBack] = useState(false);
 
@@ -450,7 +452,7 @@ function LetterPreview({
   dealershipName: string;
   templateType: MailTemplateType;
   logoUrl?: string | null;
-  accent: ReturnType<typeof ACCENT[AccentColor]>;
+  accent: AccentConfig;
 }) {
   const aspectRatio = templateType === "letter_8.5x11" ? "8.5/11" : "6/9";
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
