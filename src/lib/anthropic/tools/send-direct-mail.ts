@@ -59,6 +59,15 @@ Only call this when you are ready to commit to sending — production jobs incur
           mileage: { type: "number" },
         },
       },
+      accent_color: {
+        type: "string",
+        enum: ["indigo", "yellow", "orange", "pink", "green"],
+        description: "Accent color for the offer strip. Use 'yellow', 'orange', or 'pink' for fluorescent highlight effect (increases callbacks 22–33%). Defaults to 'indigo'.",
+      },
+      highlight_offer: {
+        type: "boolean",
+        description: "When true, the offer strip is printed with fluorescent ink. Requires a fluorescent-capable accent_color (yellow, orange, or pink).",
+      },
     },
     required: ["customer_id", "template_type", "personalized_text"],
   },
@@ -166,7 +175,11 @@ export async function executeSendDirectMailTool(
         dealership: dealership as Dealership,
         templateType: input.template_type,
         personalizedText: input.personalized_text,
-        variables: (input.variables ?? {}) as Record<string, unknown>,
+        variables: {
+          ...(input.variables ?? {}),
+          ...(input.accent_color ? { accent_color: input.accent_color } : {}),
+          ...(input.highlight_offer !== undefined ? { highlight_offer: input.highlight_offer } : {}),
+        } as Record<string, unknown>,
         qrCodeDataUrl: qrDataUrl,
         trackingUrl,
       });

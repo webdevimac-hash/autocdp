@@ -256,6 +256,8 @@ export interface SendDirectMailToolInput {
   template_type: MailTemplateType;
   personalized_text: string;
   variables?: Record<string, Json>;
+  accent_color?: "indigo" | "yellow" | "orange" | "pink" | "green";
+  highlight_offer?: boolean;
 }
 
 export interface SendDirectMailToolResult {

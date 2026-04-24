@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { RefreshCw, Printer, ChevronLeft, ChevronRight } from "lucide-react";
+import { RefreshCw, Printer, ChevronLeft, ChevronRight, Zap } from "lucide-react";
+import type { AccentColor } from "./template-preview";
+
+// ── Sample messages ───────────────────────────────────────────
 
 const SAMPLE_MESSAGES = [
   {
@@ -33,28 +36,110 @@ const SAMPLE_MESSAGES = [
   },
 ];
 
-// Deterministic character-level variation — no opacity reduction
-const ROT = [-0.7, 0.3, -0.4, 0.6, -0.2, 0.8, -0.5, 0.2, -0.6, 0.4, -0.3, 0.5, -0.5];
-const TY  = [-0.4, 0.3, -0.2, 0.5, -0.3, 0.2, -0.5, 0.3, -0.3, 0.4, -0.1, 0.3, -0.2];
-const SC  = [0.99, 1.01, 0.99, 1.01, 0.99, 1.01, 0.98, 1.01, 0.99, 1.00, 0.99, 1.01, 0.98];
+// ── Accent color system (local to preview demo) ───────────────
 
-function seed(i: number, code: number) {
-  return (i * 7 + code * 3) % 13;
+const ACCENT_META: Record<AccentColor, {
+  label: string;
+  offerBg: string;
+  offerBorder: string;
+  offerText: string;
+  swatch: string;
+  isHighlight: boolean;
+  liftBadge?: string;
+}> = {
+  indigo: {
+    label: "Indigo",
+    offerBg: "#EEF2FF",
+    offerBorder: "#6366F1",
+    offerText: "#3730A3",
+    swatch: "#6366F1",
+    isHighlight: false,
+  },
+  yellow: {
+    label: "Yellow",
+    offerBg: "#FEF08A",
+    offerBorder: "#CA8A04",
+    offerText: "#713F12",
+    swatch: "#EAB308",
+    isHighlight: true,
+    liftBadge: "+33% callbacks",
+  },
+  orange: {
+    label: "Orange",
+    offerBg: "#FED7AA",
+    offerBorder: "#EA580C",
+    offerText: "#7C2D12",
+    swatch: "#F97316",
+    isHighlight: true,
+    liftBadge: "+28% callbacks",
+  },
+  pink: {
+    label: "Pink",
+    offerBg: "#FBCFE8",
+    offerBorder: "#DB2777",
+    offerText: "#831843",
+    swatch: "#EC4899",
+    isHighlight: true,
+    liftBadge: "+22% callbacks",
+  },
+  green: {
+    label: "Green",
+    offerBg: "#BBF7D0",
+    offerBorder: "#16A34A",
+    offerText: "#14532D",
+    swatch: "#22C55E",
+    isHighlight: false,
+  },
+};
+
+// ── Handwriting engine (19-element prime arrays, 6 dimensions) ─
+
+const ROT   = [-1.6,-1.0,-0.6,-0.3,-0.1, 0.1, 0.3, 0.6, 0.9, 1.2, 1.5,-0.8,-0.4, 0.2, 0.5, 0.8,-0.5, 0.4,-0.9] as const;
+const TY    = [-1.4,-0.9,-0.5,-0.2, 0.1, 0.4, 0.7, 1.0, 1.3,-1.1,-0.7,-0.3, 0.1, 0.5, 0.8,-0.6,-0.2, 0.6,-0.4] as const;
+const OPQ   = [0.72,0.76,0.80,0.84,0.88,0.91,0.94,0.97,1.00,0.98,0.95,0.91,0.86,0.82,0.78,0.74,0.93,0.87,0.96] as const;
+const SX    = [0.95,0.97,0.98,0.99,1.00,1.01,1.02,1.03,0.96,0.98,1.00,1.02,0.97,0.99,1.01,0.96,1.03,0.98,1.01] as const;
+const SY    = [0.96,0.98,0.99,1.00,1.01,1.02,0.97,0.99,1.01,0.98,1.00,1.02,0.97,0.99,1.01,0.96,1.00,0.98,1.02] as const;
+const SPC   = [-0.4,-0.2,-0.1, 0.0, 0.1, 0.2, 0.3,-0.3, 0.15,-0.15, 0.25,-0.25, 0.05,-0.05, 0.2,-0.1, 0.0, 0.15,-0.2] as const;
+const LDRIFT = [-0.7,-0.3, 0.1, 0.5,-0.6,-0.1, 0.4,-0.4, 0.2,-0.5, 0.3,-0.2, 0.6,-0.3, 0.0, 0.4,-0.7, 0.1,-0.4] as const;
+
+type LookupArr = readonly number[];
+function pick(arr: LookupArr, n: number): number {
+  return arr[((n % arr.length) + arr.length) % arr.length];
 }
 
-function HandwrittenLine({ text, charOffset = 0 }: { text: string; charOffset?: number }) {
+interface LineInfo { text: string; charOffset: number; lineIdx: number; paraIdx: number; }
+interface ParaInfo { lines: LineInfo[]; paraIdx: number; }
+
+function buildLayout(text: string): ParaInfo[] {
+  let gci = 0;
+  return text.split(/\n\n+/).map((para, pi) => {
+    const lines: LineInfo[] = para.split("\n").map((line, li) => {
+      const info = { text: line, charOffset: gci, lineIdx: li, paraIdx: pi };
+      gci += line.length + 1;
+      return info;
+    });
+    gci += 2;
+    return { lines, paraIdx: pi };
+  });
+}
+
+function HandwrittenLine({ text, charOffset, lineIdx, paraIdx }: LineInfo) {
   if (!text) return <span>&nbsp;</span>;
+  const drift = pick(LDRIFT, lineIdx * 11 + paraIdx * 7);
   return (
-    <span>
+    <span style={{ display: "inline-block", transform: `translateY(${drift}px)` }}>
       {text.split("").map((char, i) => {
-        const s = seed(charOffset + i, char.charCodeAt(0));
+        const code = char.charCodeAt(0);
+        const s = (charOffset + i) * 31 + code * 17 + lineIdx * 7 + paraIdx * 3;
         return (
           <span
             key={charOffset + i}
             style={{
               display: "inline-block",
-              transform: `rotate(${ROT[s]}deg) translateY(${TY[s]}px) scale(${SC[s]})`,
+              transform: `rotate(${pick(ROT, s)}deg) translateY(${pick(TY, s + 3)}px) scaleX(${pick(SX, s + 7)}) scaleY(${pick(SY, s + 11)})`,
               transformOrigin: "bottom center",
+              opacity: pick(OPQ, s + 5),
+              letterSpacing: char === " " ? "0" : `${pick(SPC, s + 13)}px`,
             }}
           >
             {char === " " ? "\u00A0" : char}
@@ -66,40 +151,27 @@ function HandwrittenLine({ text, charOffset = 0 }: { text: string; charOffset?: 
 }
 
 function HandwrittenBody({ text }: { text: string }) {
-  const paragraphs = text.split(/\n\n+/);
-  let charOffset = 0;
-
+  const paras = buildLayout(text);
   return (
     <div>
-      {paragraphs.map((para, pi) => {
-        const lines = para.split("\n");
-        const el = (
-          <div
-            key={pi}
-            style={{ marginBottom: pi < paragraphs.length - 1 ? "22px" : 0 }}
-          >
-            {lines.map((line, li) => {
-              const offset = charOffset;
-              charOffset += line.length + 1;
-              return (
-                <div key={li} style={{ minHeight: "31px", display: "flex", alignItems: "flex-end" }}>
-                  <HandwrittenLine text={line} charOffset={offset} />
-                </div>
-              );
-            })}
-          </div>
-        );
-        charOffset += 2;
-        return el;
-      })}
+      {paras.map((para, pi) => (
+        <div key={pi} style={{ marginBottom: pi < paras.length - 1 ? "22px" : 0 }}>
+          {para.lines.map((line, li) => (
+            <div key={li} style={{ minHeight: "31px", display: "flex", alignItems: "flex-end" }}>
+              <HandwrittenLine {...line} />
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
 
-// ── Postmark SVG ──────────────────────────────────────────────
+// ── USPS Postmark SVG ─────────────────────────────────────────
+
 function Postmark() {
   return (
-    <div style={{ position: "relative", width: "58px", height: "58px" }}>
+    <div style={{ position: "relative", width: "58px", height: "58px", flexShrink: 0 }}>
       <svg width="58" height="58" viewBox="0 0 58 58" fill="none">
         <circle cx="29" cy="29" r="27" stroke="#CBD5E1" strokeWidth="1.5" fill="none" />
         <circle cx="29" cy="29" r="20" stroke="#CBD5E1" strokeWidth="0.8" fill="none" />
@@ -115,58 +187,56 @@ function Postmark() {
 }
 
 // ── USPS-style stamp ──────────────────────────────────────────
-function Stamp() {
+
+function Stamp({ accentColor }: { accentColor: string }) {
   return (
-    <div
-      style={{
-        width: "52px",
-        height: "68px",
-        border: "1.5px solid #CBD5E1",
-        borderRadius: "3px",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        background: "#F8FAFC",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.8), 0 1px 3px rgba(15,23,42,0.08)",
-      }}
-    >
-      <div style={{ height: "4px", background: "linear-gradient(90deg, #6366F1, #8B5CF6)" }} />
+    <div style={{
+      width: "52px", height: "68px",
+      border: "1.5px solid #CBD5E1",
+      borderRadius: "3px", overflow: "hidden",
+      display: "flex", flexDirection: "column",
+      background: "#F8FAFC",
+      boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.8), 0 1px 3px rgba(15,23,42,0.08)",
+      flexShrink: 0,
+    }}>
+      <div style={{ height: "4px", background: `linear-gradient(90deg, ${accentColor}, ${accentColor}88)` }} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "3px", padding: "4px 2px" }}>
         <div style={{
-          width: "34px",
-          height: "26px",
-          background: "linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)",
+          width: "34px", height: "26px",
+          background: `linear-gradient(135deg, ${accentColor}22 0%, ${accentColor}44 100%)`,
           borderRadius: "2px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <rect x="2" y="4" width="12" height="8" rx="1" stroke="#6366F1" strokeWidth="1.2" fill="none"/>
-            <path d="M2 6l6 4 6-4" stroke="#6366F1" strokeWidth="1.2"/>
+            <rect x="2" y="4" width="12" height="8" rx="1" stroke={accentColor} strokeWidth="1.2" fill="none" />
+            <path d="M2 6l6 4 6-4" stroke={accentColor} strokeWidth="1.2" />
           </svg>
         </div>
-        <span style={{ fontSize: "5.5px", fontWeight: 700, color: "#6366F1", letterSpacing: "0.1em", fontFamily: "Inter, sans-serif", textAlign: "center", lineHeight: 1.2 }}>
+        <span style={{ fontSize: "5.5px", fontWeight: 700, color: accentColor, letterSpacing: "0.1em", fontFamily: "Inter, sans-serif", textAlign: "center", lineHeight: 1.2 }}>
           FIRST{"\n"}CLASS
         </span>
       </div>
-      <div style={{ height: "3px", background: "#6366F1", opacity: 0.28 }} />
+      <div style={{ height: "3px", background: accentColor, opacity: 0.3 }} />
     </div>
   );
 }
 
+// ── Main component ────────────────────────────────────────────
+
 export function HandwritingPreview() {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [animKey, setAnimKey] = useState(0);
+  const [accentColor, setAccentColor] = useState<AccentColor>("indigo");
+  const [showBack, setShowBack] = useState(false);
+
   const sample = SAMPLE_MESSAGES[selectedIdx];
+  const meta = ACCENT_META[accentColor];
 
   function selectSample(idx: number) {
     setSelectedIdx(idx);
     setAnimKey((k) => k + 1);
+    setShowBack(false);
   }
-
-  function prev() { selectSample((selectedIdx + SAMPLE_MESSAGES.length - 1) % SAMPLE_MESSAGES.length); }
-  function next() { selectSample((selectedIdx + 1) % SAMPLE_MESSAGES.length); }
 
   return (
     <div className="space-y-5">
@@ -176,7 +246,7 @@ export function HandwritingPreview() {
         <div>
           <h3 className="text-[13px] font-semibold text-slate-800">Handwriting Engine — Preview</h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Character-level variation simulates realistic pen strokes. Each piece is unique per customer.
+            6-dimension character variation: rotation, ink pressure, baseline drift, x/y scale, letter spacing.
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -185,12 +255,52 @@ export function HandwritingPreview() {
         </div>
       </div>
 
+      {/* ── Accent color picker ── */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Accent Color</p>
+          {meta.isHighlight && (
+            <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+              <Zap className="w-2.5 h-2.5" />{meta.liftBadge}
+            </span>
+          )}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {(Object.entries(ACCENT_META) as [AccentColor, typeof ACCENT_META[AccentColor]][]).map(([color, info]) => (
+            <button
+              key={color}
+              onClick={() => setAccentColor(color)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-[var(--radius)] border text-xs font-semibold transition-all ${
+                accentColor === color
+                  ? "bg-white border-slate-300 shadow-sm text-slate-900"
+                  : "border-slate-200 text-slate-500 hover:border-slate-300"
+              }`}
+            >
+              <div
+                className="w-3.5 h-3.5 rounded-full shrink-0 ring-2 ring-white"
+                style={{ background: info.swatch, boxShadow: accentColor === color ? `0 0 0 1.5px ${info.swatch}` : "none" }}
+              />
+              {info.label}
+              {info.liftBadge && (
+                <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-700 whitespace-nowrap">
+                  ⚡ {info.liftBadge}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        {meta.isHighlight && (
+          <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded px-2.5 py-1.5">
+            Fluorescent accent colors on the offer strip are proven to increase response rates by up to 33% in direct mail studies (vs. standard ink).
+          </p>
+        )}
+      </div>
+
       {/* ── Recipient selector ── */}
       <div className="flex items-center gap-2">
         <button
-          onClick={prev}
+          onClick={() => selectSample((selectedIdx + SAMPLE_MESSAGES.length - 1) % SAMPLE_MESSAGES.length)}
           className="w-10 h-10 rounded-[var(--radius)] border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 hover:border-slate-300 active:bg-slate-100 transition-colors shrink-0"
-          aria-label="Previous sample"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -210,106 +320,230 @@ export function HandwritingPreview() {
           ))}
         </div>
         <button
-          onClick={next}
+          onClick={() => selectSample((selectedIdx + 1) % SAMPLE_MESSAGES.length)}
           className="w-10 h-10 rounded-[var(--radius)] border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 hover:border-slate-300 active:bg-slate-100 transition-colors shrink-0"
-          aria-label="Next sample"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
 
-      {/* ── Postcard ── */}
-      <div className="relative overflow-x-auto -mx-1 px-1">
-        <div
-          key={animKey}
-          className="relative rounded-2xl overflow-hidden mx-auto animate-fade-in"
-          style={{
-            maxWidth: "580px",
-            minWidth: "300px",
-            background: "#FDFCF8",
-            border: "1px solid #E2D9C8",
-            boxShadow: "0 4px 24px -4px rgba(15, 23, 42, 0.12), 0 1px 4px -1px rgba(15,23,42,0.06)",
-            backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 30px, rgba(180,155,110,0.11) 30px, rgba(180,155,110,0.11) 31px)",
-            backgroundSize: "100% 31px",
-            backgroundPositionY: "54px",
-          }}
+      {/* ── Front / Back toggle ── */}
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => setShowBack(false)}
+          className={`px-4 py-1.5 rounded-full text-[11px] font-semibold transition-all border ${
+            !showBack ? "bg-slate-900 text-white border-slate-900" : "text-slate-500 border-slate-200 hover:border-slate-300"
+          }`}
         >
-          {/* Top strip: return address + postmark + stamp */}
-          <div
-            className="relative flex items-start justify-between px-5 sm:px-6 pt-5 pb-4"
-            style={{ borderBottom: "1px solid rgba(180,155,110,0.22)" }}
-          >
-            <div style={{ fontFamily: "'Caveat', cursive", lineHeight: 1.6 }}>
-              <div style={{ fontSize: "13px", color: "#64748B", fontWeight: 600 }}>Sunrise Ford</div>
-              <div style={{ fontSize: "12px", color: "#94a3b8" }}>123 Auto Row, Phoenix AZ 85001</div>
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <Postmark />
-              <Stamp />
-            </div>
-          </div>
-
-          {/* Recipient address */}
-          <div className="px-5 sm:px-6 pt-4 pb-3">
-            <div style={{ fontFamily: "'Caveat', cursive", lineHeight: 1.65 }}>
-              <div style={{ fontSize: "18px", color: "#1e293b", fontWeight: 700, letterSpacing: "0.005em" }}>{sample.recipient}</div>
-              <div style={{ fontSize: "15px", color: "#475569" }}>{sample.address}</div>
-              <div style={{ fontSize: "14px", color: "#64748B" }}>{sample.cityStateZip}</div>
-            </div>
-          </div>
-
-          {/* Dashed divider */}
-          <div
-            className="mx-5 sm:mx-6 my-1"
-            style={{ borderTop: "1px dashed rgba(180,155,110,0.38)" }}
-          />
-
-          {/* Letter body */}
-          <div
-            className="px-5 sm:px-6 pt-4 pb-8"
-            style={{
-              fontFamily: "'Caveat', cursive",
-              fontSize: "clamp(16px, 2.8vw, 18px)",
-              lineHeight: "31px",
-              color: "#1e293b",
-              letterSpacing: "0.012em",
-            }}
-          >
-            <HandwrittenBody text={sample.body} />
-          </div>
-        </div>
-
-        {/* Paper stack shadow */}
-        <div
-          className="absolute -bottom-1 rounded-b-2xl blur-sm -z-10"
-          style={{ left: "12px", right: "12px", height: "10px", background: "rgba(180,155,110,0.16)" }}
-        />
+          Front
+        </button>
+        <button
+          onClick={() => setShowBack(true)}
+          className={`px-4 py-1.5 rounded-full text-[11px] font-semibold transition-all border ${
+            showBack ? "bg-slate-900 text-white border-slate-900" : "text-slate-500 border-slate-200 hover:border-slate-300"
+          }`}
+        >
+          Back (Mailing Side)
+        </button>
       </div>
 
-      {/* ── Offer chip ── */}
-      {sample.offer && (
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-slate-100" />
+      {/* ── Postcard ── */}
+      <div className="relative overflow-x-auto -mx-1 px-1">
+        <div key={animKey} className="relative mx-auto animate-fade-in" style={{ maxWidth: "580px", minWidth: "300px" }}>
+
+          {!showBack ? (
+            /* FRONT — lined paper, handwriting, logo, offer */
+            <div
+              className="relative rounded-2xl overflow-hidden"
+              style={{
+                background: "#FDFCF8",
+                border: "1px solid #E2D9C8",
+                boxShadow: "0 4px 24px -4px rgba(15, 23, 42, 0.12), 0 1px 4px -1px rgba(15,23,42,0.06)",
+                backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 30px, rgba(180,155,110,0.11) 30px, rgba(180,155,110,0.11) 31px)",
+                backgroundSize: "100% 31px",
+                backgroundPositionY: "58px",
+              }}
+            >
+              {/* Header: return address + logo + postmark + stamp */}
+              <div
+                className="flex items-start justify-between px-5 sm:px-6 pt-5 pb-4"
+                style={{ borderBottom: "1px solid rgba(180,155,110,0.22)" }}
+              >
+                <div style={{ lineHeight: 1.6 }}>
+                  {/* Logo placeholder */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                    <div style={{
+                      width: "28px", height: "28px", borderRadius: "6px",
+                      background: `linear-gradient(135deg, ${meta.swatch}22, ${meta.swatch}44)`,
+                      border: `1.5px solid ${meta.swatch}66`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      flexShrink: 0,
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="6" stroke={meta.swatch} strokeWidth="1.5" fill="none" />
+                        <path d="M5 8l2 2 4-4" stroke={meta.swatch} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div style={{ fontFamily: "'Caveat', cursive", fontSize: "14px", color: "#64748B", fontWeight: 700 }}>
+                        Sunrise Ford
+                      </div>
+                      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", color: meta.swatch, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                        Service Department
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: "'Caveat', cursive", fontSize: "12px", color: "#94a3b8" }}>123 Auto Row, Phoenix AZ 85001</div>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <Postmark />
+                  <Stamp accentColor={meta.swatch} />
+                </div>
+              </div>
+
+              {/* Recipient address */}
+              <div className="px-5 sm:px-6 pt-4 pb-3">
+                <div style={{ fontFamily: "'Caveat', cursive", lineHeight: 1.65 }}>
+                  <div style={{ fontSize: "18px", color: "#1e293b", fontWeight: 700 }}>{sample.recipient}</div>
+                  <div style={{ fontSize: "15px", color: "#475569" }}>{sample.address}</div>
+                  <div style={{ fontSize: "14px", color: "#64748B" }}>{sample.cityStateZip}</div>
+                </div>
+              </div>
+
+              {/* Dashed divider */}
+              <div className="mx-5 sm:mx-6 my-1" style={{ borderTop: "1px dashed rgba(180,155,110,0.38)" }} />
+
+              {/* Handwritten body */}
+              <div
+                className="px-5 sm:px-6 pt-4 pb-5"
+                style={{
+                  fontFamily: "'Caveat', cursive",
+                  fontSize: "clamp(16px, 2.8vw, 18px)",
+                  lineHeight: "31px",
+                  color: "#1e293b",
+                  letterSpacing: "0.012em",
+                }}
+              >
+                <HandwrittenBody text={sample.body} />
+              </div>
+
+              {/* Offer strip */}
+              <div className="px-5 sm:px-6 pb-6">
+                <div style={{
+                  padding: "8px 12px",
+                  background: meta.isHighlight
+                    ? `linear-gradient(105deg, ${meta.offerBg} 0%, ${meta.offerBg}cc 50%, ${meta.offerBg} 100%)`
+                    : meta.offerBg,
+                  borderLeft: `4px solid ${meta.offerBorder}`,
+                  borderRadius: meta.isHighlight ? "2px 6px 6px 2px" : "4px",
+                  fontSize: "12px",
+                  color: meta.offerText,
+                  fontFamily: "'Inter', sans-serif",
+                  fontWeight: meta.isHighlight ? 700 : 600,
+                  letterSpacing: "0.01em",
+                  boxShadow: meta.isHighlight ? `0 0 0 2px ${meta.offerBg}88` : undefined,
+                  position: "relative",
+                  overflow: "hidden",
+                }}>
+                  {meta.isHighlight && (
+                    <div style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: `linear-gradient(90deg, ${meta.offerBorder}22 0%, transparent 50%, ${meta.offerBorder}11 100%)`,
+                      pointerEvents: "none",
+                    }} />
+                  )}
+                  <span style={{ position: "relative" }}>{sample.offer}</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* BACK — USPS mailing side */
+            <div
+              className="rounded-2xl overflow-hidden"
+              style={{
+                background: "#FDFCF8",
+                border: "1px solid #E2D9C8",
+                boxShadow: "0 4px 24px -4px rgba(15, 23, 42, 0.12), 0 1px 4px -1px rgba(15,23,42,0.06)",
+              }}
+            >
+              {/* Top: return address + postage area */}
+              <div className="flex items-start justify-between px-5 sm:px-6 pt-5 pb-4" style={{ borderBottom: "1px solid rgba(180,155,110,0.22)" }}>
+                <div>
+                  <div style={{ fontFamily: "'Caveat', cursive", fontSize: "13px", color: "#64748B", fontWeight: 700 }}>Sunrise Ford</div>
+                  <div style={{ fontFamily: "'Caveat', cursive", fontSize: "12px", color: "#94a3b8" }}>123 Auto Row</div>
+                  <div style={{ fontFamily: "'Caveat', cursive", fontSize: "12px", color: "#94a3b8" }}>Phoenix, AZ 85001</div>
+                </div>
+                <div style={{
+                  width: "90px", height: "60px",
+                  border: "1.5px solid #CBD5E1",
+                  borderRadius: "4px",
+                  background: "#F8FAFC",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "2px",
+                  flexShrink: 0,
+                }}>
+                  <div style={{ fontSize: "6px", fontWeight: 700, color: meta.swatch, letterSpacing: "0.12em" }}>FIRST CLASS</div>
+                  <div style={{ fontSize: "5px", color: "#94a3b8", letterSpacing: "0.06em" }}>U.S. POSTAGE PAID</div>
+                  <div style={{ fontSize: "5px", color: "#94a3b8" }}>PERMIT NO. 1</div>
+                </div>
+              </div>
+
+              {/* USPS mandate line */}
+              <div style={{
+                height: "1px",
+                margin: "0 20px",
+                background: "repeating-linear-gradient(90deg, #CBD5E1 0, #CBD5E1 6px, transparent 6px, transparent 12px)",
+              }} />
+
+              {/* Recipient address */}
+              <div className="px-5 sm:px-6 pt-5 pb-4">
+                <div style={{ fontSize: "7.5px", color: "#94a3b8", fontWeight: 700, letterSpacing: "0.10em", marginBottom: "10px", fontFamily: "Inter, sans-serif", textTransform: "uppercase" }}>
+                  DELIVER TO:
+                </div>
+                <div style={{ fontFamily: "'Caveat', cursive", lineHeight: 1.65 }}>
+                  <div style={{ fontSize: "20px", color: "#1e293b", fontWeight: 700 }}>{sample.recipient}</div>
+                  <div style={{ fontSize: "16px", color: "#475569" }}>{sample.address}</div>
+                  <div style={{ fontSize: "15px", color: "#64748B" }}>{sample.cityStateZip}</div>
+                </div>
+              </div>
+
+              {/* Intelligent Mail Barcode (decorative) */}
+              <div className="px-5 sm:px-6 pb-6">
+                <div style={{ display: "flex", gap: "1.5px", alignItems: "flex-end", height: "22px" }}>
+                  {Array.from({ length: 65 }, (_, i) => {
+                    const h = [8, 16, 22, 16][i % 4];
+                    return <div key={i} style={{ width: "2px", height: `${h}px`, background: "#94a3b8", borderRadius: "1px" }} />;
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Paper stack shadow */}
           <div
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap"
-            style={{ background: "#EEF2FF", color: "#4338CA", border: "1px solid #C7D2FE" }}
-          >
-            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
-            {sample.offer}
-          </div>
-          <div className="h-px flex-1 bg-slate-100" />
+            className="absolute -bottom-1 rounded-b-2xl blur-sm -z-10"
+            style={{ left: "12px", right: "12px", height: "10px", background: "rgba(180,155,110,0.16)" }}
+          />
         </div>
-      )}
+      </div>
 
       {/* ── Metadata footer ── */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-white border border-slate-200 rounded-[var(--radius)] shadow-card px-5 py-4">
         <div className="space-y-1.5 text-xs text-slate-500 flex-1">
           <p><span className="font-semibold text-slate-700">Vehicle:</span> {sample.vehicle}</p>
           <p><span className="font-semibold text-slate-700">Format:</span> 6×9 postcard, 100lb uncoated stock</p>
+          <p><span className="font-semibold text-slate-700">Accent:</span> {meta.label}{meta.isHighlight ? " (fluorescent highlight)" : " (standard)"}</p>
           <p><span className="font-semibold text-slate-700">Fulfillment:</span> PostGrid (robotic pen + USPS First Class)</p>
         </div>
         <div className="flex sm:flex-col gap-2 shrink-0">
-          <button className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 min-h-[40px] px-4 py-2 rounded-[var(--radius)] border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:border-slate-300 active:bg-slate-100 transition-all">
+          <button
+            onClick={() => setAnimKey((k) => k + 1)}
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 min-h-[40px] px-4 py-2 rounded-[var(--radius)] border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:border-slate-300 active:bg-slate-100 transition-all"
+          >
             <RefreshCw className="w-3.5 h-3.5" /> Regenerate
           </button>
           <button className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 min-h-[40px] px-4 py-2 rounded-[var(--radius)] bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 active:bg-slate-700 transition-all shadow-sm">
@@ -320,18 +554,17 @@ export function HandwritingPreview() {
 
       {/* ── Architecture notes ── */}
       <div className="bg-slate-900 rounded-[var(--radius)] px-5 py-4">
-        <p className="text-[10px] font-mono text-slate-500 mb-2.5 uppercase tracking-widest">
-          // Production architecture
-        </p>
+        <p className="text-[10px] font-mono text-slate-500 mb-2.5 uppercase tracking-widest">// Production architecture</p>
         <div className="space-y-1.5">
           {[
             "1. Creative Agent generates personalized copy per customer",
             "2. Post-processor normalizes spacing, paragraphs, and punctuation",
-            "3. Copy → PostGrid API with custom handwriting font profile",
+            "3. Copy + accent color → PostGrid API with custom handwriting font profile",
             "4. PostGrid prints on 100lb uncoated stock with robotic pen",
-            "5. USPS First Class mail → 2–3 day delivery",
-            "6. Delivery confirmation webhook → communications table",
-            "7. Optimization Agent tracks response rate per template",
+            "5. Fluorescent ink applied to offer strip (yellow/orange/pink = +22–33% callback)",
+            "6. USPS First Class mail → 2–3 day delivery",
+            "7. Delivery confirmation webhook → communications table",
+            "8. Optimization Agent tracks response rate per accent + template combination",
           ].map((line, i) => (
             <div key={i} className="flex items-start gap-2.5">
               <span className="text-[10px] font-mono text-slate-600 shrink-0 mt-0.5">{line.slice(0, 2)}</span>

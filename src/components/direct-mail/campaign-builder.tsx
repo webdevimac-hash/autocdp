@@ -3,6 +3,7 @@
 import { useState, useCallback, Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { TemplatePreview } from "./template-preview";
+import type { AccentColor } from "./template-preview";
 import { useToast } from "@/hooks/use-toast";
 import {
   FileText, Send, Loader2, CheckCircle, AlertCircle,
@@ -231,6 +232,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
   const [channel, setChannel] = useState<BuilderChannel>("direct_mail");
   const [templateType, setTemplateType] = useState<MailTemplateType>("postcard_6x9");
   const [campaignType, setCampaignType] = useState<CampaignType>("standard");
+  const [accentColor, setAccentColor] = useState<AccentColor>("indigo");
 
   // Step 3 + 4
   const [campaignGoal, setCampaignGoal] = useState(
@@ -400,7 +402,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
         const res = await fetch("/api/mail/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ customerIds, templateType, campaignGoal, dryRun, campaignType }),
+          body: JSON.stringify({ customerIds, templateType, campaignGoal, dryRun, campaignType, accentColor }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Send failed");
@@ -553,7 +555,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                 <div className="p-3.5 bg-indigo-50 border border-indigo-100 rounded-[var(--radius)] text-xs text-indigo-800">
                   <strong>AI reasoning:</strong> {testPreview.reasoning}
                 </div>
-                <TemplatePreview templateType={testTemplateType} content={testPreview.content} dealershipName={dealershipName} vehicle={testPreview.vehicle} qrPreviewUrl={testPreview.previewQrUrl ?? undefined} logoUrl={dealershipLogoUrl} />
+                <TemplatePreview templateType={testTemplateType} content={testPreview.content} dealershipName={dealershipName} vehicle={testPreview.vehicle} qrPreviewUrl={testPreview.previewQrUrl ?? undefined} logoUrl={dealershipLogoUrl} accentColor={accentColor} />
                 <div className="p-3.5 bg-amber-50 border border-amber-100 rounded-[var(--radius)] flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                   <p className="text-xs text-amber-800">
@@ -835,6 +837,49 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               </div>
             )}
 
+            {/* Accent color picker — only for direct mail */}
+            {needsMailTemplate && (
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Offer Accent Color</p>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    { color: "indigo" as AccentColor, swatch: "#6366F1", label: "Indigo", lift: null },
+                    { color: "yellow" as AccentColor, swatch: "#EAB308", label: "Yellow", lift: "+33%" },
+                    { color: "orange" as AccentColor, swatch: "#F97316", label: "Orange", lift: "+28%" },
+                    { color: "pink"   as AccentColor, swatch: "#EC4899", label: "Pink",   lift: "+22%" },
+                    { color: "green"  as AccentColor, swatch: "#22C55E", label: "Green",  lift: null },
+                  ]).map(({ color, swatch, label, lift }) => (
+                    <button
+                      key={color}
+                      onClick={() => setAccentColor(color)}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-[var(--radius)] border text-xs font-semibold transition-all",
+                        accentColor === color
+                          ? "bg-white border-slate-300 shadow-sm text-slate-900"
+                          : "border-slate-200 text-slate-500 hover:border-slate-300"
+                      )}
+                    >
+                      <div
+                        className="w-3.5 h-3.5 rounded-full shrink-0 ring-2 ring-white"
+                        style={{ background: swatch, boxShadow: accentColor === color ? `0 0 0 1.5px ${swatch}` : "none" }}
+                      />
+                      {label}
+                      {lift && (
+                        <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-700 whitespace-nowrap">
+                          ⚡ {lift} callbacks
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                {(accentColor === "yellow" || accentColor === "orange" || accentColor === "pink") && (
+                  <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded px-2.5 py-1.5">
+                    Fluorescent offer strips are printed with specialty ink and are proven to increase callback rates by up to 33% vs. standard ink.
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-3 pt-1">
               <Button variant="ghost" size="sm" className="h-12 sm:h-8 flex-1 sm:flex-none" onClick={() => setCurrentStep(1)}>Back</Button>
               <Button size="sm" className="h-12 sm:h-8 flex-1 sm:flex-none" onClick={() => setCurrentStep(3)}>
@@ -951,6 +996,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                 vehicle={previewResult.vehicle}
                 qrPreviewUrl={previewResult.previewQrUrl}
                 logoUrl={dealershipLogoUrl}
+                accentColor={accentColor}
               />
             )}
 
