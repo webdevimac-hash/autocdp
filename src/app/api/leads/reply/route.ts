@@ -100,6 +100,14 @@ export async function POST(req: NextRequest) {
 
   if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
+  // TCPA guard: block SMS/email to opted-out contacts
+  if (channel === "sms" && (lead.metadata as Record<string, unknown>)?.tcpa_optout) {
+    return NextResponse.json({
+      error: "TCPA_OPTOUT",
+      message: "This contact has opted out of SMS communications (STOP). Cannot send.",
+    }, { status: 403 });
+  }
+
   type DealershipRow = { id: string; name: string; phone: string | null } | null;
   const { data: dealership } = await svc
     .from("dealerships")

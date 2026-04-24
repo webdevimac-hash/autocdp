@@ -1,11 +1,20 @@
 /**
  * POST /api/leads/inbound
  *
- * Webhook endpoint for DealerFunnel, Xcel Media, and any ADF-compliant provider.
- * Accepts ADF 1.0 XML or JSON. Creates/upserts a conquest_lead and optionally
- * a customer record, then optionally routes the lead back to the dealer CRM.
+ * Webhook for DealerFunnel, Xcel Media, and any ADF-compliant provider.
+ * Accepts ADF 1.0 XML or JSON.
  *
- * Auth: ?secret=INBOUND_LEAD_SECRET header or query param (shared webhook secret).
+ * On receipt:
+ *   1. Parses the lead (ADF or JSON)
+ *   2. Upserts a conquest_lead record
+ *   3. Upserts a customers record (source: provider, or "dealerfunnel" from DealerFunnel)
+ *   4. Enforces TCPA opt-out: if the lead carries an opt-out flag, marks the customer
+ *      with tag "tcpa_optout" and skips any outbound sends.
+ *   5. Optionally routes the ADF back to the dealer CRM (two-to-one)
+ *
+ * Auth: per-dealership secret stored in dealership.settings.inbound_lead_secret,
+ *       passed as ?secret= query param or x-lead-secret / Authorization header.
+ *       Falls back to global INBOUND_LEAD_SECRET env var if no per-dealer secret is set.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -14,23 +23,31 @@ import { parseAdf, parseJsonLead, detectBodyFormat } from "@/lib/leads/adf-parse
 import { routeLeadToCrm } from "@/lib/leads/adf-sender";
 import type { ParsedLead } from "@/lib/leads/adf-parser";
 
-const INBOUND_SECRET = process.env.INBOUND_LEAD_SECRET ?? "";
+const GLOBAL_SECRET = process.env.INBOUND_LEAD_SECRET ?? "";
 
-function unauthorized() {
-  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+function extractSecret(req: NextRequest): string {
+  return (
+    req.headers.get("x-lead-secret") ??
+    req.headers.get("authorization")?.replace("Bearer ", "") ??
+    req.nextUrl.searchParams.get("secret") ??
+    ""
+  );
 }
 
-function verifySecret(req: NextRequest): boolean {
-  if (!INBOUND_SECRET) return true; // secret not configured — open (dev only)
-  const header = req.headers.get("x-lead-secret") ?? req.headers.get("authorization")?.replace("Bearer ", "");
-  const query = req.nextUrl.searchParams.get("secret");
-  return header === INBOUND_SECRET || query === INBOUND_SECRET;
+/** Detect TCPA/SMS opt-out from raw JSON body fields DealerFunnel may send. */
+function detectOptOut(raw: Record<string, unknown>): boolean {
+  const fields = [
+    "opt_out", "optout", "tcpa_opt_out", "sms_opt_out", "email_opt_out",
+    "unsubscribed", "do_not_contact", "dnc",
+  ];
+  for (const f of fields) {
+    const v = raw[f];
+    if (v === true || v === "true" || v === "1" || v === 1 || v === "yes") return true;
+  }
+  return false;
 }
 
 export async function POST(req: NextRequest) {
-  if (!verifySecret(req)) return unauthorized();
-
-  // Resolve dealership — from query param or body
   const dealershipSlug = req.nextUrl.searchParams.get("dealership");
   if (!dealershipSlug) {
     return NextResponse.json({ error: "Missing ?dealership= query param" }, { status: 400 });
@@ -40,11 +57,14 @@ export async function POST(req: NextRequest) {
   const fmt = detectBodyFormat(rawBody);
 
   let lead: ParsedLead;
+  let rawJson: Record<string, unknown> = {};
+
   if (fmt === "adf") {
     lead = parseAdf(rawBody);
   } else if (fmt === "json") {
     try {
-      lead = parseJsonLead(JSON.parse(rawBody), dealershipSlug);
+      rawJson = JSON.parse(rawBody) as Record<string, unknown>;
+      lead = parseJsonLead(rawJson, dealershipSlug);
     } catch {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
@@ -52,13 +72,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unrecognized body format (expected ADF XML or JSON)" }, { status: 415 });
   }
 
-  const supabase = createServiceClient();
+  const svc = createServiceClient();
 
-  // Look up dealership
-  type DealershipRow = { id: string; name: string; phone: string | null; settings: Record<string, unknown> } | null;
-  const { data: dealership } = await supabase
+  // Load dealership
+  type DealershipRow = {
+    id: string; name: string; slug: string; phone: string | null;
+    settings: Record<string, unknown>;
+  } | null;
+  const { data: dealership } = await svc
     .from("dealerships")
-    .select("id, name, phone, settings")
+    .select("id, name, slug, phone, settings")
     .eq("slug", dealershipSlug)
     .single() as unknown as { data: DealershipRow };
 
@@ -66,9 +89,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Dealership '${dealershipSlug}' not found` }, { status: 404 });
   }
 
-  // Upsert conquest lead
+  // Auth: per-dealership secret or global fallback
+  const dealerSecret = dealership.settings?.inbound_lead_secret as string | undefined;
+  const expectedSecret = dealerSecret || GLOBAL_SECRET;
+  if (expectedSecret) {
+    const provided = extractSecret(req);
+    if (provided !== expectedSecret) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
+  const isOptOut = detectOptOut(rawJson);
+
+  // Derive canonical source label
+  const source = lead.source?.toLowerCase().includes("dealerfunnel")
+    ? "dealerfunnel"
+    : (lead.source || "adf_webhook");
+
+  const vehicleInterest = lead.vehicle
+    ? [lead.vehicle.year, lead.vehicle.make, lead.vehicle.model].filter(Boolean).join(" ")
+    : null;
+
+  // ── 1. Upsert conquest_lead ───────────────────────────────────
   type ConquestRow = { id: string } | null;
-  const { data: conquestLead } = await supabase
+  const { data: conquestLead } = await svc
     .from("conquest_leads")
     .upsert(
       {
@@ -78,11 +122,9 @@ export async function POST(req: NextRequest) {
         email: lead.email,
         phone: lead.phone,
         address: lead.address as Record<string, string>,
-        vehicle_interest: lead.vehicle
-          ? [lead.vehicle.year, lead.vehicle.make, lead.vehicle.model].filter(Boolean).join(" ")
-          : null,
-        source: lead.source,
-        score: 70, // default score for inbound leads
+        vehicle_interest: vehicleInterest,
+        source,
+        score: 70,
         status: "new",
         notes: lead.comments,
         metadata: {
@@ -91,60 +133,115 @@ export async function POST(req: NextRequest) {
           vehicle: lead.vehicle,
           phone_type: lead.phoneType,
           raw_format: fmt,
+          tcpa_optout: isOptOut,
         },
       },
-      {
-        onConflict: "dealership_id,email",
-        ignoreDuplicates: false,
-      }
+      { onConflict: "dealership_id,email", ignoreDuplicates: false }
     )
     .select("id")
     .single() as unknown as { data: ConquestRow };
 
-  // Optional: forward lead to dealer CRM if configured in dealership.settings
+  // ── 2. Upsert customers record ────────────────────────────────
+  type CustomerRow = { id: string; tags: string[]; metadata: Record<string, unknown> } | null;
+
+  let customerId: string | null = null;
+
+  if (lead.email) {
+    const { data: existing } = await svc
+      .from("customers")
+      .select("id, tags, metadata")
+      .eq("dealership_id", dealership.id)
+      .eq("email", lead.email)
+      .maybeSingle() as unknown as { data: CustomerRow };
+
+    if (existing) {
+      customerId = existing.id;
+      // Merge opt-out tag without duplicates
+      const tags = Array.from(new Set([
+        ...(existing.tags ?? []),
+        ...(isOptOut ? ["tcpa_optout"] : []),
+      ]));
+      await svc.from("customers").update({
+        first_name: lead.firstName ?? existing.metadata?.first_name,
+        last_name: lead.lastName ?? existing.metadata?.last_name,
+        phone: lead.phone ?? undefined,
+        tags,
+        metadata: {
+          ...(existing.metadata ?? {}),
+          source,
+          tcpa_optout: isOptOut || (existing.metadata?.tcpa_optout as boolean) || false,
+        },
+      } as never).eq("id", existing.id);
+    } else {
+      const tags: string[] = ["prospect"];
+      if (isOptOut) tags.push("tcpa_optout");
+
+      const { data: newCustomer } = await svc
+        .from("customers")
+        .insert({
+          dealership_id: dealership.id,
+          first_name: lead.firstName ?? "",
+          last_name: lead.lastName ?? "",
+          email: lead.email,
+          phone: lead.phone,
+          address: lead.address ?? {},
+          tags,
+          lifecycle_stage: "prospect",
+          total_visits: 0,
+          total_spend: 0,
+          metadata: {
+            source,
+            external_id: lead.externalId,
+            vehicle_interest: vehicleInterest,
+            tcpa_optout: isOptOut,
+          },
+        } as never)
+        .select("id")
+        .single() as unknown as { data: { id: string } | null };
+
+      customerId = newCustomer?.id ?? null;
+    }
+  }
+
+  // ── 3. Route to dealer CRM if configured ─────────────────────
   const settings = dealership.settings ?? {};
   const crmEmail = settings.crm_email as string | undefined;
   const crmEndpoint = settings.crm_webhook as string | undefined;
 
   let routingResult;
   if (crmEmail || crmEndpoint) {
-    const adfLead = {
-      firstName: lead.firstName,
-      lastName: lead.lastName,
-      email: lead.email,
-      phone: lead.phone,
-      address: lead.address,
-      vehicleInterest: lead.vehicle
-        ? [lead.vehicle.year, lead.vehicle.make, lead.vehicle.model].filter(Boolean).join(" ")
-        : null,
-      comments: lead.comments,
-      source: lead.source,
-      externalId: lead.externalId,
-    };
-
-    routingResult = await routeLeadToCrm(adfLead, {
-      vendorName: "AutoCDP",
-      dealershipName: dealership.name,
-      primary: crmEmail
-        ? { type: "email", toEmail: crmEmail, format: "adf" }
-        : { type: "http", endpointUrl: crmEndpoint!, format: "adf" },
-      fallback: crmEmail && crmEndpoint
-        ? { type: "http", endpointUrl: crmEndpoint, format: "adf" }
-        : undefined,
-    });
+    routingResult = await routeLeadToCrm(
+      {
+        firstName: lead.firstName,
+        lastName: lead.lastName,
+        email: lead.email,
+        phone: lead.phone,
+        address: lead.address,
+        vehicleInterest,
+        comments: lead.comments,
+        source,
+        externalId: lead.externalId,
+      },
+      {
+        vendorName: "AutoCDP",
+        dealershipName: dealership.name,
+        primary: crmEmail
+          ? { type: "email", toEmail: crmEmail, format: "adf" }
+          : { type: "http", endpointUrl: crmEndpoint!, format: "adf" },
+        fallback: crmEmail && crmEndpoint
+          ? { type: "http", endpointUrl: crmEndpoint, format: "adf" }
+          : undefined,
+      }
+    );
   }
 
   return NextResponse.json({
     success: true,
     conquest_lead_id: conquestLead?.id ?? null,
+    customer_id: customerId,
+    tcpa_optout: isOptOut,
     crm_routed: routingResult?.delivered ?? false,
+    source,
     format: fmt,
-    lead: {
-      firstName: lead.firstName,
-      lastName: lead.lastName,
-      email: lead.email,
-      phone: lead.phone,
-      source: lead.source,
-    },
   });
 }

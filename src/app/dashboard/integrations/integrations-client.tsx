@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ConnectionCard, type ConnectionStatus } from "@/components/integrations/connection-card";
-import { Database, RefreshCw, AlertCircle, CheckCircle2, Info, Car, CreditCard, FileText } from "lucide-react";
+import { Database, RefreshCw, AlertCircle, CheckCircle2, Info, Car, CreditCard, FileText, Webhook, Copy, Check } from "lucide-react";
 
 type DmsProvider = "cdk_fortellis" | "reynolds" | "vinsolutions" | "vauto" | "seven_hundred_credit" | "general_crm";
 
@@ -21,6 +21,7 @@ interface Props {
   latestCounts: Record<string, { customers: number; visits: number; inventory: number }>;
   successParam?: string;
   errorParam?: string;
+  dealerFunnelStats?: { total: number; optedOut: number; webhookUrl: string; secretConfigured: boolean };
 }
 
 // ---------------------------------------------------------------------------
@@ -216,7 +217,148 @@ function CsvUploadModal({
 // Main client component
 // ---------------------------------------------------------------------------
 
-export function IntegrationsClient({ connections, latestCounts, successParam, errorParam }: Props) {
+// ---------------------------------------------------------------------------
+// DealerFunnel webhook card
+// ---------------------------------------------------------------------------
+
+function DealerFunnelCard({
+  stats,
+  onSaveSecret,
+}: {
+  stats?: Props["dealerFunnelStats"];
+  onSaveSecret: (secret: string) => Promise<void>;
+}) {
+  const [copied, setCopied] = useState(false);
+  const [showSecretForm, setShowSecretForm] = useState(false);
+  const [secret, setSecret] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState("");
+
+  function copyUrl() {
+    if (!stats?.webhookUrl) return;
+    navigator.clipboard.writeText(stats.webhookUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setSaveErr("");
+    try {
+      await onSaveSecret(secret);
+      setSecret("");
+      setShowSecretForm(false);
+    } catch (err) {
+      setSaveErr(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5 space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="w-8 h-8 flex items-center justify-center shrink-0">
+          <Webhook className="w-5 h-5 text-indigo-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-gray-900">DealerFunnel</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+              stats?.secretConfigured
+                ? "bg-green-100 text-green-700"
+                : "bg-yellow-100 text-yellow-700"
+            }`}>
+              {stats?.secretConfigured ? "Webhook active" : "Setup required"}
+            </span>
+          </div>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Inbound ADF webhook · TCPA opt-out sync · AI reply from dashboard
+          </p>
+        </div>
+      </div>
+
+      {/* Stats */}
+      {(stats?.total ?? 0) > 0 && (
+        <div className="flex gap-6 text-sm">
+          <div>
+            <div className="font-semibold text-gray-900">{stats!.total}</div>
+            <div className="text-gray-400 text-xs">Leads received</div>
+          </div>
+          <div>
+            <div className="font-semibold text-red-600">{stats!.optedOut}</div>
+            <div className="text-gray-400 text-xs">TCPA opt-outs</div>
+          </div>
+        </div>
+      )}
+
+      {/* Webhook URL */}
+      <div className="space-y-1.5">
+        <p className="text-xs font-medium text-gray-600">Webhook URL — paste into DealerFunnel → Settings → Lead Destinations</p>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-700 truncate">
+            {stats?.webhookUrl ?? "Loading…"}
+          </code>
+          <button
+            onClick={copyUrl}
+            className="shrink-0 p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+            title="Copy URL"
+          >
+            {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 text-gray-500" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Opt-out webhook note */}
+      <div className="text-xs text-gray-500 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+        <strong>TCPA opt-out endpoint:</strong> also configure{" "}
+        <code className="text-blue-700">/api/leads/opt-out?dealership=YOUR_SLUG</code>{" "}
+        as a STOP/unsubscribe webhook in DealerFunnel and your Twilio MessagingService.
+      </div>
+
+      {/* Secret key setup */}
+      {!showSecretForm ? (
+        <button
+          onClick={() => setShowSecretForm(true)}
+          className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+        >
+          {stats?.secretConfigured ? "🔑 Rotate webhook secret" : "🔑 Set webhook secret (recommended)"}
+        </button>
+      ) : (
+        <form onSubmit={handleSave} className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Webhook secret — DealerFunnel will send this in <code>x-lead-secret</code>
+            </label>
+            <input
+              type="password"
+              value={secret}
+              onChange={(e) => setSecret(e.target.value)}
+              placeholder="Enter a secret key…"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+          {saveErr && <p className="text-xs text-red-600">{saveErr}</p>}
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setShowSecretForm(false)}
+              className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving || !secret.trim()}
+              className="flex-1 px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+              {saving ? "Saving…" : "Save Secret"}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+export function IntegrationsClient({ connections, latestCounts, successParam, errorParam, dealerFunnelStats }: Props) {
   const router = useRouter();
   const [openModal, setOpenModal] = useState<DmsProvider | "csv_upload" | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -326,6 +468,20 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
     setTimeout(() => router.refresh(), 1000);
   }
 
+  async function handleSaveDealerFunnelSecret(secret: string) {
+    const res = await fetch("/api/integrations/dealerfunnel/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ inbound_lead_secret: secret }),
+    });
+    if (!res.ok) {
+      const data = await res.json() as { error?: string };
+      throw new Error(data.error ?? "Failed to save secret");
+    }
+    setToast({ type: "success", message: "DealerFunnel webhook secret saved." });
+    setTimeout(() => router.refresh(), 800);
+  }
+
   const cdkConn = getConnection("cdk_fortellis");
   const reynoldsConn = getConnection("reynolds");
   const vinConn = getConnection("vinsolutions");
@@ -369,6 +525,15 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
           After connecting, AutoCDP runs an initial full sync then delta syncs every 30–60 minutes.
           The AI swarm re-analyzes your data after each sync so campaigns stay fresh.
         </p>
+      </div>
+
+      {/* Lead providers */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Lead Providers</h2>
+        <DealerFunnelCard
+          stats={dealerFunnelStats}
+          onSaveSecret={handleSaveDealerFunnelSecret}
+        />
       </div>
 
       {/* DMS providers */}

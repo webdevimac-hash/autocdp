@@ -5,6 +5,8 @@ import { IntegrationsClient } from "./integrations-client";
 
 export const dynamic = "force-dynamic";
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.autocdp.com";
+
 export default async function IntegrationsPage({
   searchParams,
 }: {
@@ -17,10 +19,13 @@ export default async function IntegrationsPage({
   const svc = createServiceClient();
   const { data: ud } = await svc
     .from("user_dealerships")
-    .select("dealership_id, dealerships(id, name)")
+    .select("dealership_id, dealerships(id, name, slug, settings)")
     .eq("user_id", user.id)
     .maybeSingle() as {
-      data: { dealership_id: string; dealerships: { id: string; name: string } | null } | null;
+      data: {
+        dealership_id: string;
+        dealerships: { id: string; name: string; slug: string; settings: Record<string, unknown> } | null;
+      } | null;
     };
 
   const dealership = ud?.dealerships ?? null;
@@ -41,7 +46,6 @@ export default async function IntegrationsPage({
     .order("completed_at", { ascending: false })
     .limit(10);
 
-  // Aggregate latest sync counts per provider
   const latestCounts: Record<string, { customers: number; visits: number; inventory: number }> = {};
   for (const job of syncJobs ?? []) {
     if (!latestCounts[job.provider as string]) {
@@ -54,6 +58,24 @@ export default async function IntegrationsPage({
     }
   }
 
+  // DealerFunnel stats
+  const [{ count: dfTotal }, { count: dfOptedOut }] = await Promise.all([
+    svc
+      .from("conquest_leads")
+      .select("id", { count: "exact", head: true })
+      .eq("dealership_id", dealership.id)
+      .eq("source", "dealerfunnel") as unknown as Promise<{ count: number | null }>,
+    svc
+      .from("customers")
+      .select("id", { count: "exact", head: true })
+      .eq("dealership_id", dealership.id)
+      .contains("tags", ["tcpa_optout"]) as unknown as Promise<{ count: number | null }>,
+  ]);
+
+  const secretConfigured = !!(dealership.settings?.inbound_lead_secret as string | undefined);
+  const secret = (dealership.settings?.inbound_lead_secret as string | undefined) ?? "";
+  const webhookUrl = `${APP_URL}/api/leads/inbound?dealership=${dealership.slug}${secret ? `&secret=${secret}` : ""}`;
+
   const params = await searchParams;
 
   return (
@@ -62,6 +84,12 @@ export default async function IntegrationsPage({
       latestCounts={latestCounts}
       successParam={params.success}
       errorParam={params.error}
+      dealerFunnelStats={{
+        total: dfTotal ?? 0,
+        optedOut: dfOptedOut ?? 0,
+        webhookUrl,
+        secretConfigured,
+      }}
     />
   );
 }
