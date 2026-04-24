@@ -19,6 +19,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
+import { notifyExternalOptOut } from "@/lib/compliance/disclaimers";
 import crypto from "crypto";
 
 const GLOBAL_SECRET = process.env.INBOUND_LEAD_SECRET ?? "";
@@ -89,7 +90,7 @@ async function applyOptOut(
       .eq("email", email);
   }
 
-  return { updated: true, customer_id: customer.id };
+  return { updated: true, customer_id: customer.id, customer };
 }
 
 // ── DealerFunnel opt-out POST ─────────────────────────────────
@@ -180,5 +181,12 @@ export async function POST(req: NextRequest) {
 
   const result = await applyOptOut(svc, dealership.id, { phone, email });
 
-  return NextResponse.json({ success: true, ...result });
+  // Bidirectional sync: notify DealerFunnel if they have an opt-out webhook configured
+  const dfOptOutWebhook = dealership.settings?.dealerfunnel_optout_webhook as string | undefined;
+  const dfSecret = dealership.settings?.inbound_lead_secret as string | undefined;
+  if (dfOptOutWebhook && result.updated) {
+    void notifyExternalOptOut(dfOptOutWebhook, { phone, email }, dfSecret);
+  }
+
+  return NextResponse.json({ success: true, updated: result.updated, customer_id: result.customer_id });
 }

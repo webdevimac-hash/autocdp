@@ -11,6 +11,7 @@
 import { getAnthropicClient, MODELS } from "../client";
 import { createServiceClient } from "@/lib/supabase/server";
 import { applyGuardrails } from "../guardrails";
+import { appendDisclaimer } from "@/lib/compliance/disclaimers";
 import type { AgentContext, Customer, Visit, PersonalizedMessage, CommunicationChannel, InventoryVehicle } from "@/types";
 
 export interface DealershipProfile {
@@ -19,6 +20,8 @@ export interface DealershipProfile {
   hours?: Record<string, string> | null;
   logo_url?: string | null;
   website_url?: string | null;
+  /** X-Time online scheduler URL — injected into CTA when includeBookNow is true. */
+  xtimeUrl?: string | null;
 }
 
 export interface CreativeAgentInput {
@@ -32,6 +35,10 @@ export interface CreativeAgentInput {
   dealershipProfile?: DealershipProfile;
   /** Aged inventory campaign: skip inventory lookup and use this exact vehicle. */
   assignedVehicle?: InventoryVehicle;
+  /** When true, instruct Claude to include the X-Time "Book Now" link in the CTA. */
+  includeBookNow?: boolean;
+  /** When true, append TCPA/CAN-SPAM disclaimer to final content. Default: true. */
+  includeDisclaimer?: boolean;
 }
 
 export interface CreativeAgentOutput extends PersonalizedMessage {
@@ -289,6 +296,9 @@ export async function runCreativeAgent(
       : "";
 
   const profile = input.dealershipProfile;
+  const xtimeUrl = profile?.xtimeUrl ?? null;
+  const includeBookNow = input.includeBookNow && !!xtimeUrl;
+
   const profileSection = profile
     ? [
         profile.phone    ? `Phone: ${profile.phone}` : null,
@@ -299,8 +309,16 @@ export async function runCreativeAgent(
           ? `Hours: ${Object.entries(profile.hours).slice(0, 4).map(([d, h]) => `${d}: ${h}`).join(", ")}`
           : null,
         profile.website_url ? `Website: ${profile.website_url}` : null,
+        includeBookNow ? `Online Booking (X-Time): ${xtimeUrl}` : null,
       ].filter(Boolean).join("\n")
     : null;
+
+  const bookNowSection = includeBookNow
+    ? `\nBOOK NOW LINK — IMPORTANT: Include this X-Time scheduling URL naturally in your call-to-action:\n` +
+      `  ${xtimeUrl}\n` +
+      `  For SMS: shorten to just the URL. For email/mail: use anchor text like "Book your appointment online" or "Schedule now".\n` +
+      `  Do NOT alter the URL. Do NOT include disclaimers — those are appended automatically.\n`
+    : "";
 
   const systemPrompt =
     `You are the Creative Agent for AutoCDP. You write hyper-personalized outreach ` +
@@ -308,7 +326,7 @@ export async function runCreativeAgent(
     `Tone: ${input.dealershipTone || "friendly and professional"}\n` +
     `Dealership: ${input.context.dealershipName}\n` +
     (profileSection ? `\nDEALERSHIP CONTACT INFO (use in CTAs when relevant):\n${profileSection}\n` : "") +
-    `${learningsSection}${inventorySection}\n` +
+    `${learningsSection}${inventorySection}${bookNowSection}\n` +
     `Rules:\n` +
     `- Reference specific details from the customer's visit history when available\n` +
     `- When network learnings apply to this customer's vehicle or segment, weave them in naturally\n` +
@@ -316,7 +334,8 @@ export async function runCreativeAgent(
     `- For direct mail: write as if hand-penned by a service advisor\n` +
     `- Use the customer's first name\n` +
     `- When including a CTA with a phone number, use the dealership phone above\n` +
-    `- End with a clear but soft call-to-action`;
+    `- End with a clear but soft call-to-action\n` +
+    `- Do NOT write any opt-out, unsubscribe, or legal disclaimer text — those are appended automatically`;
 
   const userPrompt =
     `Write a personalized ${channelGuide} message.\n\n` +
@@ -365,11 +384,22 @@ export async function runCreativeAgent(
     );
   }
 
+  // ── 7. Append compliance disclaimer (verbatim — never AI-generated) ──
+  const includeDisclaimer = input.includeDisclaimer !== false; // default true
+  const finalContent = includeDisclaimer
+    ? appendDisclaimer(guardrail.content, input.channel, {
+        dealershipName: input.context.dealershipName,
+        dealershipPhone: profile?.phone,
+        dealershipAddress: profile?.address,
+        isMarketing: true,
+      })
+    : guardrail.content;
+
   return {
     customerId: input.customer.id,
     channel: input.channel,
     subject: guardrail.subject ?? undefined,
-    content: guardrail.content,
+    content: finalContent,
     reasoning: parsed.reasoning,
     confidence: parsed.confidence,
     tokensUsed: response.usage.input_tokens + response.usage.output_tokens,

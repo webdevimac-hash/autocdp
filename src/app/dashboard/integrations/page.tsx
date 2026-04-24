@@ -75,6 +75,7 @@ export default async function IntegrationsPage({
   const secretConfigured = !!(dealership.settings?.inbound_lead_secret as string | undefined);
   const secret = (dealership.settings?.inbound_lead_secret as string | undefined) ?? "";
   const webhookUrl = `${APP_URL}/api/leads/inbound?dealership=${dealership.slug}${secret ? `&secret=${secret}` : ""}`;
+  const xtimeUrl = (dealership.settings?.xtime_url as string | undefined) ?? null;
 
   const params = await searchParams;
 
@@ -90,6 +91,7 @@ export default async function IntegrationsPage({
         webhookUrl,
         secretConfigured,
       }}
+      xtimeUrl={xtimeUrl}
     />
   );
 }

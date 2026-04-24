@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { customerIds, templateType, campaignGoal, campaignId, dryRun = false, isTest = false, tone, includeProspects = false, campaignType = "standard" } = body;
+    const { customerIds, templateType, campaignGoal, campaignId, dryRun = false, isTest = false, tone, includeProspects = false, campaignType = "standard", includeBookNow = false } = body;
 
     // Validation
     if (!Array.isArray(customerIds) || customerIds.length === 0) {
@@ -101,6 +101,7 @@ export async function POST(req: NextRequest) {
       isTest,
       includeProspects,
       campaignType,
+      includeBookNow,
       createdBy: user.id,
     });
 

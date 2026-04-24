@@ -99,10 +99,13 @@ Output JSON: {"plan": "summary", "priority_segments": ["segment1"], "risk_flags"
 
     const [customersRes, dealershipRes] = await Promise.all([
       supabase.from("customers").select("*").eq("dealership_id", input.context.dealershipId).order("last_visit_date", { ascending: false }).limit(200),
-      supabase.from("dealerships").select("phone, address, hours, logo_url, website_url").eq("id", input.context.dealershipId).single(),
+      supabase.from("dealerships").select("phone, address, hours, logo_url, website_url, settings").eq("id", input.context.dealershipId).single(),
     ]);
     const customers = customersRes.data;
-    const dealershipProfile = dealershipRes.data ?? undefined;
+    const dealershipRaw = dealershipRes.data ?? undefined;
+    const dealershipProfile = dealershipRaw
+      ? { ...dealershipRaw, xtimeUrl: (dealershipRaw as Record<string, unknown>).settings?.xtime_url as string | null ?? null }
+      : undefined;
 
     const { data: recentVisits } = await supabase
       .from("visits")
@@ -227,6 +230,7 @@ export interface DirectMailOrchestratorInput {
   createdBy?: string;
   includeProspects?: boolean;
   campaignType?: CampaignType;
+  includeBookNow?: boolean;
 }
 
 export interface DirectMailResult {
@@ -279,10 +283,12 @@ export async function runDirectMailOrchestrator(
         .eq("dealership_id", input.context.dealershipId),
       supabase
         .from("dealerships")
-        .select("phone, address, hours, website_url")
+        .select("phone, address, hours, website_url, logo_url, settings")
         .eq("id", input.context.dealershipId)
-        .single() as Promise<{ data: { phone?: string | null; address?: Record<string, string> | null; hours?: Record<string, string> | null; website_url?: string | null } | null }>,
+        .single() as Promise<{ data: { phone?: string | null; address?: Record<string, string> | null; hours?: Record<string, string> | null; website_url?: string | null; logo_url?: string | null; settings?: Record<string, unknown> | null } | null }>,
     ]);
+
+    const xtimeUrl = (dealershipProfile?.settings?.xtime_url as string | undefined) ?? null;
 
     if (!customers?.length) throw new Error("No valid customers found");
 
@@ -366,6 +372,14 @@ export async function runDirectMailOrchestrator(
         ? `\n\n${formatAssignedVehicleForPrompt(vehicleMatch)}`
         : "";
 
+      const bookNowSystemNote = input.includeBookNow && xtimeUrl
+        ? `\nBOOK NOW (X-Time): Include this scheduling URL naturally in your CTA: ${xtimeUrl}\n` +
+          `Anchor text: "Book your appointment online" or "Schedule now".\n`
+        : "";
+
+      const disclaimerNote =
+        `\nDO NOT write any opt-out, unsubscribe, STOP, or legal disclaimer text — appended automatically after send.\n`;
+
       const systemPrompt =
         `You are the AutoCDP Orchestrator for ${input.context.dealershipName}.\n` +
         `You have one tool available: send_direct_mail.\n\n` +
@@ -380,6 +394,8 @@ export async function runDirectMailOrchestrator(
           ? `\nCAMPAIGN TYPE: Aged Inventory — move specific vehicles that have been on the lot 45+ days.\n`
           : "") +
         dealershipContactSection +
+        bookNowSystemNote +
+        disclaimerNote +
         `\nPostcard guidelines (50–100 words, warm, personal, ends with soft CTA):\n` +
         `- Reference specific vehicle or service if known\n` +
         `- Include a clear offer or reason to return\n` +
@@ -619,6 +635,7 @@ export interface OmnichannelOrchestratorInput {
   createdBy?: string;
   includeProspects?: boolean;
   campaignType?: CampaignType;
+  includeBookNow?: boolean;
 }
 
 export interface OmnichannelResult {
@@ -672,10 +689,12 @@ export async function runOmnichannelOrchestrator(
         .eq("dealership_id", input.context.dealershipId),
       supabase
         .from("dealerships")
-        .select("phone, address, hours, website_url")
+        .select("phone, address, hours, website_url, settings")
         .eq("id", input.context.dealershipId)
-        .single() as Promise<{ data: { phone?: string | null; address?: Record<string, string> | null; hours?: Record<string, string> | null; website_url?: string | null } | null }>,
+        .single() as Promise<{ data: { phone?: string | null; address?: Record<string, string> | null; hours?: Record<string, string> | null; website_url?: string | null; settings?: Record<string, unknown> | null } | null }>,
     ]);
+
+    const omnichannelXtimeUrl = (omnichannelDealershipProfile?.settings?.xtime_url as string | undefined) ?? null;
 
     if (!customers?.length) throw new Error("No valid customers found");
 
@@ -771,6 +790,13 @@ export async function runOmnichannelOrchestrator(
         ? "You have access to send_sms, send_email, and send_direct_mail. Choose the best channel for this customer."
         : `Use the ${input.channels.join(" or ")} channel(s) available to you.`;
 
+      const omnichannelBookNowNote = input.includeBookNow && omnichannelXtimeUrl
+        ? `\nBOOK NOW (X-Time): Include this scheduling URL naturally in CTAs: ${omnichannelXtimeUrl}\n`
+        : "";
+
+      const omnichannelDisclaimerNote =
+        `\nDO NOT write opt-out, STOP, unsubscribe, or legal disclaimer text — appended automatically.\n`;
+
       const systemPrompt =
         `You are the AutoCDP Orchestrator for ${input.context.dealershipName}.\n` +
         `Available tools: ${tools.map((t) => t.name).join(", ")}.\n` +
@@ -781,6 +807,8 @@ export async function runOmnichannelOrchestrator(
           ? `CAMPAIGN TYPE: Aged Inventory — move specific vehicles that have been on lot 45+ days.\n`
           : "") +
         omnichannelContactSection +
+        omnichannelBookNowNote +
+        omnichannelDisclaimerNote +
         agedVehicleSystemNote +
         `\nPer-channel guidelines:\n` +
         `- SMS: Max 160 chars, first name, soft CTA, no HTML\n` +

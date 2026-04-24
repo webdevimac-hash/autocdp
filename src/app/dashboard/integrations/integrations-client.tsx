@@ -22,6 +22,7 @@ interface Props {
   successParam?: string;
   errorParam?: string;
   dealerFunnelStats?: { total: number; optedOut: number; webhookUrl: string; secretConfigured: boolean };
+  xtimeUrl?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -358,7 +359,97 @@ function DealerFunnelCard({
   );
 }
 
-export function IntegrationsClient({ connections, latestCounts, successParam, errorParam, dealerFunnelStats }: Props) {
+// ---------------------------------------------------------------------------
+// X-Time settings card
+// ---------------------------------------------------------------------------
+
+function XTimeCard({ currentUrl, onSave }: { currentUrl?: string | null; onSave: (url: string | null) => Promise<void> }) {
+  const [editing, setEditing] = useState(!currentUrl);
+  const [url, setUrl] = useState(currentUrl ?? "");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setErr("");
+    try {
+      await onSave(url.trim() || null);
+      setEditing(false);
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5 space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 flex items-center justify-center shrink-0">
+            <span className="text-lg">📅</span>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-gray-900">X-Time (Online Scheduler)</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${currentUrl ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                {currentUrl ? "Configured" : "Not set"}
+              </span>
+            </div>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Reynolds & Reynolds appointment scheduler — AI campaigns include "Book Now" links directly in CTAs.
+            </p>
+          </div>
+        </div>
+        {currentUrl && !editing && (
+          <button onClick={() => setEditing(true)} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium shrink-0">Edit</button>
+        )}
+      </div>
+
+      {currentUrl && !editing && (
+        <div className="text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-600 truncate">
+          {currentUrl}
+        </div>
+      )}
+
+      {editing && (
+        <form onSubmit={handleSave} className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              X-Time scheduler URL
+            </label>
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://www.xtime.com/retailer/DEALER_CODE/schedule"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Find this in your X-Time admin portal under Scheduler → Booking Link. Leave blank to disable.
+            </p>
+          </div>
+          {err && <p className="text-xs text-red-600">{err}</p>}
+          <div className="flex gap-2">
+            {currentUrl && (
+              <button type="button" onClick={() => setEditing(false)}
+                className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">
+                Cancel
+              </button>
+            )}
+            <button type="submit" disabled={saving}
+              className="flex-1 px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+              {saving ? "Saving…" : "Save URL"}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+export function IntegrationsClient({ connections, latestCounts, successParam, errorParam, dealerFunnelStats, xtimeUrl }: Props) {
   const router = useRouter();
   const [openModal, setOpenModal] = useState<DmsProvider | "csv_upload" | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -468,6 +559,22 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
     setTimeout(() => router.refresh(), 1000);
   }
 
+  const [currentXtimeUrl, setCurrentXtimeUrl] = useState(xtimeUrl ?? null);
+
+  async function handleSaveXtimeUrl(url: string | null) {
+    const res = await fetch("/api/integrations/xtime/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ xtime_url: url }),
+    });
+    if (!res.ok) {
+      const data = await res.json() as { error?: string };
+      throw new Error(data.error ?? "Failed to save");
+    }
+    setCurrentXtimeUrl(url);
+    setToast({ type: "success", message: url ? "X-Time scheduler URL saved." : "X-Time URL cleared." });
+  }
+
   async function handleSaveDealerFunnelSecret(secret: string) {
     const res = await fetch("/api/integrations/dealerfunnel/settings", {
       method: "POST",
@@ -530,10 +637,18 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
       {/* Lead providers */}
       <div>
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Lead Providers</h2>
-        <DealerFunnelCard
-          stats={dealerFunnelStats}
-          onSaveSecret={handleSaveDealerFunnelSecret}
-        />
+        <div className="space-y-4">
+          <DealerFunnelCard
+            stats={dealerFunnelStats}
+            onSaveSecret={handleSaveDealerFunnelSecret}
+          />
+        </div>
+      </div>
+
+      {/* Scheduling */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Online Scheduling</h2>
+        <XTimeCard currentUrl={currentXtimeUrl} onSave={handleSaveXtimeUrl} />
       </div>
 
       {/* DMS providers */}

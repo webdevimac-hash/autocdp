@@ -233,6 +233,16 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
   const [templateType, setTemplateType] = useState<MailTemplateType>("postcard_6x9");
   const [campaignType, setCampaignType] = useState<CampaignType>("standard");
   const [accentColor, setAccentColor] = useState<AccentColor>("indigo");
+  const [includeBookNow, setIncludeBookNow] = useState(false);
+  const [xtimeUrl, setXtimeUrl] = useState<string | null>(null);
+
+  // Load X-Time URL on mount
+  useState(() => {
+    fetch("/api/integrations/xtime/settings")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { xtime_url?: string | null } | null) => { if (d?.xtime_url) setXtimeUrl(d.xtime_url); })
+      .catch(() => null);
+  });
 
   // Step 3 + 4
   const [campaignGoal, setCampaignGoal] = useState(
@@ -402,7 +412,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
         const res = await fetch("/api/mail/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ customerIds, templateType, campaignGoal, dryRun, campaignType, accentColor }),
+          body: JSON.stringify({ customerIds, templateType, campaignGoal, dryRun, campaignType, accentColor, includeBookNow }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Send failed");
@@ -879,6 +889,30 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                 )}
               </div>
             )}
+
+            {/* Book Now / X-Time toggle */}
+            <div className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50">
+              <input
+                type="checkbox"
+                id="include-book-now"
+                checked={includeBookNow}
+                onChange={(e) => setIncludeBookNow(e.target.checked)}
+                disabled={!xtimeUrl}
+                className="mt-0.5 rounded"
+              />
+              <label htmlFor="include-book-now" className="text-sm cursor-pointer flex-1">
+                <span className="font-medium text-slate-800">Include "Book Now" link (X-Time)</span>
+                {xtimeUrl ? (
+                  <p className="text-xs text-slate-500 mt-0.5">AI will naturally include your X-Time scheduling URL in the call-to-action.</p>
+                ) : (
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Set your X-Time URL in{" "}
+                    <a href="/dashboard/integrations" className="text-indigo-600 hover:underline">Integrations → X-Time</a>{" "}
+                    to enable this.
+                  </p>
+                )}
+              </label>
+            </div>
 
             <div className="flex gap-3 pt-1">
               <Button variant="ghost" size="sm" className="h-12 sm:h-8 flex-1 sm:flex-none" onClick={() => setCurrentStep(1)}>Back</Button>
