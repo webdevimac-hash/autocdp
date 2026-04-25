@@ -35,7 +35,7 @@ import { loadBaselineExamples } from "@/lib/anthropic/baseline";
 import type {
   AgentContext, Customer, Visit, CampaignChannel, CampaignType,
   InventoryVehicle, AgedInventoryMatch,
-  SendDirectMailToolInput, SendDirectMailToolResult,
+  SendDirectMailToolInput, SendDirectMailToolResult, DesignStyle,
 } from "@/types";
 
 // ── Original orchestrator (preview only, no mail sent) ────────
@@ -234,6 +234,7 @@ export interface DirectMailOrchestratorInput {
   includeProspects?: boolean;
   campaignType?: CampaignType;
   includeBookNow?: boolean;
+  designStyle?: DesignStyle;
 }
 
 export interface DirectMailResult {
@@ -392,6 +393,17 @@ export async function runDirectMailOrchestrator(
           }).join("\n\n") + `\n`
         : "";
 
+      const designStyleNote = input.designStyle && input.designStyle !== "standard"
+        ? `\nDESIGN STYLE: ${input.designStyle}\n` +
+          (input.designStyle === "multi-panel"
+            ? `This is a multi-panel postcard with a hero image zone and a message panel. Write bold headline copy + a concise personal message + a strong CTA.\n`
+            : input.designStyle === "premium-fluorescent"
+            ? `This is a premium fluorescent design with dark background and neon accents. Write a punchy bold headline + short impactful message. Use high-energy language.\n`
+            : input.designStyle === "complex-fold"
+            ? `This is a tri-fold letter. Write a compelling cover headline, a personal story/service reminder for the inner-left panel, and a clear offer + CTA for the inner-right panel. Separate sections with --- delimiters.\n`
+            : "")
+        : "";
+
       const systemPrompt =
         `You are the AutoCDP Orchestrator for ${input.context.dealershipName}.\n` +
         `You have one tool available: send_direct_mail.\n\n` +
@@ -409,6 +421,7 @@ export async function runDirectMailOrchestrator(
         dmBaselineSection +
         bookNowSystemNote +
         disclaimerNote +
+        designStyleNote +
         `\nPostcard guidelines (50–100 words, warm, personal, ends with soft CTA):\n` +
         `- Reference specific vehicle or service if known\n` +
         `- Include a clear offer or reason to return\n` +
@@ -520,6 +533,7 @@ export async function runDirectMailOrchestrator(
                 campaignId: input.context.campaignId,
                 createdBy: input.createdBy,
                 isTest: input.isTest ?? false,
+                designStyle: input.designStyle,
               });
               if (toolInput.personalized_text) {
                 generatedCopy = toolInput.personalized_text;

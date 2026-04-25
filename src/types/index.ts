@@ -168,6 +168,53 @@ export interface GlobalLearning {
 
 export type MailTemplateType = "postcard_6x9" | "letter_6x9" | "letter_8.5x11";
 
+export type DesignStyle =
+  | "standard"            // existing handwritten note (default)
+  | "multi-panel"         // hero image block + message panel, front/back distinct
+  | "premium-fluorescent" // bold graphic design + fluorescent neon accents
+  | "complex-fold";       // tri-fold with 3 distinct content panels
+
+export interface ColorScheme {
+  primary: string;   // hex — main brand color
+  accent: string;    // hex — highlight / CTA color (neon when fluorescent)
+  background: string;
+  text: string;
+  accentIsNeon?: boolean;
+}
+
+export interface ImageZone {
+  panelId: string;
+  position: "top" | "bottom" | "left" | "right" | "full-bleed" | "corner";
+  widthPct: number;    // 0–100
+  heightPx: number;
+  imageUrl?: string;   // live URL if available
+  placeholder: string; // print house description e.g. "Hero exterior shot of F-150"
+  alt: string;
+}
+
+export interface MailPanel {
+  id: string;
+  role: "front" | "back" | "cover" | "inner-left" | "inner-right" | "panel-1" | "panel-2" | "panel-3";
+  headline?: string;
+  subheadline?: string;
+  body: string;
+  cta?: string;
+  ctaUrl?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  accentColor?: string;
+  imageZone?: ImageZone;
+}
+
+export interface LayoutSpec {
+  style: DesignStyle;
+  panels: MailPanel[];
+  colorScheme: ColorScheme;
+  foldInstructions?: string;   // e.g. "Z-fold: fold left panel inward first"
+  dieCutInstructions?: string; // e.g. "Round corners 0.25in radius all four corners"
+  printNotes?: string;         // e.g. "Use Pantone 801 U for neon green accents"
+}
+
 export type MailPieceStatus =
   | "pending"
   | "processing"

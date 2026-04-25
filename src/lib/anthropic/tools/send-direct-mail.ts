@@ -80,6 +80,8 @@ export interface SendDirectMailContext {
   campaignId?: string;
   createdBy?: string;
   isTest?: boolean;
+  designStyle?: import("@/types").DesignStyle;
+  layoutSpec?: import("@/types").LayoutSpec;
 }
 
 export async function executeSendDirectMailTool(
@@ -182,6 +184,7 @@ export async function executeSendDirectMailTool(
         } as Record<string, unknown>,
         qrCodeDataUrl: qrDataUrl,
         trackingUrl,
+        layoutSpec: context.layoutSpec,
       });
     } catch (pgErr) {
       postgridError = pgErr instanceof Error ? pgErr.message : String(pgErr);

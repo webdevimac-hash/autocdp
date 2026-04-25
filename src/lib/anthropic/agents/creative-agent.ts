@@ -12,7 +12,7 @@ import { getAnthropicClient, MODELS } from "../client";
 import { createServiceClient } from "@/lib/supabase/server";
 import { applyGuardrails } from "../guardrails";
 import { appendDisclaimer } from "@/lib/compliance/disclaimers";
-import type { AgentContext, Customer, Visit, PersonalizedMessage, CommunicationChannel, InventoryVehicle } from "@/types";
+import type { AgentContext, Customer, Visit, PersonalizedMessage, CommunicationChannel, InventoryVehicle, DesignStyle, LayoutSpec } from "@/types";
 
 export interface DealershipProfile {
   phone?: string | null;
@@ -41,12 +41,17 @@ export interface CreativeAgentInput {
   includeDisclaimer?: boolean;
   /** Pre-loaded baseline examples — injected as style guidelines in the system prompt. */
   baselineExamples?: Array<{ example_text: string; mail_type?: string | null; notes?: string | null }>;
+  /** Design style — controls whether Claude outputs a structured layoutSpec in addition to copy. */
+  designStyle?: DesignStyle;
+  /** Image URLs the dealer has provided for use in the layout (for advanced styles). */
+  designImages?: string[];
 }
 
 export interface CreativeAgentOutput extends PersonalizedMessage {
   tokensUsed: number;
   guardrailsApplied: boolean;
   guardrailViolations: string[];
+  layoutSpec?: LayoutSpec;
 }
 
 // Extract model token from visit (e.g. year=2019, make="Ford", model="F-150" → "F-150")
@@ -297,6 +302,9 @@ export async function runCreativeAgent(
         `Apply the most relevant ones naturally:\n${patternLines.join("\n")}\n`
       : "";
 
+  const designStyle = input.designStyle ?? "standard";
+  const isAdvancedDesign = designStyle !== "standard";
+
   const profile = input.dealershipProfile;
   const xtimeUrl = profile?.xtimeUrl ?? null;
   const includeBookNow = input.includeBookNow && !!xtimeUrl;
@@ -339,13 +347,46 @@ export async function runCreativeAgent(
       `Your new message should feel like it came from the same advisor who wrote the above.\n`;
   }
 
+  const DESIGN_STYLE_GUIDES: Record<DesignStyle, string> = {
+    standard: "",
+    "multi-panel": [
+      `DESIGN STYLE: Multi-Panel Postcard — produce a structured layout with distinct front and back panels.`,
+      `Front panel: hero image zone (top 40%) + personalized handwritten message + CTA.`,
+      `Back panel: bold brand block + offer callout + address zone.`,
+      `Keep message panel copy tight (40–60 words). Headline bold and punchy (5–8 words).`,
+    ].join("\n"),
+    "premium-fluorescent": [
+      `DESIGN STYLE: Premium Fluorescent — bold graphic design with neon accent highlights.`,
+      `Use a dark or deep-navy background. Choose ONE fluorescent accent (#FFE500 yellow, #FF6EC7 pink, or #39FF14 green).`,
+      `Structure: bold 6–8 word headline in large type → 2-sentence personalized message → strong CTA button in fluorescent color.`,
+      `Fluorescent elements: CTA button background, offer badge border, and any urgency callout text.`,
+      `Message is shorter and punchier than standard (30–50 words). Urgency without being pushy.`,
+    ].join("\n"),
+    "complex-fold": [
+      `DESIGN STYLE: Complex Fold (Tri-fold) — three distinct panels, each with a defined role.`,
+      `Panel 1 (Cover): Bold brand statement + striking headline + dealership logo zone. This is what they see first.`,
+      `Panel 2 (Inner left): Personalized story — reference their vehicle, service history, specific offer. 80–100 words.`,
+      `Panel 3 (Inner right / Action): Offer details + QR code + CTA + business card info.`,
+      `Include fold instructions for the print house in your layoutSpec.foldInstructions.`,
+    ].join("\n"),
+  };
+
+  const designStyleNote = isAdvancedDesign
+    ? `\n${DESIGN_STYLE_GUIDES[designStyle]}\n`
+    : "";
+
+  const imagesNote =
+    input.designImages?.length
+      ? `\nDEALER-PROVIDED IMAGES (use in imageZone placeholders):\n${input.designImages.map((u, i) => `  ${i + 1}. ${u}`).join("\n")}\n`
+      : "";
+
   const systemPrompt =
     `You are the Creative Agent for AutoCDP. You write hyper-personalized outreach ` +
     `messages for auto dealership customers. Your copy feels human, warm, and specific — never generic.\n\n` +
     `Tone: ${input.dealershipTone || "friendly and professional"}\n` +
     `Dealership: ${input.context.dealershipName}\n` +
     (profileSection ? `\nDEALERSHIP CONTACT INFO (use in CTAs when relevant):\n${profileSection}\n` : "") +
-    `${baselineSection}${learningsSection}${inventorySection}${bookNowSection}\n` +
+    `${designStyleNote}${imagesNote}${baselineSection}${learningsSection}${inventorySection}${bookNowSection}\n` +
     `Rules:\n` +
     `- Reference specific details from the customer's visit history when available\n` +
     `- When network learnings apply to this customer's vehicle or segment, weave them in naturally\n` +
@@ -355,6 +396,44 @@ export async function runCreativeAgent(
     `- When including a CTA with a phone number, use the dealership phone above\n` +
     `- End with a clear but soft call-to-action\n` +
     `- Do NOT write any opt-out, unsubscribe, or legal disclaimer text — those are appended automatically`;
+
+  const layoutSpecSchema = isAdvancedDesign ? `
+  "layoutSpec": {
+    "style": "${designStyle}",
+    "panels": [
+      {
+        "id": "front",
+        "role": "front",
+        "headline": "Bold 6-8 word headline",
+        "subheadline": "Optional supporting line",
+        "body": "Personalized message body",
+        "cta": "Call to action text",
+        "ctaUrl": "${xtimeUrl ?? ""}",
+        "backgroundColor": "#hex",
+        "textColor": "#hex",
+        "accentColor": "#hex",
+        "imageZone": {
+          "panelId": "front",
+          "position": "top",
+          "widthPct": 100,
+          "heightPx": 180,
+          "imageUrl": "${input.designImages?.[0] ?? ""}",
+          "placeholder": "Describe what image goes here",
+          "alt": "Image alt text"
+        }
+      }
+    ],
+    "colorScheme": {
+      "primary": "#hex",
+      "accent": "#hex",
+      "background": "#hex",
+      "text": "#hex",
+      "accentIsNeon": true
+    },
+    "foldInstructions": "Tri-fold: fold right panel inward first, then left panel over",
+    "dieCutInstructions": "Round corners 0.25in radius",
+    "printNotes": "Use Pantone 801 U for neon accent, ensure 1/8in bleed on all edges"
+  },` : "";
 
   const userPrompt =
     `Write a personalized ${channelGuide} message.\n\n` +
@@ -366,8 +445,9 @@ export async function runCreativeAgent(
     `\nRespond with JSON:\n` +
     `{\n` +
     `  "subject": "email subject line (null for sms/mail)",\n` +
-    `  "content": "the full message text",\n` +
-    `  "reasoning": "why this angle — mention which network learnings you applied if any",\n` +
+    `  "content": "the full message text (front-panel body for advanced designs)",\n` +
+    (isAdvancedDesign ? layoutSpecSchema + "\n" : "") +
+    `  "reasoning": "why this angle — mention which learnings you applied",\n` +
     `  "confidence": 0.85\n` +
     `}`;
 
@@ -424,5 +504,6 @@ export async function runCreativeAgent(
     tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
     guardrailsApplied: guardrail.rewritten,
     guardrailViolations: guardrail.violations,
+    layoutSpec: parsed.layoutSpec as LayoutSpec | undefined,
   };
 }

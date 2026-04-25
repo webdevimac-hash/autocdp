@@ -9,10 +9,10 @@ import {
   FileText, Send, Loader2, CheckCircle, AlertCircle,
   ChevronRight, RefreshCw, Zap, Eye, FlaskConical,
   ExternalLink, Mail, MessageSquare, Layers, Phone,
-  AtSign, Car, Clock,
+  AtSign, Car, Clock, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Customer, MailTemplateType, CampaignType } from "@/types";
+import type { Customer, MailTemplateType, CampaignType, DesignStyle } from "@/types";
 
 // ── Channel config ────────────────────────────────────────────
 
@@ -233,6 +233,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
   const [templateType, setTemplateType] = useState<MailTemplateType>("postcard_6x9");
   const [campaignType, setCampaignType] = useState<CampaignType>("standard");
   const [accentColor, setAccentColor] = useState<AccentColor>("indigo");
+  const [designStyle, setDesignStyle] = useState<DesignStyle>("standard");
   const [includeBookNow, setIncludeBookNow] = useState(false);
   const [xtimeUrl, setXtimeUrl] = useState<string | null>(null);
   const [baselineCount, setBaselineCount] = useState<number | null>(null);
@@ -264,6 +265,8 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
     previewQrUrl: string | null;
     vehicle: string | null;
     channel: BuilderChannel;
+    designStyle?: DesignStyle;
+    layoutSpec?: import("@/types").LayoutSpec;
   } | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
@@ -380,6 +383,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
           templateType: channel === "direct_mail" || channel === "multi_channel" ? templateType : undefined,
           campaignGoal,
           channel: channel === "multi_channel" ? "email" : channel,
+          designStyle: channel === "direct_mail" ? designStyle : undefined,
         }),
       });
       const data = await res.json();
@@ -394,6 +398,8 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
         previewQrUrl: data.previewQrUrl ?? null,
         vehicle: data.vehicle ?? null,
         channel,
+        designStyle: data.designStyle ?? designStyle,
+        layoutSpec: data.layoutSpec,
       });
       setCurrentStep(4);
     } catch (err) {
@@ -417,7 +423,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
         const res = await fetch("/api/mail/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ customerIds, templateType, campaignGoal, dryRun, campaignType, accentColor, includeBookNow }),
+          body: JSON.stringify({ customerIds, templateType, campaignGoal, dryRun, campaignType, accentColor, includeBookNow, designStyle }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Send failed");
@@ -895,6 +901,45 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               </div>
             )}
 
+            {/* Design Style selector — only for direct mail */}
+            {needsMailTemplate && (
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3" /> Design Style
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { style: "standard" as DesignStyle, label: "Standard", desc: "Handwritten note — warm, personal", badge: null },
+                    { style: "multi-panel" as DesignStyle, label: "Multi-Panel", desc: "Hero image + personalized message", badge: "Graphic" },
+                    { style: "premium-fluorescent" as DesignStyle, label: "Premium Fluorescent", desc: "Bold design with neon ink accents", badge: "Neon" },
+                    { style: "complex-fold" as DesignStyle, label: "Tri-Fold", desc: "3-panel story + offer layout", badge: "Premium" },
+                  ]).map(({ style, label, desc, badge }) => (
+                    <button
+                      key={style}
+                      onClick={() => setDesignStyle(style)}
+                      className={cn(
+                        "text-left p-3 border-2 rounded-[var(--radius)] transition-all hover:shadow-sm relative",
+                        designStyle === style ? "border-indigo-400 bg-indigo-50/60" : "bg-white border-slate-200 hover:border-indigo-300"
+                      )}
+                    >
+                      {badge && (
+                        <span className="absolute top-2 right-2 text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
+                          {badge}
+                        </span>
+                      )}
+                      <p className="text-[12px] font-semibold text-slate-900 pr-8">{label}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{desc}</p>
+                    </button>
+                  ))}
+                </div>
+                {designStyle !== "standard" && (
+                  <p className="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100 rounded px-2.5 py-1.5">
+                    AI will output a structured layout spec with panels, colors, and print-house notes in addition to personalized copy.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Book Now / X-Time toggle */}
             <div className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50">
               <input
@@ -1044,6 +1089,8 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                 qrPreviewUrl={previewResult.previewQrUrl}
                 logoUrl={dealershipLogoUrl}
                 accentColor={accentColor}
+                designStyle={previewResult.designStyle ?? designStyle}
+                layoutSpec={previewResult.layoutSpec}
               />
             )}
 

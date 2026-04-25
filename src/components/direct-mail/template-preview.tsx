@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { buildPreviewQRImageUrl } from "@/lib/qrcode-gen";
-import type { MailTemplateType } from "@/types";
+import type { MailTemplateType, DesignStyle, LayoutSpec } from "@/types";
 
 // ── Accent color system ───────────────────────────────────────
 
@@ -511,6 +511,292 @@ function LetterPreview({
   );
 }
 
+// ── Multi-Panel Preview ───────────────────────────────────────
+
+function MultiPanelPreview({
+  content, dealershipName, customerName, offer, qrPreviewUrl, logoUrl, layoutSpec, accent,
+}: {
+  content: string; dealershipName: string; customerName?: string; offer?: string | null;
+  qrPreviewUrl: string; logoUrl?: string | null; layoutSpec?: LayoutSpec; accent: AccentConfig;
+}) {
+  const [showBack, setShowBack] = useState(false);
+  const front = layoutSpec?.panels?.find((p) => p.role === "front") ?? layoutSpec?.panels?.[0];
+  const cs = layoutSpec?.colorScheme;
+  const imgZone = front?.imageZone;
+  const heroBg = cs?.primary ?? accent.header;
+  const accentHex = cs?.accent ?? accent.offerBorder;
+  const headline = front?.headline ?? dealershipName;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-center gap-1.5">
+        {["Front", "Back (Mailing Side)"].map((label, i) => (
+          <button key={label} onClick={() => setShowBack(i === 1)}
+            className={`px-4 py-1.5 rounded-full text-[11px] font-semibold transition-all border ${
+              showBack === (i === 1) ? "bg-slate-900 text-white border-slate-900" : "text-slate-500 border-slate-200 hover:border-slate-300"
+            }`}>{label}</button>
+        ))}
+      </div>
+      <div className="flex justify-center">
+        {!showBack ? (
+          <div className="w-full rounded-xl border border-slate-200 shadow-xl overflow-hidden" style={{ maxWidth: "420px", background: "#fff" }}>
+            {/* Hero image strip */}
+            <div style={{
+              height: "160px", background: `${heroBg}22`,
+              backgroundImage: imgZone?.imageUrl ? `url('${imgZone.imageUrl}')` : undefined,
+              backgroundSize: "cover", backgroundPosition: "center",
+              display: "flex", alignItems: "flex-end", position: "relative",
+            }}>
+              <div style={{
+                position: "absolute", inset: 0,
+                background: `linear-gradient(to bottom, transparent 40%, ${heroBg}aa 100%)`,
+              }} />
+              {logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt={dealershipName}
+                  style={{ position: "absolute", top: 10, left: 14, height: "20px", width: "auto", maxWidth: "70px", objectFit: "contain" }}
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                />
+              )}
+              <div style={{ position: "relative", zIndex: 1, padding: "0 16px 12px", color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "16px", lineHeight: 1.2 }}>
+                {headline}
+              </div>
+            </div>
+            {/* Message zone */}
+            <div style={{ padding: "14px 18px 16px" }}>
+              <HandwrittenContent text={content} fontSize={15} lineHeight={1.8} />
+              {offer && (
+                <div style={{
+                  marginTop: "10px", padding: "7px 11px",
+                  background: `${accentHex}18`, borderLeft: `3px solid ${accentHex}`,
+                  borderRadius: "2px 5px 5px 2px", fontSize: "11px", fontWeight: 700,
+                  fontFamily: "'Inter', sans-serif", color: heroBg,
+                }}>{offer}</div>
+              )}
+              <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{
+                  background: accentHex, color: "#fff", fontFamily: "'Inter', sans-serif",
+                  fontWeight: 800, fontSize: "10px", padding: "6px 14px", borderRadius: "3px",
+                  letterSpacing: "0.05em", textTransform: "uppercase",
+                }}>{front?.cta ?? "Schedule Now"}</div>
+                <div style={{ textAlign: "center" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={qrPreviewUrl} alt="QR" width={48} height={48} style={{ borderRadius: "4px", border: "1px solid #e2e8f0" }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <PostcardBack dealershipName={dealershipName} customerName={customerName} accent={accent} logoUrl={logoUrl} />
+        )}
+      </div>
+      <div className="text-center">
+        <span className="chip chip-slate text-[10px]">Multi-Panel · Hero image + personalized message</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Premium Fluorescent Preview ───────────────────────────────
+
+function PremiumFluorescentPreview({
+  content, dealershipName, customerName, offer, qrPreviewUrl, logoUrl, layoutSpec,
+}: {
+  content: string; dealershipName: string; customerName?: string; offer?: string | null;
+  qrPreviewUrl: string; logoUrl?: string | null; layoutSpec?: LayoutSpec;
+}) {
+  const [showBack, setShowBack] = useState(false);
+  const front = layoutSpec?.panels?.find((p) => p.role === "front") ?? layoutSpec?.panels?.[0];
+  const cs = layoutSpec?.colorScheme;
+  const bg = cs?.background ?? "#0F172A";
+  const accent = cs?.accent ?? "#FFE500";
+  const textCol = cs?.text ?? "#F1F5F9";
+  const isNeon = cs?.accentIsNeon !== false;
+  const headline = front?.headline ?? "We've saved a spot for you.";
+  const subheadline = front?.subheadline;
+
+  // Fake accent config for the back
+  const backAccent: AccentConfig = {
+    header: accent, offerBg: `${accent}22`, offerBorder: accent,
+    offerText: bg, letterBorder: `2px solid ${accent}`, highlightGlow: "", isHighlight: true,
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-center gap-1.5">
+        {["Front", "Back (Mailing Side)"].map((label, i) => (
+          <button key={label} onClick={() => setShowBack(i === 1)}
+            className={`px-4 py-1.5 rounded-full text-[11px] font-semibold transition-all border ${
+              showBack === (i === 1) ? "bg-slate-900 text-white border-slate-900" : "text-slate-500 border-slate-200 hover:border-slate-300"
+            }`}>{label}</button>
+        ))}
+      </div>
+      <div className="flex justify-center">
+        {!showBack ? (
+          <div className="w-full rounded-xl shadow-xl overflow-hidden" style={{ maxWidth: "420px", background: bg, position: "relative" }}>
+            {/* Top accent bar */}
+            <div style={{ height: "5px", background: accent }} />
+            <div style={{ padding: "16px 20px 20px" }}>
+              {/* Dealership name */}
+              <div style={{ fontSize: "8px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: accent, marginBottom: "14px", fontFamily: "'Inter', sans-serif", display: "flex", alignItems: "center", gap: "8px" }}>
+                {logoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoUrl} alt={dealershipName}
+                    style={{ height: "14px", width: "auto", maxWidth: "50px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                  />
+                )}
+                {dealershipName}
+              </div>
+              {/* Headline */}
+              <div style={{ fontSize: "22px", fontWeight: 900, color: textCol, lineHeight: 1.1, marginBottom: subheadline ? "5px" : "14px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.01em" }}>
+                {headline}
+              </div>
+              {subheadline && (
+                <div style={{ fontSize: "12px", color: `${textCol}99`, marginBottom: "14px", fontFamily: "'Inter', sans-serif", lineHeight: 1.4 }}>{subheadline}</div>
+              )}
+              {/* Accent divider */}
+              <div style={{ width: "28px", height: "3px", background: accent, borderRadius: "2px", marginBottom: "14px" }} />
+              {/* Message */}
+              <div style={{ fontFamily: "'Caveat', cursive", fontSize: "15px", lineHeight: 1.75, color: `${textCol}dd`, marginBottom: "14px" }}>
+                <HandwrittenContent text={content} fontSize={15} lineHeight={1.75} />
+              </div>
+              {/* Offer badge */}
+              {offer && (
+                <div style={{
+                  display: "inline-block", background: accent, color: isNeon ? "#000" : "#fff",
+                  fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 800,
+                  padding: "5px 12px", borderRadius: "3px", letterSpacing: "0.04em",
+                  textTransform: "uppercase", marginBottom: "14px",
+                }}>{offer}</div>
+              )}
+              {/* CTA row */}
+              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                <div style={{
+                  background: accent, color: isNeon ? "#000" : "#fff",
+                  fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px",
+                  padding: "8px 16px", borderRadius: "3px", letterSpacing: "0.04em", textTransform: "uppercase",
+                }}>{front?.cta ?? "Book Your Appointment"}</div>
+                <div style={{ textAlign: "center" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={qrPreviewUrl} alt="QR" width={48} height={48}
+                    style={{ borderRadius: "4px", border: `1.5px solid ${accent}44` }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <PostcardBack dealershipName={dealershipName} customerName={customerName} accent={backAccent} logoUrl={logoUrl} />
+        )}
+      </div>
+      <div className="text-center">
+        <span className="chip chip-slate text-[10px]">
+          Premium Fluorescent · {isNeon ? "Neon ink accents" : "Bold graphic design"} · {accent}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Complex Fold Preview ──────────────────────────────────────
+
+function ComplexFoldPreview({
+  dealershipName, customerName, offer, qrPreviewUrl, logoUrl, layoutSpec,
+}: {
+  dealershipName: string; customerName?: string; offer?: string | null;
+  qrPreviewUrl: string; logoUrl?: string | null; layoutSpec?: LayoutSpec;
+}) {
+  const [activePanel, setActivePanel] = useState<"cover" | "inner-left" | "inner-right">("cover");
+  const cover = layoutSpec?.panels?.find((p) => p.role === "cover") ?? layoutSpec?.panels?.[0];
+  const innerLeft = layoutSpec?.panels?.find((p) => p.role === "inner-left") ?? layoutSpec?.panels?.[1];
+  const innerRight = layoutSpec?.panels?.find((p) => p.role === "inner-right") ?? layoutSpec?.panels?.[2];
+  const cs = layoutSpec?.colorScheme;
+  const bg = cs?.background ?? "#0F172A";
+  const accent = cs?.accent ?? "#2563EB";
+  const isNeon = cs?.accentIsNeon ?? false;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-center gap-1">
+        {([["cover", "Cover"], ["inner-left", "Inner (Story)"], ["inner-right", "Inner (Offer)"]] as const).map(([id, label]) => (
+          <button key={id} onClick={() => setActivePanel(id)}
+            className={`px-3 py-1.5 rounded-full text-[10px] font-semibold transition-all border ${
+              activePanel === id ? "bg-slate-900 text-white border-slate-900" : "text-slate-500 border-slate-200 hover:border-slate-300"
+            }`}>{label}</button>
+        ))}
+      </div>
+      <div className="flex justify-center">
+        <div className="w-full rounded-xl border border-slate-200 shadow-xl overflow-hidden" style={{ maxWidth: "420px", minHeight: "300px" }}>
+          {activePanel === "cover" && (
+            <div style={{ background: bg, padding: "24px 22px", minHeight: "300px", position: "relative" }}>
+              {logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt={dealershipName}
+                  style={{ height: "16px", width: "auto", maxWidth: "60px", objectFit: "contain", filter: "brightness(0) invert(1)", marginBottom: "16px" }}
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                />
+              )}
+              <div style={{ fontSize: "8px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: accent, marginBottom: "12px", fontFamily: "'Inter', sans-serif" }}>{dealershipName}</div>
+              <div style={{ fontSize: "24px", fontWeight: 900, color: "#fff", lineHeight: 1.1, marginBottom: "8px", fontFamily: "'Inter', sans-serif" }}>
+                {cover?.headline ?? "We'd love to see you again."}
+              </div>
+              <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.55)", fontFamily: "'Inter', sans-serif" }}>
+                {cover?.subheadline ?? "A personal note from your service team."}
+              </div>
+              <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "10px", background: accent }} />
+            </div>
+          )}
+          {activePanel === "inner-left" && (
+            <div style={{ background: "#FAFAFA", padding: "20px 22px", minHeight: "300px" }}>
+              <div style={{ fontSize: "9px", color: "#94a3b8", marginBottom: "6px", fontFamily: "'Inter', sans-serif" }}>
+                {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+              </div>
+              <div style={{ fontSize: "13px", fontWeight: 700, color: "#1e293b", marginBottom: "12px", fontFamily: "'Inter', sans-serif" }}>
+                Dear {customerName ?? "Valued Customer"},
+              </div>
+              <HandwrittenContent text={innerLeft?.body ?? "We appreciate your loyalty and wanted to reach out personally..."} fontSize={15} lineHeight={1.8} />
+            </div>
+          )}
+          {activePanel === "inner-right" && (
+            <div style={{ background: "#fff", padding: "20px 22px", minHeight: "300px" }}>
+              <div style={{ fontSize: "14px", fontWeight: 800, color: "#1e293b", marginBottom: "10px", fontFamily: "'Inter', sans-serif" }}>
+                {innerRight?.headline ?? "Ready when you are."}
+              </div>
+              {offer && (
+                <div style={{
+                  background: `${accent}15`, border: `2px solid ${accent}`, borderRadius: "4px",
+                  padding: "9px 12px", marginBottom: "12px", fontSize: "11px", fontWeight: 700, color: accent, fontFamily: "'Inter', sans-serif",
+                }}>{offer}</div>
+              )}
+              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                <div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={qrPreviewUrl} alt="QR" width={72} height={72} style={{ borderRadius: "4px", border: "1.5px solid #e2e8f0" }} />
+                  <div style={{ fontSize: "7px", color: "#94a3b8", marginTop: "3px", textAlign: "center", fontFamily: "'Inter', sans-serif", letterSpacing: "0.06em" }}>SCAN TO BOOK</div>
+                </div>
+                <div>
+                  <div style={{
+                    background: accent, color: isNeon ? "#000" : "#fff",
+                    fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "10px",
+                    padding: "7px 14px", borderRadius: "3px", letterSpacing: "0.04em",
+                    textTransform: "uppercase", marginBottom: "10px",
+                  }}>{innerRight?.cta ?? "Book Now"}</div>
+                  <div style={{ fontSize: "9px", color: "#64748b", lineHeight: 1.7, fontFamily: "'Inter', sans-serif" }}>
+                    <strong style={{ color: "#1e293b" }}>{dealershipName}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="text-center">
+        <span className="chip chip-slate text-[10px]">Tri-fold · {layoutSpec?.foldInstructions ? "Custom fold" : "C-fold"} · 3 panels</span>
+      </div>
+    </div>
+  );
+}
+
 // ── Main export ───────────────────────────────────────────────
 
 interface TemplatePreviewProps {
@@ -523,6 +809,8 @@ interface TemplatePreviewProps {
   qrPreviewUrl?: string;
   logoUrl?: string | null;
   accentColor?: AccentColor;
+  designStyle?: DesignStyle;
+  layoutSpec?: LayoutSpec;
 }
 
 export function TemplatePreview({
@@ -534,6 +822,8 @@ export function TemplatePreview({
   qrPreviewUrl: qrPropUrl,
   logoUrl,
   accentColor = "indigo",
+  designStyle = "standard",
+  layoutSpec,
 }: TemplatePreviewProps) {
   const qrUrl = qrPropUrl ?? buildPreviewQRImageUrl(
     `${typeof window !== "undefined" ? window.location.origin : ""}/track/preview`,
@@ -541,7 +831,7 @@ export function TemplatePreview({
   );
   const accent = ACCENT[accentColor];
 
-  if (!content) {
+  if (!content && designStyle === "standard") {
     return (
       <div className="flex flex-col items-center justify-center h-48 bg-slate-50/60 border-2 border-dashed border-slate-200 rounded-[var(--radius)]">
         <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center mb-3 shadow-card">
@@ -551,6 +841,60 @@ export function TemplatePreview({
         </div>
         <p className="text-[13px] font-semibold text-slate-600">Generate copy to preview your mail piece</p>
         <p className="text-xs text-slate-400 mt-0.5">AI-personalized content appears here</p>
+      </div>
+    );
+  }
+
+  if (designStyle === "multi-panel") {
+    return (
+      <div className="flex justify-center">
+        <div className="w-full" style={{ maxWidth: "420px" }}>
+          <MultiPanelPreview
+            content={content}
+            dealershipName={dealershipName}
+            customerName={customerName}
+            offer={offer}
+            qrPreviewUrl={qrUrl}
+            logoUrl={logoUrl}
+            layoutSpec={layoutSpec}
+            accent={accent}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (designStyle === "premium-fluorescent") {
+    return (
+      <div className="flex justify-center">
+        <div className="w-full" style={{ maxWidth: "420px" }}>
+          <PremiumFluorescentPreview
+            content={content}
+            dealershipName={dealershipName}
+            customerName={customerName}
+            offer={offer}
+            qrPreviewUrl={qrUrl}
+            logoUrl={logoUrl}
+            layoutSpec={layoutSpec}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (designStyle === "complex-fold") {
+    return (
+      <div className="flex justify-center">
+        <div className="w-full" style={{ maxWidth: "420px" }}>
+          <ComplexFoldPreview
+            dealershipName={dealershipName}
+            customerName={customerName}
+            offer={offer}
+            qrPreviewUrl={qrUrl}
+            logoUrl={logoUrl}
+            layoutSpec={layoutSpec}
+          />
+        </div>
       </div>
     );
   }

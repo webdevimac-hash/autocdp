@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       .single() as { data: Record<string, unknown> | null };
 
     const body = await req.json();
-    const { customerId, templateType, campaignGoal, channel = "direct_mail", tone } = body;
+    const { customerId, templateType, campaignGoal, channel = "direct_mail", tone, designStyle = "standard" } = body;
 
     if (!customerId || !campaignGoal) {
       return NextResponse.json({ error: "customerId and campaignGoal are required" }, { status: 400 });
@@ -96,6 +96,7 @@ export async function POST(req: NextRequest) {
       campaignGoal,
       dealershipTone: tone,
       template: templateHint,
+      designStyle: resolvedChannel === "direct_mail" ? designStyle : undefined,
       dealershipProfile: {
         phone: dealership?.phone as string | null,
         address: dealership?.address as { street?: string; city?: string; state?: string; zip?: string } | null,
@@ -121,6 +122,8 @@ export async function POST(req: NextRequest) {
       reasoning: creative.reasoning,
       confidence: creative.confidence,
       previewQrUrl,
+      designStyle: resolvedChannel === "direct_mail" ? designStyle : null,
+      layoutSpec: creative.layoutSpec ?? null,
       vehicle: visits?.[0]
         ? [visits[0].year, visits[0].make, visits[0].model].filter(Boolean).join(" ")
         : null,
