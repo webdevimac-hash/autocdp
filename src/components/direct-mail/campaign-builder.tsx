@@ -235,12 +235,17 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
   const [accentColor, setAccentColor] = useState<AccentColor>("indigo");
   const [includeBookNow, setIncludeBookNow] = useState(false);
   const [xtimeUrl, setXtimeUrl] = useState<string | null>(null);
+  const [baselineCount, setBaselineCount] = useState<number | null>(null);
 
-  // Load X-Time URL on mount
+  // Load X-Time URL and baseline example count on mount
   useState(() => {
     fetch("/api/integrations/xtime/settings")
       .then((r) => r.ok ? r.json() : null)
       .then((d: { xtime_url?: string | null } | null) => { if (d?.xtime_url) setXtimeUrl(d.xtime_url); })
+      .catch(() => null);
+    fetch("/api/dealership/baseline-examples")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { examples?: unknown[] } | null) => { if (d?.examples) setBaselineCount(d.examples.length); })
       .catch(() => null);
   });
 
@@ -913,6 +918,14 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                 )}
               </label>
             </div>
+
+            {/* Baseline style indicator */}
+            {baselineCount !== null && baselineCount > 0 && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
+                <span className="text-emerald-500 font-bold">✓</span>
+                Using dealership baseline style from {baselineCount} past campaign{baselineCount !== 1 ? "s" : ""}
+              </div>
+            )}
 
             <div className="flex gap-3 pt-1">
               <Button variant="ghost" size="sm" className="h-12 sm:h-8 flex-1 sm:flex-none" onClick={() => setCurrentStep(1)}>Back</Button>

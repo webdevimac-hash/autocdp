@@ -31,6 +31,7 @@ import {
 import { createServiceClient } from "@/lib/supabase/server";
 import { filterAndRankCustomers, SCORE_THRESHOLD } from "@/lib/scoring";
 import { matchCustomersToVehicles, formatAssignedVehicleForPrompt } from "@/lib/aged-inventory";
+import { loadBaselineExamples } from "@/lib/anthropic/baseline";
 import type {
   AgentContext, Customer, Visit, CampaignChannel, CampaignType,
   InventoryVehicle, AgedInventoryMatch,
@@ -97,9 +98,10 @@ Output JSON: {"plan": "summary", "priority_segments": ["segment1"], "risk_flags"
     });
     totalTokens += planResponse.usage.input_tokens + planResponse.usage.output_tokens;
 
-    const [customersRes, dealershipRes] = await Promise.all([
+    const [customersRes, dealershipRes, baselineExamples] = await Promise.all([
       supabase.from("customers").select("*").eq("dealership_id", input.context.dealershipId).order("last_visit_date", { ascending: false }).limit(200),
       supabase.from("dealerships").select("phone, address, hours, logo_url, website_url, settings").eq("id", input.context.dealershipId).single(),
+      loadBaselineExamples(input.context.dealershipId),
     ]);
     const customers = customersRes.data;
     const dealershipRaw = dealershipRes.data ?? undefined;
@@ -150,6 +152,7 @@ Output JSON: {"plan": "summary", "priority_segments": ["segment1"], "risk_flags"
         campaignGoal: input.campaignGoal,
         dealershipTone: input.dealershipTone,
         dealershipProfile,
+        baselineExamples,
       });
       totalTokens += creative.tokensUsed;
 
@@ -274,8 +277,8 @@ export async function runDirectMailOrchestrator(
     .single();
 
   try {
-    // Load the selected customers + their most recent visits + dealership profile
-    const [{ data: customers }, { data: dealershipProfile }] = await Promise.all([
+    // Load the selected customers + their most recent visits + dealership profile + baseline
+    const [{ data: customers }, { data: dealershipProfile }, dmBaselineExamples] = await Promise.all([
       supabase
         .from("customers")
         .select("*")
@@ -286,6 +289,7 @@ export async function runDirectMailOrchestrator(
         .select("phone, address, hours, website_url, logo_url, settings")
         .eq("id", input.context.dealershipId)
         .single() as Promise<{ data: { phone?: string | null; address?: Record<string, string> | null; hours?: Record<string, string> | null; website_url?: string | null; logo_url?: string | null; settings?: Record<string, unknown> | null } | null }>,
+      loadBaselineExamples(input.context.dealershipId),
     ]);
 
     const xtimeUrl = (dealershipProfile?.settings?.xtime_url as string | undefined) ?? null;
@@ -380,6 +384,14 @@ export async function runDirectMailOrchestrator(
       const disclaimerNote =
         `\nDO NOT write any opt-out, unsubscribe, STOP, or legal disclaimer text — appended automatically after send.\n`;
 
+      const dmBaselineSection = dmBaselineExamples.length > 0
+        ? `\nDEALERSHIP STYLE GUIDELINES — mirror the tone, length, and structure of these past mail pieces:\n\n` +
+          dmBaselineExamples.slice(0, 8).map((ex, i) => {
+            const typeTag = ex.mail_type ? ` [${ex.mail_type}]` : "";
+            return `Example ${i + 1}${typeTag}:\n"""\n${ex.example_text.trim()}\n"""`;
+          }).join("\n\n") + `\n`
+        : "";
+
       const systemPrompt =
         `You are the AutoCDP Orchestrator for ${input.context.dealershipName}.\n` +
         `You have one tool available: send_direct_mail.\n\n` +
@@ -394,6 +406,7 @@ export async function runDirectMailOrchestrator(
           ? `\nCAMPAIGN TYPE: Aged Inventory — move specific vehicles that have been on the lot 45+ days.\n`
           : "") +
         dealershipContactSection +
+        dmBaselineSection +
         bookNowSystemNote +
         disclaimerNote +
         `\nPostcard guidelines (50–100 words, warm, personal, ends with soft CTA):\n` +
@@ -681,7 +694,7 @@ export async function runOmnichannelOrchestrator(
     .single();
 
   try {
-    const [{ data: customers }, { data: omnichannelDealershipProfile }] = await Promise.all([
+    const [{ data: customers }, { data: omnichannelDealershipProfile }, omniBaselineExamples] = await Promise.all([
       supabase
         .from("customers")
         .select("*")
@@ -692,6 +705,7 @@ export async function runOmnichannelOrchestrator(
         .select("phone, address, hours, website_url, settings")
         .eq("id", input.context.dealershipId)
         .single() as Promise<{ data: { phone?: string | null; address?: Record<string, string> | null; hours?: Record<string, string> | null; website_url?: string | null; settings?: Record<string, unknown> | null } | null }>,
+      loadBaselineExamples(input.context.dealershipId),
     ]);
 
     const omnichannelXtimeUrl = (omnichannelDealershipProfile?.settings?.xtime_url as string | undefined) ?? null;
@@ -797,6 +811,14 @@ export async function runOmnichannelOrchestrator(
       const omnichannelDisclaimerNote =
         `\nDO NOT write opt-out, STOP, unsubscribe, or legal disclaimer text — appended automatically.\n`;
 
+      const omniBaselineSection = omniBaselineExamples.length > 0
+        ? `\nDEALERSHIP STYLE GUIDELINES — mirror tone and structure from these past pieces:\n\n` +
+          omniBaselineExamples.slice(0, 8).map((ex, i) => {
+            const typeTag = ex.mail_type ? ` [${ex.mail_type}]` : "";
+            return `Example ${i + 1}${typeTag}:\n"""\n${ex.example_text.trim()}\n"""`;
+          }).join("\n\n") + `\n`
+        : "";
+
       const systemPrompt =
         `You are the AutoCDP Orchestrator for ${input.context.dealershipName}.\n` +
         `Available tools: ${tools.map((t) => t.name).join(", ")}.\n` +
@@ -807,6 +829,7 @@ export async function runOmnichannelOrchestrator(
           ? `CAMPAIGN TYPE: Aged Inventory — move specific vehicles that have been on lot 45+ days.\n`
           : "") +
         omnichannelContactSection +
+        omniBaselineSection +
         omnichannelBookNowNote +
         omnichannelDisclaimerNote +
         agedVehicleSystemNote +

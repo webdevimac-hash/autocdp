@@ -39,6 +39,8 @@ export interface CreativeAgentInput {
   includeBookNow?: boolean;
   /** When true, append TCPA/CAN-SPAM disclaimer to final content. Default: true. */
   includeDisclaimer?: boolean;
+  /** Pre-loaded baseline examples — injected as style guidelines in the system prompt. */
+  baselineExamples?: Array<{ example_text: string; mail_type?: string | null; notes?: string | null }>;
 }
 
 export interface CreativeAgentOutput extends PersonalizedMessage {
@@ -320,13 +322,30 @@ export async function runCreativeAgent(
       `  Do NOT alter the URL. Do NOT include disclaimers — those are appended automatically.\n`
     : "";
 
+  // ── Baseline style guidelines ──────────────────────────────
+  let baselineSection = "";
+  if (input.baselineExamples && input.baselineExamples.length > 0) {
+    const examples = input.baselineExamples.slice(0, 8);
+    const exampleBlocks = examples.map((ex, i) => {
+      const typeTag = ex.mail_type ? ` [${ex.mail_type}]` : "";
+      const notesTag = ex.notes ? `\n   Notes: ${ex.notes}` : "";
+      return `Example ${i + 1}${typeTag}:\n"""\n${ex.example_text.trim()}\n"""${notesTag}`;
+    }).join("\n\n");
+
+    baselineSection =
+      `\nDEALERSHIP STYLE GUIDELINES — these are real past mail pieces that performed well for this dealership.\n` +
+      `Study the tone, sentence length, offer structure, greeting style, and sign-off format. Mirror this style closely.\n\n` +
+      exampleBlocks + `\n\n` +
+      `Your new message should feel like it came from the same advisor who wrote the above.\n`;
+  }
+
   const systemPrompt =
     `You are the Creative Agent for AutoCDP. You write hyper-personalized outreach ` +
     `messages for auto dealership customers. Your copy feels human, warm, and specific — never generic.\n\n` +
     `Tone: ${input.dealershipTone || "friendly and professional"}\n` +
     `Dealership: ${input.context.dealershipName}\n` +
     (profileSection ? `\nDEALERSHIP CONTACT INFO (use in CTAs when relevant):\n${profileSection}\n` : "") +
-    `${learningsSection}${inventorySection}${bookNowSection}\n` +
+    `${baselineSection}${learningsSection}${inventorySection}${bookNowSection}\n` +
     `Rules:\n` +
     `- Reference specific details from the customer's visit history when available\n` +
     `- When network learnings apply to this customer's vehicle or segment, weave them in naturally\n` +
