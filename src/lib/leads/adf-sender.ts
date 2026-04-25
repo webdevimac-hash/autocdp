@@ -10,7 +10,10 @@
 import { Resend } from "resend";
 import type { ConquestLead } from "@/types";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy-initialize so the module can be imported at build time without a key
+function getResend(): Resend {
+  return new Resend(process.env.RESEND_API_KEY ?? "");
+}
 
 // ── ADF XML builder ───────────────────────────────────────────
 
@@ -133,7 +136,7 @@ async function deliverViaEmail(
     return { target, success: false, error: "toEmail is required for email delivery" };
   }
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: `${fromName} <${dealershipEmail}>`,
       to: target.toEmail,
       subject: "New Lead — ADF",
