@@ -41,48 +41,53 @@ export default async function HealthPage() {
   const todayUtc = new Date();
   todayUtc.setUTCHours(0, 0, 0, 0);
 
-  const [usage, agentRows, recentErrors, lastSync, customerCount, inventoryCount] = await Promise.all([
+  const [usage, agentRows, failedRuns, lastImport, customerCount, inventoryCount] = await Promise.all([
     getDailyUsage(dealershipId).catch(() => null),
 
-    (supabase
-      .from("billing_events" as any)
-      .select("metadata")
+    supabase
+      .from("agent_runs")
+      .select("id, status, agent_type, created_at")
       .eq("dealership_id", dealershipId)
-      .eq("event_type", "agent_run")
       .gte("created_at", todayUtc.toISOString())
       .order("created_at", { ascending: false })
-      .limit(50) as any).then((r: any) => r.data ?? []),
+      .limit(100)
+      .then((r) => r.data ?? []),
 
-    (supabase
-      .from("billing_events" as any)
-      .select("created_at, metadata, event_type")
+    supabase
+      .from("agent_runs")
+      .select("id, agent_type, status, created_at, output_summary")
       .eq("dealership_id", dealershipId)
-      .eq("event_type", "error")
+      .eq("status", "failed")
       .order("created_at", { ascending: false })
-      .limit(25) as any).then((r: any) => r.data ?? []),
+      .limit(15)
+      .then((r) => r.data ?? []),
 
-    (supabase
-      .from("billing_events" as any)
-      .select("created_at, metadata")
+    supabase
+      .from("agent_runs")
+      .select("created_at, agent_type")
       .eq("dealership_id", dealershipId)
-      .eq("event_type", "import")
+      .eq("agent_type", "data")
       .order("created_at", { ascending: false })
-      .limit(1) as any).then((r: any) => r.data?.[0] ?? null),
+      .limit(1)
+      .then((r) => r.data?.[0] ?? null),
 
-    (supabase
-      .from("customers" as any)
+    supabase
+      .from("customers")
       .select("id", { count: "exact", head: true })
-      .eq("dealership_id", dealershipId) as any).then((r: any) => r.count ?? 0),
+      .eq("dealership_id", dealershipId)
+      .then((r) => r.count ?? 0),
 
-    (supabase
-      .from("inventory" as any)
+    supabase
+      .from("inventory")
       .select("id", { count: "exact", head: true })
-      .eq("dealership_id", dealershipId) as any).then((r: any) => r.count ?? 0),
+      .eq("dealership_id", dealershipId)
+      .then((r) => r.count ?? 0),
   ]);
 
   const totalAgentRuns = agentRows.length;
-  const successfulRuns = agentRows.filter((r: any) => r.metadata?.success !== false).length;
+  const successfulRuns = (agentRows as { status: string }[]).filter((r) => r.status === "completed").length;
   const successRate = totalAgentRuns > 0 ? Math.round((successfulRuns / totalAgentRuns) * 100) : null;
+  const recentErrors = failedRuns;
 
   const anthropicConfigured = !!process.env.ANTHROPIC_API_KEY;
   const postgridConfigured = !!process.env.POSTGRID_API_KEY;
@@ -194,7 +199,7 @@ export default async function HealthPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-slate-900">
-                {lastSync ? formatTs((lastSync as any).created_at) : "—"}
+                {lastImport ? formatTs((lastImport as any).created_at) : "—"}
               </p>
               <p className="text-xs text-slate-400 font-medium mt-0.5 uppercase tracking-wide">Last import</p>
             </div>
@@ -213,19 +218,16 @@ export default async function HealthPage() {
             {[
               { label: "CDK Drive (DMS)", key: "cdk" },
               { label: "Reynolds & Reynolds", key: "reynolds" },
-              { label: "CSV Import", key: "csv" },
-            ].map(({ label, key }) => {
-              const syncEvent = lastSync && (lastSync as any).metadata?.source === key ? lastSync : null;
-              return (
-                <div key={key} className="flex items-center gap-3 px-6 py-4">
-                  <Clock className="w-4 h-4 text-slate-300 shrink-0" />
-                  <span className="text-[13px] font-medium text-slate-800 flex-1">{label}</span>
-                  <span className="text-xs text-slate-400">
-                    {syncEvent ? formatTs((syncEvent as any).created_at) : "No sync recorded"}
-                  </span>
-                </div>
-              );
-            })}
+              { label: "CSV / Manual Import", key: "csv" },
+            ].map(({ label }) => (
+              <div key={label} className="flex items-center gap-3 px-6 py-4">
+                <Clock className="w-4 h-4 text-slate-300 shrink-0" />
+                <span className="text-[13px] font-medium text-slate-800 flex-1">{label}</span>
+                <span className="text-xs text-slate-400">
+                  {lastImport ? formatTs((lastImport as any).created_at) : "No sync recorded"}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -245,9 +247,12 @@ export default async function HealthPage() {
                   <span className="text-xs text-slate-400 shrink-0 pt-0.5 font-mono tabular-nums">
                     {new Date(err.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
-                  <span className="text-xs text-slate-700 flex-1">
-                    {err.metadata?.message ?? err.metadata?.error ?? "Unknown error"}
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs font-medium text-slate-600 capitalize">{err.agent_type} agent</span>
+                    {err.output_summary && (
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">{err.output_summary}</p>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
