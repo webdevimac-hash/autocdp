@@ -267,6 +267,12 @@ export default function WizardPage() {
     }
   }
 
+  async function finishWizard() {
+    // Mark onboarded — non-blocking, ignore errors
+    fetch("/api/onboard/complete", { method: "POST" }).catch(() => null);
+    router.push("/dashboard");
+  }
+
   // ── Render steps ──────────────────────────────────────────────
 
   return (
@@ -527,8 +533,32 @@ export default function WizardPage() {
             </div>
           </div>
 
+          {/* Metrics summary */}
+          {(state.customers > 0 || state.inventory > 0) && (
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              {state.customers > 0 && (
+                <div className="p-3 rounded-xl border border-indigo-100 bg-indigo-50 text-center">
+                  <p className="text-2xl font-bold text-indigo-700">{state.customers.toLocaleString()}</p>
+                  <p className="text-xs text-indigo-500 mt-0.5">Customers imported</p>
+                </div>
+              )}
+              {state.inventory > 0 && (
+                <div className="p-3 rounded-xl border border-emerald-100 bg-emerald-50 text-center">
+                  <p className="text-2xl font-bold text-emerald-700">{state.inventory.toLocaleString()}</p>
+                  <p className="text-xs text-emerald-500 mt-0.5">Vehicles in inventory</p>
+                </div>
+              )}
+              {state.previewMessages.length > 0 && (
+                <div className="col-span-2 p-3 rounded-xl border border-violet-100 bg-violet-50 text-center">
+                  <p className="text-2xl font-bold text-violet-700">{state.previewMessages.length}</p>
+                  <p className="text-xs text-violet-500 mt-0.5">AI messages generated</p>
+                </div>
+              )}
+            </div>
+          )}
+
           <button
-            onClick={() => router.push("/dashboard")}
+            onClick={finishWizard}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors"
           >
             Go to Dashboard <ArrowRight className="w-4 h-4" />

@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Key, Bell, Shield, Webhook, BookOpen } from "lucide-react";
+import { Building2, Key, Bell, Shield, Webhook, BookOpen, Gauge } from "lucide-react";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { TrainingDataSection } from "@/components/settings/training-data";
+import { LimitsSection } from "@/components/settings/limits-section";
 import type { Dealership } from "@/types";
 
 export const metadata = { title: "Settings" };
@@ -139,6 +140,22 @@ export default async function SettingsPage() {
             <Button variant="outline" size="sm" className="text-xs h-8">
               + Invite Team Member
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Rate Limits & Cost Guards */}
+        <Card className="border-0 shadow-sm" id="limits">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Gauge className="w-4 h-4 text-muted-foreground" />
+              <CardTitle className="text-base">Rate Limits &amp; Cost Guards</CardTitle>
+            </div>
+            <CardDescription className="text-xs">
+              Set daily send limits and a spend cap. Limits reset at midnight UTC. Null values use the global defaults.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LimitsSection />
           </CardContent>
         </Card>
 

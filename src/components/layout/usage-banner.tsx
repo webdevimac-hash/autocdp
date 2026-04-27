@@ -1,9 +1,17 @@
-import { getDailyUsage, DAILY_LIMITS } from "@/lib/rate-limit";
-import { AlertTriangle, X } from "lucide-react";
+import { getDailyUsage, WARN_FRACTION } from "@/lib/rate-limit";
+import { AlertTriangle, Gauge } from "lucide-react";
+import type { BillingEventType } from "@/types";
 
 interface UsageBannerProps {
   dealershipId: string;
 }
+
+const LABELS: Partial<Record<BillingEventType, string>> = {
+  mail_piece_sent: "Mail",
+  agent_run:       "AI runs",
+  sms_sent:        "SMS",
+  email_sent:      "Email",
+};
 
 export async function UsageBanner({ dealershipId }: UsageBannerProps) {
   let usage;
@@ -15,53 +23,106 @@ export async function UsageBanner({ dealershipId }: UsageBannerProps) {
 
   if (!usage.hasWarning) return null;
 
-  // Build a human-readable warning for the most-consumed resource
-  const warnings: string[] = [];
+  type EventKey = "mail_piece_sent" | "agent_run" | "sms_sent" | "email_sent";
+  const EVENT_KEYS: EventKey[] = ["mail_piece_sent", "agent_run", "sms_sent", "email_sent"];
 
-  if (DAILY_LIMITS.mail_piece_sent && usage.mail_piece_sent >= DAILY_LIMITS.mail_piece_sent * 0.8) {
-    const pct = Math.round((usage.mail_piece_sent / DAILY_LIMITS.mail_piece_sent) * 100);
-    warnings.push(`${pct}% of daily mail limit used (${usage.mail_piece_sent}/${DAILY_LIMITS.mail_piece_sent} pieces)`);
+  // Build per-resource warnings for resources at or near limit
+  const warnings: Array<{ label: string; count: number; limit: number; pct: number; atLimit: boolean }> = [];
+  for (const key of EVENT_KEYS) {
+    const limit = usage.limits[key] ?? 0;
+    if (!limit) continue;
+    const count = usage[key];
+    const pct = count / limit;
+    if (pct >= WARN_FRACTION) {
+      warnings.push({ label: LABELS[key] ?? key, count, limit, pct, atLimit: count >= limit });
+    }
   }
-  if (DAILY_LIMITS.agent_run && usage.agent_run >= DAILY_LIMITS.agent_run * 0.8) {
-    const pct = Math.round((usage.agent_run / DAILY_LIMITS.agent_run) * 100);
-    warnings.push(`${pct}% of daily AI runs used (${usage.agent_run}/${DAILY_LIMITS.agent_run} runs)`);
-  }
-  if (DAILY_LIMITS.sms_sent && usage.sms_sent >= DAILY_LIMITS.sms_sent * 0.8) {
-    const pct = Math.round((usage.sms_sent / DAILY_LIMITS.sms_sent) * 100);
-    warnings.push(`${pct}% of daily SMS limit used`);
+
+  // Cost warning
+  const effectiveCost = usage.totalCostCents > 0 ? usage.totalCostCents : usage.estimatedCostCents;
+  if (usage.costWarning && usage.dailyCostLimitCents > 0) {
+    const pct = effectiveCost / usage.dailyCostLimitCents;
+    warnings.push({
+      label: "Spend",
+      count: Math.round(effectiveCost / 100),
+      limit: Math.round(usage.dailyCostLimitCents / 100),
+      pct,
+      atLimit: effectiveCost >= usage.dailyCostLimitCents,
+    });
   }
 
   if (warnings.length === 0) return null;
 
-  const isAtLimit = (
-    (DAILY_LIMITS.mail_piece_sent && usage.mail_piece_sent >= DAILY_LIMITS.mail_piece_sent) ||
-    (DAILY_LIMITS.agent_run && usage.agent_run >= DAILY_LIMITS.agent_run)
-  );
+  const anyAtLimit = warnings.some((w) => w.atLimit);
 
   return (
     <div
-      className={`flex items-center gap-3 px-6 py-2.5 text-sm font-medium ${
-        isAtLimit
-          ? "bg-red-600 text-white"
-          : "bg-amber-50 border-b border-amber-200 text-amber-800"
+      className={`px-5 py-2.5 border-b text-sm font-medium ${
+        anyAtLimit
+          ? "bg-red-600 border-red-700 text-white"
+          : "bg-amber-50 border-amber-200 text-amber-900"
       }`}
     >
-      <AlertTriangle className="w-4 h-4 shrink-0" />
-      <span className="flex-1">
-        {isAtLimit ? "Daily limit reached — " : "Approaching daily limit — "}
-        {warnings.join(" · ")}
-        {isAtLimit
-          ? ". New sends are paused until midnight UTC."
-          : ". Limits reset at midnight UTC."}
-      </span>
-      <a
-        href="/dashboard/billing"
-        className={`text-xs underline underline-offset-2 shrink-0 ${
-          isAtLimit ? "text-red-100 hover:text-white" : "text-amber-700 hover:text-amber-900"
-        }`}
-      >
-        View limits
-      </a>
+      <div className="flex items-center gap-3 flex-wrap">
+        {anyAtLimit ? (
+          <AlertTriangle className="w-4 h-4 shrink-0 text-red-100" />
+        ) : (
+          <Gauge className="w-4 h-4 shrink-0 text-amber-600" />
+        )}
+
+        <span className="font-semibold shrink-0">
+          {anyAtLimit ? "Daily limit reached" : "Approaching daily limits"}
+        </span>
+
+        {/* Per-resource pills with mini progress bars */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {warnings.map((w) => (
+            <div
+              key={w.label}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                anyAtLimit
+                  ? "bg-red-500/40 text-red-50"
+                  : "bg-amber-100 text-amber-800"
+              }`}
+            >
+              <span>{w.label}:</span>
+              {/* Inline progress bar */}
+              <div
+                className={`w-16 h-1.5 rounded-full overflow-hidden ${
+                  anyAtLimit ? "bg-red-800/40" : "bg-amber-200"
+                }`}
+              >
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    w.atLimit
+                      ? "bg-white/90"
+                      : "bg-amber-500"
+                  }`}
+                  style={{ width: `${Math.min(100, Math.round(w.pct * 100))}%` }}
+                />
+              </div>
+              <span>
+                {w.label === "Spend"
+                  ? `$${w.count}/$${w.limit}`
+                  : `${w.count}/${w.limit}`}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <span className={`text-xs ml-auto shrink-0 ${anyAtLimit ? "text-red-200" : "text-amber-600"}`}>
+          {anyAtLimit ? "New sends paused until midnight UTC." : "Resets midnight UTC."}
+        </span>
+
+        <a
+          href="/dashboard/settings#limits"
+          className={`text-xs underline underline-offset-2 shrink-0 ${
+            anyAtLimit ? "text-red-100 hover:text-white" : "text-amber-700 hover:text-amber-900"
+          }`}
+        >
+          Adjust limits
+        </a>
+      </div>
     </div>
   );
 }

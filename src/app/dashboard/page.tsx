@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Users, Megaphone, Mail, TrendingUp, ArrowUpRight,
   Bot, Clock, CheckCircle, Sparkles, ArrowUp, ArrowDown,
+  Zap, Database, ChevronRight,
 } from "lucide-react";
 import { formatRelativeDate, formatCurrency } from "@/lib/utils";
 import Link from "next/link";
@@ -120,6 +121,41 @@ export default async function DashboardPage() {
       <Header title="Dashboard" subtitle="Your dealership at a glance" userEmail={user?.email} />
 
       <main className="flex-1 p-4 sm:p-6 space-y-5 max-w-[1400px]">
+
+        {/* ── Setup prompt (shown until data is imported) ──────── */}
+        {totalCustomers === 0 && (
+          <div className="rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-violet-50 p-5">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0">
+                <Zap className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[15px] font-bold text-slate-900">Complete your setup to activate AI agents</p>
+                <p className="text-xs text-slate-500 mt-0.5 mb-4">Import your customers and inventory so the agent swarm can start generating personalized campaigns.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {[
+                    { href: "/dashboard/onboard/wizard", icon: Database, label: "Import customers & inventory", desc: "Upload CSV from your DMS" },
+                    { href: "/dashboard/integrations",   icon: Sparkles,  label: "Connect your DMS",            desc: "CDK, Reynolds, VinSolutions" },
+                    { href: "/dashboard/onboard/wizard?step=2", icon: Bot, label: "Run a test campaign",        desc: "See AI in action in 60 seconds" },
+                  ].map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="flex items-center gap-3 p-3 rounded-lg bg-white border border-indigo-100 hover:border-indigo-300 hover:shadow-sm transition-all group"
+                    >
+                      <item.icon className="w-4 h-4 text-indigo-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-semibold text-slate-800 truncate">{item.label}</p>
+                        <p className="text-[10px] text-slate-400">{item.desc}</p>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-400 shrink-0 transition-colors" />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Stat cards ──────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

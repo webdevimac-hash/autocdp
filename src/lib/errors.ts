@@ -159,6 +159,58 @@ const ERROR_RULES: ErrorRule[] = [
     statusCode: 502,
     code: "DMS_REYNOLDS_ERROR",
   },
+  {
+    match: (m) =>
+      m.toLowerCase().includes("vinsolutions") || m.toLowerCase().includes("vin solutions"),
+    userMessage:
+      "Could not connect to VinSolutions. Verify your API key in Integrations → VinSolutions.",
+    statusCode: 502,
+    code: "DMS_VINSOLUTIONS_ERROR",
+  },
+  {
+    match: (m) => m.toLowerCase().includes("vauto") || m.toLowerCase().includes("v-auto"),
+    userMessage:
+      "Could not connect to vAuto. Check your credentials in Integrations → vAuto.",
+    statusCode: 502,
+    code: "DMS_VAUTO_ERROR",
+  },
+  {
+    match: (m) =>
+      m.toLowerCase().includes("700credit") || m.toLowerCase().includes("seven hundred credit"),
+    userMessage:
+      "Could not connect to 700Credit. Verify your credentials in Integrations → 700Credit.",
+    statusCode: 502,
+    code: "DMS_700CREDIT_ERROR",
+  },
+
+  // ── Network / timeout ─────────────────────────────────────────
+  {
+    match: (m) =>
+      m.toLowerCase().includes("fetch failed") ||
+      m.toLowerCase().includes("network error") ||
+      m.toLowerCase().includes("econnrefused"),
+    userMessage:
+      "Network error — could not reach the service. Check your connection and try again.",
+    statusCode: 503,
+    code: "NETWORK_ERROR",
+  },
+  {
+    match: (m) =>
+      m.toLowerCase().includes("timeout") || m.toLowerCase().includes("timed out"),
+    userMessage:
+      "The request timed out. This campaign may still be processing — check status in a minute.",
+    statusCode: 504,
+    code: "TIMEOUT_ERROR",
+  },
+
+  // ── QR code ───────────────────────────────────────────────────
+  {
+    match: (m) => m.toLowerCase().includes("qr") && m.toLowerCase().includes("fail"),
+    userMessage:
+      "QR code generation failed. The mail piece will be sent without a tracking QR code.",
+    statusCode: 500,
+    code: "QR_GENERATION_FAILED",
+  },
 
   // ── Supabase / DB ─────────────────────────────────────────────
   {
@@ -232,4 +284,30 @@ export function toApiError(error: unknown): {
     code: mapped.code,
     statusCode: mapped.statusCode,
   };
+}
+
+/**
+ * Maps an error code to a contextual recovery action for the UI.
+ * Returns null when no specific action applies.
+ */
+export function getRecoveryAction(code: string): { label: string; href: string } | null {
+  const actions: Record<string, { label: string; href: string }> = {
+    AI_NOT_CONFIGURED:      { label: "Go to Settings",     href: "/dashboard/settings" },
+    AI_AUTH_ERROR:          { label: "Go to Settings",     href: "/dashboard/settings" },
+    POSTGRID_NOT_CONFIGURED:{ label: "Enable Dry Run",     href: "/dashboard/direct-mail" },
+    SMS_NOT_CONFIGURED:     { label: "Go to Integrations", href: "/dashboard/integrations" },
+    EMAIL_NOT_CONFIGURED:   { label: "Go to Integrations", href: "/dashboard/integrations" },
+    DMS_CDK_ERROR:          { label: "Check CDK creds",    href: "/dashboard/integrations" },
+    DMS_REYNOLDS_ERROR:     { label: "Check Reynolds creds",href: "/dashboard/integrations" },
+    DMS_VINSOLUTIONS_ERROR: { label: "Check VinSolutions", href: "/dashboard/integrations" },
+    DMS_VAUTO_ERROR:        { label: "Check vAuto",        href: "/dashboard/integrations" },
+    DMS_700CREDIT_ERROR:    { label: "Check 700Credit",    href: "/dashboard/integrations" },
+    DAILY_LIMIT_EXCEEDED:   { label: "View limits",        href: "/dashboard/settings#limits" },
+    AI_RATE_LIMITED:        { label: "View AI status",     href: "https://status.anthropic.com" },
+    SESSION_EXPIRED:        { label: "Sign in",            href: "/login" },
+    CUSTOMERS_NOT_FOUND:    { label: "View customers",     href: "/dashboard/customers" },
+    SCORE_THRESHOLD:        { label: "Adjust filters",     href: "/dashboard/direct-mail" },
+    INCOMPLETE_ADDRESS:     { label: "Edit customers",     href: "/dashboard/customers" },
+  };
+  return actions[code] ?? null;
 }
