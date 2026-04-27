@@ -1027,7 +1027,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
             <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Preview copy for</label>
               <select
-                className="w-full border border-slate-200 rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 bg-slate-50/50"
+                className="w-full border border-slate-200 rounded-[var(--radius)] px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 bg-slate-50/50"
                 value={previewCustomerId}
                 onChange={(e) => { setPreviewCustomerId(e.target.value); setPreviewResult(null); }}
               >
@@ -1139,8 +1139,8 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
             )}
 
             <div className="flex justify-between pt-1">
-              <Button variant="ghost" size="sm" className="h-8" onClick={() => setCurrentStep(3)}>Back</Button>
-              <Button size="sm" className="h-8" onClick={() => setCurrentStep(5)}>
+              <Button variant="ghost" size="sm" className="h-11 sm:h-8" onClick={() => setCurrentStep(3)}>Back</Button>
+              <Button size="sm" className="h-11 sm:h-8" onClick={() => setCurrentStep(5)}>
                 <Send className="mr-1.5 w-3.5 h-3.5" />Continue to Send
               </Button>
             </div>
@@ -1158,20 +1158,20 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
           </div>
           <div className="p-5 space-y-4">
             {/* Summary */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="p-4 bg-indigo-50/60 rounded-[var(--radius)] border border-indigo-100 text-center">
-                <p className="text-2xl font-bold text-indigo-700 tabular-nums">{selectedCount}</p>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="p-3 sm:p-4 bg-indigo-50/60 rounded-[var(--radius)] border border-indigo-100 text-center">
+                <p className="text-xl sm:text-2xl font-bold text-indigo-700 tabular-nums">{selectedCount}</p>
                 <p className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wide mt-0.5">Recipients</p>
               </div>
-              <div className="p-4 bg-slate-50/60 rounded-[var(--radius)] border border-slate-100 text-center">
-                <div className="flex items-center justify-center gap-1.5 mb-0.5">
-                  {(() => { const Icon = channelCfg.icon; return <Icon className="w-4 h-4 text-slate-600" />; })()}
-                  <p className="text-[13px] font-bold text-slate-900">{channelCfg.label}</p>
+              <div className="p-3 sm:p-4 bg-slate-50/60 rounded-[var(--radius)] border border-slate-100 text-center">
+                <div className="flex items-center justify-center gap-1 sm:gap-1.5 mb-0.5 flex-wrap">
+                  {(() => { const Icon = channelCfg.icon; return <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600" />; })()}
+                  <p className="text-[11px] sm:text-[13px] font-bold text-slate-900 leading-tight">{channelCfg.label}</p>
                 </div>
                 <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Channel</p>
               </div>
-              <div className="p-4 bg-emerald-50/60 rounded-[var(--radius)] border border-emerald-100 text-center">
-                <p className="text-2xl font-bold text-emerald-700 tabular-nums">{estimateCost()}</p>
+              <div className="p-3 sm:p-4 bg-emerald-50/60 rounded-[var(--radius)] border border-emerald-100 text-center">
+                <p className="text-base sm:text-2xl font-bold text-emerald-700 tabular-nums">{estimateCost()}</p>
                 <p className="text-[10px] font-semibold text-emerald-500 uppercase tracking-wide mt-0.5">Est. Cost</p>
               </div>
             </div>
@@ -1249,11 +1249,11 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
             )}
 
             <div className="flex gap-3">
-              <Button variant="outline" size="sm" className="h-9" onClick={() => setCurrentStep(4)} disabled={sending}>Back</Button>
+              <Button variant="outline" size="sm" className="h-11 sm:h-9" onClick={() => setCurrentStep(4)} disabled={sending}>Back</Button>
               <Button
                 size="sm"
                 variant={!dryRun ? "emerald" : "default"}
-                className="flex-1 h-9"
+                className="flex-1 h-12 sm:h-9"
                 onClick={sendCampaign}
                 disabled={sending || selectedCount === 0}
               >

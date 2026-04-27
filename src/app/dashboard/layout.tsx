@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/sidebar";
 import { UsageBanner } from "@/components/layout/usage-banner";
+import { DemoBanner } from "@/components/layout/demo-banner";
 import { getAllUserDealerships, getActiveDealershipId } from "@/lib/dealership";
+import { isDemoMode } from "@/lib/demo";
 import type { Dealership } from "@/types";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -12,9 +14,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (userError || !user) redirect("/login");
 
   // Load all dealerships the user belongs to (supports multi-rooftop)
-  const [allDealerships, activeDealershipId] = await Promise.all([
+  const [allDealerships, activeDealershipId, demoMode] = await Promise.all([
     getAllUserDealerships(user.id),
     getActiveDealershipId(user.id),
+    isDemoMode(),
   ]);
 
   if (!activeDealershipId) redirect("/onboarding");
@@ -34,9 +37,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
         dealership={dealership}
         allDealerships={allDealerships}
         activeDealershipId={activeDealershipId}
+        demoMode={demoMode}
       />
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
-        <UsageBanner dealershipId={activeDealershipId} />
+        {demoMode && <DemoBanner />}
+        {!demoMode && <UsageBanner dealershipId={activeDealershipId} />}
         {children}
       </div>
     </div>

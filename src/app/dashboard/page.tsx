@@ -8,12 +8,19 @@ import {
 } from "lucide-react";
 import { formatRelativeDate, formatCurrency } from "@/lib/utils";
 import Link from "next/link";
+import { isDemoMode } from "@/lib/demo";
+import {
+  DEMO_CUSTOMERS_DATA, DEMO_CUSTOMERS_COUNT, DEMO_CAMPAIGNS,
+  DEMO_COMMS, DEMO_AGENT_RUNS,
+} from "@/lib/demo-data";
 
 export const metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+
+  const demoMode = await isDemoMode();
 
   const { data: userDealership } = await supabase
     .from("user_dealerships")
@@ -23,18 +30,31 @@ export default async function DashboardPage() {
 
   const dealershipId = userDealership?.dealership_id;
 
-  const [customersRes, campaignsRes, commsRes, agentRunsRes] = await Promise.all([
-    supabase.from("customers").select("id, lifecycle_stage, total_spend", { count: "exact" }).eq("dealership_id", dealershipId ?? ""),
-    supabase.from("campaigns").select("id, name, status, stats, channel, updated_at").eq("dealership_id", dealershipId ?? "").order("updated_at", { ascending: false }).limit(6),
-    supabase.from("communications").select("id, status, channel, created_at").eq("dealership_id", dealershipId ?? "").gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
-    supabase.from("agent_runs").select("id, agent_type, status, created_at, output_summary").eq("dealership_id", dealershipId ?? "").order("created_at", { ascending: false }).limit(6),
-  ]);
+  let customers: { id: string; lifecycle_stage: string; total_spend: number }[];
+  let totalCustomers: number;
+  let campaigns: { id: string; name: string; status: string; stats: unknown; channel: string; updated_at: string }[];
+  let comms: { id: string; status: string; channel: string; created_at: string }[];
+  let agentRuns: { id: string; agent_type: string; status: string; created_at: string; output_summary: string | null }[];
 
-  const customers = customersRes.data ?? [];
-  const totalCustomers = customersRes.count ?? 0;
-  const campaigns = campaignsRes.data ?? [];
-  const comms = commsRes.data ?? [];
-  const agentRuns = agentRunsRes.data ?? [];
+  if (demoMode) {
+    customers     = DEMO_CUSTOMERS_DATA;
+    totalCustomers = DEMO_CUSTOMERS_COUNT;
+    campaigns     = DEMO_CAMPAIGNS as typeof campaigns;
+    comms         = DEMO_COMMS;
+    agentRuns     = DEMO_AGENT_RUNS as typeof agentRuns;
+  } else {
+    const [customersRes, campaignsRes, commsRes, agentRunsRes] = await Promise.all([
+      supabase.from("customers").select("id, lifecycle_stage, total_spend", { count: "exact" }).eq("dealership_id", dealershipId ?? ""),
+      supabase.from("campaigns").select("id, name, status, stats, channel, updated_at").eq("dealership_id", dealershipId ?? "").order("updated_at", { ascending: false }).limit(6),
+      supabase.from("communications").select("id, status, channel, created_at").eq("dealership_id", dealershipId ?? "").gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+      supabase.from("agent_runs").select("id, agent_type, status, created_at, output_summary").eq("dealership_id", dealershipId ?? "").order("created_at", { ascending: false }).limit(6),
+    ]);
+    customers     = customersRes.data ?? [];
+    totalCustomers = customersRes.count ?? 0;
+    campaigns     = campaignsRes.data ?? [];
+    comms         = commsRes.data ?? [];
+    agentRuns     = agentRunsRes.data ?? [];
+  }
 
   const vipCount = customers.filter((c) => c.lifecycle_stage === "vip").length;
   const atRiskCount = customers.filter((c) => c.lifecycle_stage === "at_risk").length;

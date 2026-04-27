@@ -4,6 +4,7 @@ import { runDirectMailOrchestrator } from "@/lib/anthropic/agents/orchestrator";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { toApiError } from "@/lib/errors";
 import { getActiveDealershipId } from "@/lib/dealership";
+import { logAudit } from "@/lib/audit";
 import type { MailTemplateType } from "@/types";
 
 export async function POST(req: NextRequest) {
@@ -104,6 +105,22 @@ export async function POST(req: NextRequest) {
       includeBookNow,
       designStyle,
       createdBy: user.id,
+    });
+
+    // Audit log — fire and forget
+    void logAudit({
+      dealershipId,
+      userId: user.id,
+      action: dryRun ? "campaign.dry_run" : "campaign.sent",
+      resourceType: "campaign",
+      resourceId: campaignId,
+      metadata: {
+        channel: "direct_mail",
+        recipient_count: customerIds.length,
+        template_type: templateType,
+        dry_run: dryRun,
+        is_test: isTest,
+      },
     });
 
     return NextResponse.json(result);

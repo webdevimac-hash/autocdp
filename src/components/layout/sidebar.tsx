@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Megaphone, Bot, BarChart3,
   CreditCard, Settings, Car, LogOut, Mail,
   Upload, Package, Phone, Target, Plug,
-  Activity, Building2, X, ChevronDown,
+  Activity, Building2, X, ChevronDown, Shield, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -49,6 +49,7 @@ const NAV_GROUPS = [
       { label: "Billing",   href: "/dashboard/billing",  icon: CreditCard },
       { label: "Settings",  href: "/dashboard/settings", icon: Settings },
       { label: "Health",    href: "/dashboard/health",   icon: Activity },
+      { label: "Audit Log", href: "/dashboard/audit",    icon: Shield },
     ],
   },
 ];
@@ -57,9 +58,10 @@ interface SidebarProps {
   dealership: Dealership | null;
   allDealerships?: DealershipMembership[];
   activeDealershipId?: string;
+  demoMode?: boolean;
 }
 
-export function Sidebar({ dealership, allDealerships = [], activeDealershipId }: SidebarProps) {
+export function Sidebar({ dealership, allDealerships = [], activeDealershipId, demoMode = false }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -212,7 +214,24 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId }:
       </nav>
 
       {/* User footer */}
-      <div className="shrink-0 border-t border-white/8 p-2.5 pb-safe-sm">
+      <div className="shrink-0 border-t border-white/8 p-2.5 pb-safe-sm space-y-0.5">
+        {/* Demo Mode toggle */}
+        <form action="/api/demo/toggle" method="POST">
+          <button
+            type="submit"
+            className={cn(
+              "nav-link w-full",
+              demoMode && "bg-violet-500/20 text-violet-300"
+            )}
+          >
+            <Sparkles className="nav-icon w-[15px] h-[15px]" />
+            <span>Demo Mode</span>
+            {demoMode && (
+              <span className="ml-auto text-[9px] font-bold bg-violet-500/30 text-violet-300 px-1.5 py-0.5 rounded-full">ON</span>
+            )}
+          </button>
+        </form>
+
         <button
           onClick={handleSignOut}
           className="nav-link w-full"
