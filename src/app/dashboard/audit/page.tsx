@@ -45,9 +45,9 @@ function statusIcon(status: string) {
 interface AuditEntry {
   id: string;
   action: string;
-  resource_type: string | null;
-  resource_id: string | null;
-  metadata: Record<string, unknown>;
+  entity_type: string | null;
+  entity_id: string | null;
+  details: Record<string, unknown>;
   created_at: string;
   user_id: string | null;
   _source: "audit" | "agent";
@@ -68,7 +68,7 @@ export default async function AuditPage() {
   const [auditRes, agentRes] = await Promise.all([
     supabase
       .from("audit_log")
-      .select("id, action, resource_type, resource_id, metadata, created_at, user_id")
+      .select("id, action, entity_type, entity_id, details, created_at, user_id")
       .eq("dealership_id", dealershipId)
       .order("created_at", { ascending: false })
       .limit(100),
@@ -83,16 +83,16 @@ export default async function AuditPage() {
 
   const auditEntries: AuditEntry[] = (auditRes.data ?? []).map((r) => ({
     ...r,
-    metadata: (r.metadata ?? {}) as Record<string, unknown>,
+    details: (r.details ?? {}) as Record<string, unknown>,
     _source: "audit" as const,
   }));
 
   const agentEntries: AuditEntry[] = (agentRes.data ?? []).map((r) => ({
     id: r.id,
     action: `agent.run.${r.status}`,
-    resource_type: "agent_run",
-    resource_id: r.id,
-    metadata: {},
+    entity_type: "agent_run",
+    entity_id: null,
+    details: {},
     created_at: r.created_at,
     user_id: null,
     _source: "agent" as const,
@@ -151,9 +151,9 @@ export default async function AuditPage() {
                         <p className="text-xs text-red-500 mt-0.5 line-clamp-1">{entry.error}</p>
                       )}
 
-                      {entry._source === "audit" && Object.keys(entry.metadata).length > 0 && (
+                      {entry._source === "audit" && Object.keys(entry.details).length > 0 && (
                         <p className="text-xs text-slate-400 mt-0.5">
-                          {Object.entries(entry.metadata)
+                          {Object.entries(entry.details)
                             .filter(([, v]) => v != null)
                             .slice(0, 3)
                             .map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`)
@@ -162,8 +162,8 @@ export default async function AuditPage() {
                       )}
 
                       <div className="flex items-center gap-3 mt-1">
-                        {entry.resource_type && (
-                          <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">{entry.resource_type}</span>
+                        {entry.entity_type && (
+                          <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">{entry.entity_type}</span>
                         )}
                         {entry._source === "agent" && entry.agent_type && (
                           <span className="chip chip-violet capitalize text-[10px]">{entry.agent_type}</span>

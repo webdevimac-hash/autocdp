@@ -27,9 +27,9 @@ export async function logAudit(params: {
       dealership_id: params.dealershipId,
       user_id: params.userId ?? null,
       action: params.action,
-      resource_type: params.resourceType ?? null,
-      resource_id: params.resourceId ?? null,
-      metadata: params.metadata ?? {},
+      entity_type: params.resourceType ?? null,
+      entity_id: params.resourceId ?? null,
+      details: params.metadata ?? {},
     });
   } catch {
     // Audit logging is best-effort — never block the primary operation

@@ -15,7 +15,7 @@ export async function GET() {
     const [auditRes, agentRes] = await Promise.all([
       supabase
         .from("audit_log")
-        .select("id, action, resource_type, resource_id, metadata, created_at, user_id")
+        .select("id, action, entity_type, entity_id, details, created_at, user_id")
         .eq("dealership_id", dealershipId)
         .order("created_at", { ascending: false })
         .limit(100),
