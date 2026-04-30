@@ -4,9 +4,10 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Save, Loader2, Globe, CheckCircle, AlertTriangle,
-  Image as ImageIcon, RefreshCw,
+  Image as ImageIcon, RefreshCw, Info,
 } from "lucide-react";
 import type { Dealership } from "@/types";
 
@@ -14,31 +15,79 @@ interface SettingsFormProps {
   dealership: Dealership;
 }
 
+interface ScrapeResult {
+  name: string | null;
+  phone: string | null;
+  logoUrl: string | null;
+  address: { street?: string; city?: string; state?: string; zip?: string } | null;
+  hours: Record<string, string> | null;
+  confidence: "high" | "medium" | "low";
+  fieldsFound: string[];
+}
+
 const HOUR_DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+
+function ConfidenceBadge({ level }: { level: "high" | "medium" | "low" }) {
+  const styles = {
+    high:   "bg-emerald-50 border-emerald-200 text-emerald-700",
+    medium: "bg-amber-50 border-amber-200 text-amber-700",
+    low:    "bg-orange-50 border-orange-200 text-orange-700",
+  };
+  const icons = { high: "✓", medium: "~", low: "!" };
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${styles[level]}`}>
+      {icons[level]} {level.charAt(0).toUpperCase() + level.slice(1)} confidence
+    </span>
+  );
+}
+
+// Format E.164 phone (+1xxxxxxxxxx) for human display — used in placeholder only
+function formatPhoneDisplay(e164: string): string {
+  const digits = e164.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return e164;
+}
 
 export function SettingsForm({ dealership }: SettingsFormProps) {
   const addr = dealership.address as Record<string, string> ?? {};
   const hrs  = dealership.hours as Record<string, string> ?? {};
   const sett = dealership.settings as Record<string, string> ?? {};
 
-  const [name, setName] = useState(dealership.name ?? "");
-  const [phone, setPhone] = useState(dealership.phone ?? "");
+  const [name, setName]           = useState(dealership.name ?? "");
+  const [phone, setPhone]         = useState(dealership.phone ?? "");
   const [websiteUrl, setWebsiteUrl] = useState(dealership.website_url ?? "");
-  const [logoUrl, setLogoUrl] = useState(dealership.logo_url ?? "");
-  const [street, setStreet] = useState(addr.street ?? "");
-  const [city, setCity] = useState(addr.city ?? "");
-  const [stateVal, setStateVal] = useState(addr.state ?? "");
-  const [zip, setZip] = useState(addr.zip ?? "");
-  const [hours, setHours] = useState<Record<string, string>>(hrs);
-  const [tone, setTone] = useState(sett.tone ?? "friendly");
+  const [logoUrl, setLogoUrl]     = useState(dealership.logo_url ?? "");
+  const [street, setStreet]       = useState(addr.street ?? "");
+  const [city, setCity]           = useState(addr.city ?? "");
+  const [stateVal, setStateVal]   = useState(addr.state ?? "");
+  const [zip, setZip]             = useState(addr.zip ?? "");
+  const [hours, setHours]         = useState<Record<string, string>>(hrs);
+  const [tone, setTone]           = useState(sett.tone ?? "friendly");
 
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving]         = useState(false);
+  const [saved, setSaved]           = useState(false);
+  const [saveError, setSaveError]   = useState<string | null>(null);
 
-  const [scraping, setScraping] = useState(false);
-  const [scrapeMsg, setScrapeMsg] = useState<string | null>(null);
-  const [logoError, setLogoError] = useState(false);
+  const [scraping, setScraping]     = useState(false);
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
+  const [lastScrape, setLastScrape] = useState<ScrapeResult | null>(null);
+  const [scrapedFields, setScrapedFields] = useState<Set<string>>(new Set());
+  const [logoError, setLogoError]   = useState(false);
+
+  // Clear scraped field highlight after 4s
+  function markScraped(fields: string[]) {
+    const s = new Set(fields);
+    setScrapedFields(s);
+    setTimeout(() => setScrapedFields(new Set()), 4000);
+  }
+
+  function scrapedClass(field: string) {
+    return scrapedFields.has(field)
+      ? "ring-1 ring-emerald-400 border-emerald-300 transition-all duration-500"
+      : "";
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -70,9 +119,13 @@ export function SettingsForm({ dealership }: SettingsFormProps) {
   }
 
   async function handleRescrape() {
-    if (!websiteUrl) { setScrapeMsg("Enter a website URL first."); return; }
+    if (!websiteUrl.trim()) {
+      setScrapeError("Enter a website URL above first.");
+      return;
+    }
     setScraping(true);
-    setScrapeMsg(null);
+    setScrapeError(null);
+    setLastScrape(null);
     setLogoError(false);
     try {
       const res = await fetch("/api/onboarding/scrape", {
@@ -80,30 +133,37 @@ export function SettingsForm({ dealership }: SettingsFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: websiteUrl }),
       });
-      const data = await res.json();
+      const data: ScrapeResult & { error?: string } = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Scrape failed");
 
-      if (data.name && !name) setName(data.name);
-      if (data.phone) setPhone(data.phone);
-      if (data.logoUrl) setLogoUrl(data.logoUrl);
-      if (data.address?.street) setStreet(data.address.street);
-      if (data.address?.city) setCity(data.address.city);
-      if (data.address?.state) setStateVal(data.address.state);
-      if (data.address?.zip) setZip(data.address.zip);
-      if (data.hours) setHours(data.hours);
+      const populated: string[] = [];
 
-      setScrapeMsg(`Re-scraped with ${data.confidence} confidence. Review changes below.`);
+      if (data.name) { setName(data.name); populated.push("name"); }
+      if (data.phone) { setPhone(data.phone); populated.push("phone"); }
+      if (data.logoUrl) { setLogoUrl(data.logoUrl); setLogoError(false); populated.push("logoUrl"); }
+      if (data.address?.street) { setStreet(data.address.street); populated.push("address"); }
+      if (data.address?.city)   setCity(data.address.city);
+      if (data.address?.state)  setStateVal(data.address.state);
+      if (data.address?.zip)    setZip(data.address.zip);
+      if (data.hours) { setHours(data.hours); populated.push("hours"); }
+
+      setLastScrape({ ...data, fieldsFound: populated });
+      markScraped(populated);
     } catch (err) {
-      setScrapeMsg(`Scrape failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+      setScrapeError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setScraping(false);
     }
   }
 
+  const fieldLabels: Record<string, string> = {
+    name: "Name", phone: "Phone", logoUrl: "Logo", address: "Address", hours: "Hours",
+  };
+
   return (
     <div className="space-y-5">
 
-      {/* Logo */}
+      {/* ── Logo ─────────────────────────────────────────────────── */}
       <div className="space-y-2">
         <Label className="text-xs font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
           <ImageIcon className="w-3.5 h-3.5" /> Dealership Logo
@@ -114,7 +174,7 @@ export function SettingsForm({ dealership }: SettingsFormProps) {
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={logoUrl}
-                alt="Logo"
+                alt="Dealership logo"
                 className="w-full h-full object-contain p-1"
                 onError={() => setLogoError(true)}
               />
@@ -127,10 +187,11 @@ export function SettingsForm({ dealership }: SettingsFormProps) {
               placeholder="https://yourdealership.com/logo.png"
               value={logoUrl}
               onChange={(e) => { setLogoUrl(e.target.value); setLogoError(false); }}
-              className="text-xs font-mono"
+              className={`text-xs font-mono ${scrapedClass("logoUrl")}`}
             />
-            <p className="text-[10px] text-slate-400">
-              Direct image URL (.png, .jpg, .svg, .webp). Used in direct mail letterhead and AI copy context.
+            <p className="text-[10px] text-slate-400 flex items-center gap-1">
+              <Info className="w-3 h-3 shrink-0" />
+              Direct image URL (.png, .jpg, .svg, .webp). Used in direct mail letterhead and AI context.
             </p>
             {logoUrl && logoError && (
               <p className="text-xs text-amber-600">Couldn&apos;t load this URL — check the image link.</p>
@@ -139,7 +200,7 @@ export function SettingsForm({ dealership }: SettingsFormProps) {
         </div>
       </div>
 
-      {/* Website + re-scrape */}
+      {/* ── Website + Re-scrape button ────────────────────────────── */}
       <div className="space-y-2">
         <Label className="text-xs font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
           <Globe className="w-3.5 h-3.5" /> Website URL
@@ -153,48 +214,114 @@ export function SettingsForm({ dealership }: SettingsFormProps) {
             className="flex-1"
           />
           <Button
-            variant="outline"
+            variant="default"
             size="sm"
-            className="h-10 shrink-0 text-xs"
+            className="h-10 shrink-0 text-xs gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
             onClick={handleRescrape}
             disabled={scraping}
+            title="Re-scrape anytime to refresh dealership info from your website"
           >
             {scraping
-              ? <><Loader2 className="mr-1.5 w-3.5 h-3.5 animate-spin" />Scanning…</>
-              : <><RefreshCw className="mr-1.5 w-3.5 h-3.5" />Re-scrape</>}
+              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Scanning…</>
+              : <><RefreshCw className="w-3.5 h-3.5" />Re-scrape</>}
           </Button>
         </div>
-        {scrapeMsg && (
-          <p className={`text-xs px-2.5 py-1.5 rounded-md border ${scrapeMsg.startsWith("Scrape failed") ? "bg-red-50 border-red-200 text-red-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>
-            {scrapeMsg}
-          </p>
+
+        {/* Scrape success summary */}
+        {lastScrape && !scrapeError && (
+          <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span className="text-xs text-emerald-700 font-medium">Re-scraped</span>
+            <ConfidenceBadge level={lastScrape.confidence} />
+            {lastScrape.fieldsFound.length > 0 && (
+              <span className="text-xs text-emerald-600">
+                Updated: {lastScrape.fieldsFound.map(f => fieldLabels[f] ?? f).join(", ")}
+              </span>
+            )}
+            {lastScrape.fieldsFound.length < 5 && (
+              <span className="text-xs text-slate-500">
+                · Not found: {(["name","phone","logoUrl","address","hours"] as const)
+                  .filter(f => !lastScrape.fieldsFound.includes(f))
+                  .map(f => fieldLabels[f])
+                  .join(", ")}
+              </span>
+            )}
+          </div>
         )}
+
+        {/* Scrape error */}
+        {scrapeError && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
+            <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+            <span className="text-xs text-red-700">{scrapeError}</span>
+          </div>
+        )}
+
+        <p className="text-[10px] text-slate-400 flex items-center gap-1">
+          <Info className="w-3 h-3 shrink-0" />
+          Re-scrape anytime to refresh from your website. Fields below will auto-fill — review before saving.
+        </p>
       </div>
 
-      {/* Name + Phone */}
+      {/* ── Name + Phone ────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Dealership Name</Label>
-          <Input placeholder="Toyota of Tampa Bay" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input
+            placeholder="Toyota of Tampa Bay"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={scrapedClass("name")}
+          />
         </div>
         <div className="space-y-2">
           <Label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Phone Number</Label>
-          <Input placeholder="(813) 555-0100" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input
+            placeholder="(813) 555-0100"
+            value={phone ? (phone.startsWith("+1") ? formatPhoneDisplay(phone) : phone) : ""}
+            onChange={(e) => setPhone(e.target.value)}
+            className={scrapedClass("phone")}
+          />
+          {phone?.startsWith("+1") && (
+            <p className="text-[10px] text-slate-400">Stored as E.164: {phone}</p>
+          )}
         </div>
       </div>
 
-      {/* Address */}
+      {/* ── Address ─────────────────────────────────────────────── */}
       <div className="space-y-2">
         <Label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Address</Label>
-        <Input placeholder="3101 N Dale Mabry Hwy" value={street} onChange={(e) => setStreet(e.target.value)} />
+        <Input
+          placeholder="3101 N Dale Mabry Hwy"
+          value={street}
+          onChange={(e) => setStreet(e.target.value)}
+          className={scrapedClass("address")}
+        />
         <div className="grid grid-cols-3 gap-2">
-          <Input placeholder="Tampa" value={city} onChange={(e) => setCity(e.target.value)} />
-          <Input placeholder="FL" value={stateVal} onChange={(e) => setStateVal(e.target.value)} maxLength={2} className="uppercase" />
-          <Input placeholder="33607" value={zip} onChange={(e) => setZip(e.target.value)} maxLength={5} />
+          <Input
+            placeholder="Tampa"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            className={scrapedClass("address")}
+          />
+          <Input
+            placeholder="FL"
+            value={stateVal}
+            onChange={(e) => setStateVal(e.target.value)}
+            maxLength={2}
+            className={`uppercase ${scrapedClass("address")}`}
+          />
+          <Input
+            placeholder="33607"
+            value={zip}
+            onChange={(e) => setZip(e.target.value)}
+            maxLength={5}
+            className={scrapedClass("address")}
+          />
         </div>
       </div>
 
-      {/* Hours */}
+      {/* ── Hours of Operation ───────────────────────────────────── */}
       <div className="space-y-2">
         <Label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Hours of Operation</Label>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -202,8 +329,8 @@ export function SettingsForm({ dealership }: SettingsFormProps) {
             <div key={day} className="flex items-center gap-2">
               <span className="text-xs text-slate-500 w-20 shrink-0 capitalize font-medium">{day}</span>
               <Input
-                className="text-xs h-8"
-                placeholder="8:00 AM – 6:00 PM"
+                className={`text-xs h-8 ${scrapedClass("hours")}`}
+                placeholder="9:00 AM – 6:00 PM"
                 value={hours[day] ?? ""}
                 onChange={(e) => setHours((h) => ({ ...h, [day]: e.target.value }))}
               />
@@ -212,7 +339,7 @@ export function SettingsForm({ dealership }: SettingsFormProps) {
         </div>
       </div>
 
-      {/* AI Tone */}
+      {/* ── AI Tone ─────────────────────────────────────────────── */}
       <div className="space-y-2">
         <Label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">AI Tone / Personality</Label>
         <select
@@ -227,7 +354,7 @@ export function SettingsForm({ dealership }: SettingsFormProps) {
         </select>
       </div>
 
-      {/* Save */}
+      {/* ── Save ─────────────────────────────────────────────────── */}
       {saveError && (
         <div className="flex items-start gap-2 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
           <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
@@ -235,7 +362,7 @@ export function SettingsForm({ dealership }: SettingsFormProps) {
         </div>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 pt-1">
         <Button size="sm" className="h-9" onClick={handleSave} disabled={saving}>
           {saving
             ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Saving…</>
@@ -245,6 +372,11 @@ export function SettingsForm({ dealership }: SettingsFormProps) {
           <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
             <CheckCircle className="w-3.5 h-3.5" /> Saved
           </span>
+        )}
+        {lastScrape && !saved && (
+          <Badge variant="secondary" className="text-[10px]">
+            Unsaved scrape results — review &amp; save
+          </Badge>
         )}
       </div>
     </div>
