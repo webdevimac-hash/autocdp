@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Plus, Trash2, Loader2, BrainCircuit, ToggleLeft, ToggleRight } from "lucide-react";
 import type { MemoryCategory } from "@/lib/memories";
@@ -193,12 +192,12 @@ export function MemoriesSection() {
             onChange={(e) => setNewTitle(e.target.value)}
             className="text-sm h-9"
           />
-          <Textarea
+          <textarea
             placeholder="Full guidance text the AI will read before writing…"
             value={newContent}
             onChange={(e) => setNewContent(e.target.value)}
             rows={3}
-            className="text-sm resize-none"
+            className="w-full border border-slate-200 rounded-[var(--radius)] p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 bg-slate-50/50"
           />
           {saveError && <p className="text-xs text-red-500">{saveError}</p>}
           <div className="flex gap-2">
