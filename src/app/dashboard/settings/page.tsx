@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Key, Bell, Shield, Webhook, BookOpen, Gauge, BrainCircuit } from "lucide-react";
+import { Label } from "@/components/ui/label";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { TrainingDataSection } from "@/components/settings/training-data";
 import { LimitsSection } from "@/components/settings/limits-section";
