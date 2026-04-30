@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, Fragment } from "react";
+import { useState, useCallback, useMemo, Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { TemplatePreview } from "./template-preview";
 import type { AccentColor } from "./template-preview";
@@ -301,6 +301,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
   const [testPreview, setTestPreview] = useState<{ content: string; previewQrUrl: string | null; vehicle: string | null; reasoning: string } | null>(null);
   const [testLiveResult, setTestLiveResult] = useState<ChannelResult | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
+  const testCustomer = customers.find((c) => c.id === testCustomerId) ?? customers[0] ?? null;
 
   async function runTestPreview() {
     const targetId = testCustomerId || customers[0]?.id;
@@ -557,6 +558,11 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
   const selectedCount = selectedIds.size;
   const channelCfg = CHANNEL_CONFIG[channel];
 
+  const previewCustomer = useMemo(() => {
+    const targetId = previewCustomerId || Array.from(selectedIds)[0];
+    return customers.find((c) => c.id === targetId) ?? null;
+  }, [previewCustomerId, selectedIds, customers]);
+
   function estimateCost(): string {
     const n = selectedCount;
     if (channel === "direct_mail") return `$${(n * 1.2).toFixed(2)}`;
@@ -649,7 +655,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                 <div className="p-3.5 bg-indigo-50 border border-indigo-100 rounded-[var(--radius)] text-xs text-indigo-800">
                   <strong>AI reasoning:</strong> {testPreview.reasoning}
                 </div>
-                <TemplatePreview templateType={testTemplateType} content={testPreview.content} dealershipName={dealershipName} vehicle={testPreview.vehicle} qrPreviewUrl={testPreview.previewQrUrl ?? undefined} logoUrl={dealershipLogoUrl} accentColor={accentColor} />
+                <TemplatePreview templateType={testTemplateType} content={testPreview.content} dealershipName={dealershipName} vehicle={testPreview.vehicle} qrPreviewUrl={testPreview.previewQrUrl ?? undefined} logoUrl={dealershipLogoUrl} accentColor={accentColor} customerAddress={testCustomer?.address ?? null} dealershipAddress={dealershipAddress} dealershipPhone={dealershipPhone} />
                 <div className="p-3.5 bg-amber-50 border border-amber-100 rounded-[var(--radius)] flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                   <p className="text-xs text-amber-800">
@@ -1230,6 +1236,9 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                 accentColor={accentColor}
                 designStyle={previewResult.designStyle ?? designStyle}
                 layoutSpec={previewResult.layoutSpec}
+                customerAddress={previewCustomer?.address ?? null}
+                dealershipAddress={dealershipAddress}
+                dealershipPhone={dealershipPhone}
               />
             )}
 

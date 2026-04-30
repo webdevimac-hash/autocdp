@@ -66,6 +66,28 @@ const ACCENT: Record<AccentColor, AccentConfig> = {
   },
 };
 
+// ── Address types ─────────────────────────────────────────────
+
+interface AddressRecord {
+  street?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+}
+
+type PreviewMode = "design" | "realistic";
+
+function addrToLines(a: AddressRecord | null | undefined): { line1: string; line2: string } {
+  if (!a) return { line1: "", line2: "" };
+  const line1 = a.street ?? "";
+  const parts: string[] = [];
+  if (a.city) parts.push(a.city);
+  const stateZip = [a.state, a.zip].filter(Boolean).join(" ");
+  if (stateZip) parts.push(stateZip);
+  const line2 = parts.join(", ");
+  return { line1, line2 };
+}
+
 // ── Handwriting engine ─────────────────────────────────────────
 // 19-element arrays (prime) across 6 variation dimensions.
 // Multi-factor seed mixes char position + code + line + paragraph.
@@ -200,7 +222,449 @@ function OfferStrip({ offer, accent }: { offer: string; accent: AccentConfig }) 
   );
 }
 
-// ── Postcard back side ────────────────────────────────────────
+// ── USPS Indicia ──────────────────────────────────────────────
+
+function USPSIndicia({ city, state, accentColor }: { city?: string | null; state?: string | null; accentColor: string }) {
+  const location = [city, state].filter(Boolean).join(", ").toUpperCase() || "ANYTOWN, USA";
+  return (
+    <div style={{
+      width: "86px",
+      height: "72px",
+      border: "1.5px solid #CBD5E1",
+      borderRadius: "4px",
+      background: "#F8FAFC",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "2px",
+      flexShrink: 0,
+      padding: "5px",
+    }}>
+      <div style={{ fontSize: "5.5px", fontWeight: 700, color: accentColor, letterSpacing: "0.10em", textTransform: "uppercase", fontFamily: "'Inter', sans-serif" }}>PRESORTED</div>
+      <div style={{ fontSize: "5.5px", fontWeight: 700, color: accentColor, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "'Inter', sans-serif" }}>FIRST-CLASS MAIL</div>
+      <div style={{ width: "64px", height: "1px", background: "#CBD5E1", margin: "2px 0" }} />
+      <div style={{ fontSize: "5px", color: "#64748B", fontFamily: "'Inter', sans-serif", letterSpacing: "0.06em" }}>U.S. POSTAGE PAID</div>
+      <div style={{ fontSize: "5px", color: "#94A3B8", fontFamily: "'Inter', sans-serif", letterSpacing: "0.04em" }}>PERMIT NO. 1234</div>
+      <div style={{ fontSize: "5px", color: "#94A3B8", fontFamily: "'Inter', sans-serif", letterSpacing: "0.04em", textAlign: "center" }}>{location}</div>
+    </div>
+  );
+}
+
+// ── IMB Barcode ───────────────────────────────────────────────
+
+const IMB_PATTERN = [0,3,1,2,0,3,2,1,3,0,1,2,3,0,2,1,3,2,0,1,2,3,1,0,3,2,1,0,3,1,2,0,3,2,1,3,0,2,1,3,0,2,1,3,2,0,1,3,2,0,1,3,2,1,0,3,1,2,3,0,1,2,3,0,2];
+
+function IMBBarcode() {
+  return (
+    <div style={{ display: "flex", gap: "1.5px", alignItems: "center", height: "22px" }}>
+      {IMB_PATTERN.map((type, i) => {
+        let height: number;
+        let alignSelf: string;
+        if (type === 0) { height = 18; alignSelf = "center"; }
+        else if (type === 1) { height = 13; alignSelf = "flex-start"; }
+        else if (type === 2) { height = 9; alignSelf = "flex-end"; }
+        else { height = 14; alignSelf = "center"; }
+        return (
+          <div key={i} style={{
+            width: "1.8px",
+            height: `${height}px`,
+            background: "#475569",
+            borderRadius: "0.5px",
+            alignSelf,
+            flexShrink: 0,
+          }} />
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Mode Toggle ───────────────────────────────────────────────
+
+function ModeToggle({ mode, onChange }: { mode: PreviewMode; onChange: (m: PreviewMode) => void }) {
+  return (
+    <div style={{
+      display: "inline-flex",
+      background: "#F0EBE3",
+      borderRadius: "8px",
+      padding: "2px",
+      gap: "1px",
+    }}>
+      <button
+        onClick={() => onChange("design")}
+        style={{
+          padding: "6px 14px",
+          borderRadius: "6px",
+          border: "none",
+          cursor: "pointer",
+          fontFamily: "'Inter', sans-serif",
+          fontSize: "11px",
+          fontWeight: 600,
+          background: mode === "design" ? "white" : "transparent",
+          color: mode === "design" ? "#1e293b" : "#6B7280",
+          boxShadow: mode === "design" ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
+          transition: "all 0.15s ease",
+        }}
+      >
+        ✎ Handwriting
+      </button>
+      <button
+        onClick={() => onChange("realistic")}
+        style={{
+          padding: "6px 14px",
+          borderRadius: "6px",
+          border: "none",
+          cursor: "pointer",
+          fontFamily: "'Inter', sans-serif",
+          fontSize: "11px",
+          fontWeight: 600,
+          background: mode === "realistic" ? "white" : "transparent",
+          color: mode === "realistic" ? "#1e293b" : "#6B7280",
+          boxShadow: mode === "realistic" ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
+          transition: "all 0.15s ease",
+        }}
+      >
+        ✦ Final Preview
+      </button>
+    </div>
+  );
+}
+
+// ── Realistic Postcard Front ──────────────────────────────────
+
+function RealPostcardFront({
+  content, dealershipName, offer, qrPreviewUrl, logoUrl, accent, dealershipAddress, dealershipPhone,
+}: {
+  content: string;
+  dealershipName: string;
+  offer?: string | null;
+  qrPreviewUrl: string;
+  logoUrl?: string | null;
+  accent: AccentConfig;
+  dealershipAddress?: AddressRecord | null;
+  dealershipPhone?: string | null;
+}) {
+  const addrLines = addrToLines(dealershipAddress);
+
+  return (
+    <div style={{
+      maxWidth: "520px",
+      minHeight: "310px",
+      position: "relative",
+      background: "#FEFCF3",
+      backgroundImage: [
+        "repeating-linear-gradient(89.4deg, transparent, transparent 4px, rgba(155,135,100,0.022) 4px, rgba(155,135,100,0.022) 5px)",
+        "repeating-linear-gradient(90.6deg, transparent, transparent 7px, rgba(155,135,100,0.013) 7px, rgba(155,135,100,0.013) 8px)",
+        "repeating-linear-gradient(transparent, transparent 29px, rgba(218,209,189,0.5) 29px, rgba(218,209,189,0.5) 30px)",
+      ].join(", "),
+      backgroundPositionY: "0, 0, 46px",
+      borderRadius: "8px",
+      overflow: "hidden",
+      boxShadow: "0 2px 4px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.16), 0 0 0 1px rgba(0,0,0,0.05)",
+      width: "100%",
+    }}>
+      {/* Header strip */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        padding: "8px 14px 7px",
+        borderBottom: `2px solid ${accent.header}`,
+        background: "rgba(254,252,243,0.96)",
+      }}>
+        {logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logoUrl}
+            alt={dealershipName}
+            style={{ height: "18px", width: "auto", maxWidth: "64px", objectFit: "contain", display: "block" }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
+        )}
+        <span style={{
+          fontFamily: "'Inter', sans-serif",
+          fontSize: "8px",
+          fontWeight: 700,
+          color: accent.header,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+        }}>
+          {dealershipName}
+        </span>
+        <div style={{ flex: 1 }} />
+        <span style={{
+          fontSize: "6px",
+          color: "#94A3B8",
+          fontFamily: "'Inter', sans-serif",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+        }}>
+          PERSONALIZED DIRECT MAIL
+        </span>
+      </div>
+
+      {/* Content area */}
+      <div style={{
+        padding: "11px 14px 88px 14px",
+        position: "relative",
+      }}>
+        <HandwrittenContent text={content} fontSize={15} lineHeight={1.85} />
+        {offer && <OfferStrip offer={offer} accent={accent} />}
+
+        {/* QR code — absolute positioned above footer */}
+        <div style={{ position: "absolute", bottom: "36px", right: "13px", textAlign: "center" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={qrPreviewUrl}
+            alt="Tracking QR"
+            width={68}
+            height={68}
+            style={{
+              display: "block",
+              borderRadius: "5px",
+              border: "1px solid #D1C9B0",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+            }}
+          />
+          <div style={{
+            fontSize: "6.5px",
+            color: "#8A8070",
+            fontFamily: "'Inter', sans-serif",
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            marginTop: "3px",
+            textAlign: "center",
+          }}>
+            SCAN FOR OFFER
+          </div>
+        </div>
+      </div>
+
+      {/* Footer strip */}
+      <div style={{
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: "5px 14px",
+        borderTop: "1px solid #EDE8D8",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        background: "rgba(254,252,243,0.97)",
+      }}>
+        {dealershipPhone ? (
+          <span style={{ fontFamily: "'Caveat', cursive", fontSize: "12px", color: "#64748B" }}>{dealershipPhone}</span>
+        ) : <span />}
+        {addrLines.line1 ? (
+          <span style={{ fontSize: "7px", fontFamily: "'Inter', sans-serif", color: "#9CA3AF" }}>
+            {addrLines.line1}{addrLines.line2 ? ` · ${addrLines.line2}` : ""}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+// ── Realistic Postcard Back ───────────────────────────────────
+
+function RealPostcardBack({
+  dealershipName, customerName, logoUrl, accent, dealershipAddress, dealershipPhone, customerAddress,
+}: {
+  dealershipName: string;
+  customerName?: string;
+  logoUrl?: string | null;
+  accent: AccentConfig;
+  dealershipAddress?: AddressRecord | null;
+  dealershipPhone?: string | null;
+  customerAddress?: AddressRecord | null;
+}) {
+  const dAddrLines = addrToLines(dealershipAddress);
+  const cAddrLines = addrToLines(customerAddress);
+
+  return (
+    <div style={{
+      maxWidth: "520px",
+      minHeight: "310px",
+      background: "#FEFCF3",
+      backgroundImage: [
+        "repeating-linear-gradient(89.4deg, transparent, transparent 4px, rgba(155,135,100,0.022) 4px, rgba(155,135,100,0.022) 5px)",
+        "repeating-linear-gradient(90.6deg, transparent, transparent 7px, rgba(155,135,100,0.013) 7px, rgba(155,135,100,0.013) 8px)",
+        "repeating-linear-gradient(transparent, transparent 29px, rgba(218,209,189,0.5) 29px, rgba(218,209,189,0.5) 30px)",
+      ].join(", "),
+      borderRadius: "8px",
+      overflow: "hidden",
+      boxShadow: "0 2px 4px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.16), 0 0 0 1px rgba(0,0,0,0.05)",
+      display: "flex",
+      flexDirection: "column",
+      width: "100%",
+    }}>
+      {/* Top zone: return address + postage */}
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        padding: "12px 14px 10px",
+      }}>
+        {/* Return address (left) */}
+        <div style={{ fontFamily: "'Inter', sans-serif", lineHeight: 1.55 }}>
+          {logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt={dealershipName}
+              style={{ height: "14px", width: "auto", maxWidth: "50px", objectFit: "contain", display: "block", marginBottom: "3px" }}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            />
+          )}
+          <div style={{ fontSize: "8.5px", fontWeight: 700, color: "#374151" }}>{dealershipName}</div>
+          {dAddrLines.line1 && <div style={{ fontSize: "7.5px", color: "#6B7280" }}>{dAddrLines.line1}</div>}
+          {dAddrLines.line2 && <div style={{ fontSize: "7.5px", color: "#6B7280" }}>{dAddrLines.line2}</div>}
+          {dealershipPhone && <div style={{ fontSize: "7.5px", color: "#6B7280" }}>{dealershipPhone}</div>}
+        </div>
+
+        {/* Postage indicia (right) */}
+        <USPSIndicia city={dealershipAddress?.city} state={dealershipAddress?.state} accentColor={accent.header} />
+      </div>
+
+      {/* Horizontal divider (dashed USPS-style) */}
+      <div style={{
+        height: "1px",
+        margin: "0 14px",
+        background: "repeating-linear-gradient(90deg, #9CA3AF 0, #9CA3AF 4px, transparent 4px, transparent 8px)",
+      }} />
+
+      {/* Delivery zone */}
+      <div style={{ flex: 1, padding: "10px 14px 6px 52%" }}>
+        <div style={{
+          fontSize: "7px",
+          fontFamily: "'Inter', sans-serif",
+          fontWeight: 700,
+          color: "#9CA3AF",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          marginBottom: "5px",
+        }}>
+          DELIVER TO
+        </div>
+        <div style={{ fontFamily: "'Caveat', cursive", fontSize: "18px", color: "#1F2937", fontWeight: 700, lineHeight: 1.3 }}>
+          {customerName ?? "Customer Name"}
+        </div>
+        {cAddrLines.line1 ? (
+          <>
+            <div style={{ fontFamily: "'Caveat', cursive", fontSize: "13px", color: "#4B5563" }}>{cAddrLines.line1}</div>
+            <div style={{ fontFamily: "'Caveat', cursive", fontSize: "12px", color: "#6B7280" }}>{cAddrLines.line2}</div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontFamily: "'Caveat', cursive", fontSize: "13px", color: "#C4B69A" }}>123 Delivery Address</div>
+            <div style={{ fontFamily: "'Caveat', cursive", fontSize: "12px", color: "#C4B69A" }}>City, ST 00000</div>
+          </>
+        )}
+      </div>
+
+      {/* IMB Barcode zone */}
+      <div style={{ padding: "6px 14px 10px" }}>
+        <IMBBarcode />
+      </div>
+    </div>
+  );
+}
+
+// ── Realistic Letter Preview ──────────────────────────────────
+
+function RealLetterPreview({
+  content, dealershipName, templateType, logoUrl, accent, customerName, customerAddress, dealershipAddress, dealershipPhone,
+}: {
+  content: string;
+  dealershipName: string;
+  templateType: MailTemplateType;
+  logoUrl?: string | null;
+  accent: AccentConfig;
+  customerName?: string;
+  customerAddress?: AddressRecord | null;
+  dealershipAddress?: AddressRecord | null;
+  dealershipPhone?: string | null;
+}) {
+  const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const is8511 = templateType === "letter_8.5x11";
+  const logoHeight = is8511 ? 28 : 20;
+  const cAddrLines = addrToLines(customerAddress);
+  const dAddrLines = addrToLines(dealershipAddress);
+
+  return (
+    <div style={{
+      maxWidth: is8511 ? "440px" : "340px",
+      background: "#FFFFFF",
+      backgroundImage: [
+        "repeating-linear-gradient(89.4deg, transparent, transparent 4px, rgba(155,135,100,0.012) 4px, rgba(155,135,100,0.012) 5px)",
+        "repeating-linear-gradient(90.6deg, transparent, transparent 7px, rgba(155,135,100,0.008) 7px, rgba(155,135,100,0.008) 8px)",
+      ].join(", "),
+      borderRadius: "4px",
+      overflow: "hidden",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.08), 0 16px 48px rgba(0,0,0,0.14)",
+      width: "100%",
+    }}>
+      {/* Letterhead */}
+      <div style={{
+        padding: "18px 22px 0px",
+      }}>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          borderBottom: accent.letterBorder,
+          paddingBottom: "12px",
+          marginBottom: "0",
+        }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+              {logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logoUrl}
+                  alt={dealershipName}
+                  style={{ height: `${logoHeight}px`, width: "auto", maxWidth: "84px", objectFit: "contain", display: "block" }}
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                />
+              )}
+              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 700, color: "#1E2937" }}>
+                {dealershipName}
+              </span>
+            </div>
+            {dAddrLines.line1 && <div style={{ fontSize: "8px", fontFamily: "'Inter', sans-serif", color: "#6B7280" }}>{dAddrLines.line1}</div>}
+            {dAddrLines.line2 && <div style={{ fontSize: "8px", fontFamily: "'Inter', sans-serif", color: "#6B7280" }}>{dAddrLines.line2}</div>}
+            {dealershipPhone && <div style={{ fontSize: "8px", fontFamily: "'Inter', sans-serif", color: "#6B7280" }}>{dealershipPhone}</div>}
+          </div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", color: "#94A3B8", textAlign: "right", fontWeight: 500 }}>
+            {today}
+          </div>
+        </div>
+      </div>
+
+      {/* Recipient block */}
+      {cAddrLines.line1 && (
+        <div style={{ padding: "10px 22px 0px" }}>
+          <div style={{ fontSize: "13px", fontFamily: "'Inter', sans-serif", fontWeight: 700, color: "#374151" }}>{customerName}</div>
+          <div style={{ fontSize: "11px", fontFamily: "'Inter', sans-serif", color: "#6B7280" }}>{cAddrLines.line1}</div>
+          {cAddrLines.line2 && <div style={{ fontSize: "11px", fontFamily: "'Inter', sans-serif", color: "#6B7280" }}>{cAddrLines.line2}</div>}
+        </div>
+      )}
+
+      {/* Body */}
+      <div style={{ padding: "12px 22px 18px" }}>
+        <HandwrittenContent
+          text={content}
+          fontSize={is8511 ? 14 : 13}
+          lineHeight={1.85}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Postcard back side (design mode) ─────────────────────────
 
 function PostcardBack({
   dealershipName, customerName, accent, logoUrl,
@@ -311,6 +775,7 @@ function PostcardBack({
 
 function Postcard6x9Preview({
   content, dealershipName, customerName, offer, qrPreviewUrl, logoUrl, accent,
+  customerAddress, dealershipAddress, dealershipPhone,
 }: {
   content: string;
   dealershipName: string;
@@ -319,11 +784,20 @@ function Postcard6x9Preview({
   qrPreviewUrl: string;
   logoUrl?: string | null;
   accent: AccentConfig;
+  customerAddress?: AddressRecord | null;
+  dealershipAddress?: AddressRecord | null;
+  dealershipPhone?: string | null;
 }) {
   const [showBack, setShowBack] = useState(false);
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("design");
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
+      {/* Mode toggle */}
+      <div className="flex justify-center">
+        <ModeToggle mode={previewMode} onChange={setPreviewMode} />
+      </div>
+
       {/* Front/Back toggle */}
       <div className="flex items-center justify-center gap-1.5">
         <button
@@ -348,97 +822,147 @@ function Postcard6x9Preview({
         </button>
       </div>
 
-      <div className="relative flex justify-center">
-        {/* Drop shadow layer */}
-        <div
-          className="absolute -bottom-1.5 rounded-b-xl blur-sm -z-10"
-          style={{ left: "16px", right: "16px", height: "14px", background: "rgba(15, 23, 42, 0.10)" }}
-        />
-
-        {!showBack ? (
-          /* FRONT */
+      {previewMode === "design" ? (
+        <div className="relative flex justify-center">
+          {/* Drop shadow layer */}
           <div
-            className="rounded-xl border border-slate-200 overflow-hidden"
-            style={{
-              width: "100%",
-              maxWidth: "420px",
-              background: "#FEFCF3",
-              backgroundImage:
-                "repeating-linear-gradient(transparent, transparent 30px, #EDE8D8 30px, #EDE8D8 31px)",
-              backgroundPositionY: "52px",
-              padding: "16px 20px 88px 20px",
-              position: "relative",
-              boxShadow: "0 4px 6px -1px rgba(0,0,0,0.08), 0 10px 24px -4px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9)",
-            }}
-          >
-            {/* Dealership header with logo */}
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              borderBottom: `1px solid ${accent.header}33`,
-              paddingBottom: "8px",
-              marginBottom: "14px",
-            }}>
-              {logoUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={logoUrl}
-                  alt={dealershipName}
-                  style={{ height: "22px", width: "auto", maxWidth: "68px", objectFit: "contain", display: "block" }}
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                />
-              )}
-              <span style={{
-                fontFamily: "'Inter', sans-serif",
-                fontSize: "9px",
-                fontWeight: 700,
-                color: accent.header,
-                letterSpacing: "0.09em",
-                textTransform: "uppercase",
-              }}>
-                {dealershipName}
-              </span>
-            </div>
+            className="absolute -bottom-1.5 rounded-b-xl blur-sm -z-10"
+            style={{ left: "16px", right: "16px", height: "14px", background: "rgba(15, 23, 42, 0.10)" }}
+          />
 
-            {/* Handwritten message */}
-            <HandwrittenContent text={content} fontSize={16} lineHeight={1.85} />
-
-            {/* Offer callout */}
-            {offer && <OfferStrip offer={offer} accent={accent} />}
-
-            {/* QR code — bottom right */}
-            <div style={{ position: "absolute", bottom: "14px", right: "14px", textAlign: "center" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={qrPreviewUrl}
-                alt="Tracking QR"
-                width={72}
-                height={72}
-                style={{ display: "block", borderRadius: "6px", border: "1px solid #D1C9B0", boxShadow: "0 1px 3px rgba(0,0,0,0.10)" }}
-              />
+          {!showBack ? (
+            /* FRONT — design mode */
+            <div
+              className="rounded-xl border border-slate-200 overflow-hidden"
+              style={{
+                width: "100%",
+                maxWidth: "420px",
+                background: "#FEFCF3",
+                backgroundImage:
+                  "repeating-linear-gradient(transparent, transparent 30px, #EDE8D8 30px, #EDE8D8 31px)",
+                backgroundPositionY: "52px",
+                padding: "16px 20px 88px 20px",
+                position: "relative",
+                boxShadow: "0 4px 6px -1px rgba(0,0,0,0.08), 0 10px 24px -4px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9)",
+              }}
+            >
+              {/* Dealership header with logo */}
               <div style={{
-                fontSize: "7px", color: "#8A8070", marginTop: "4px",
-                fontFamily: "'Inter', sans-serif", fontWeight: 700, letterSpacing: "0.06em",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                borderBottom: `1px solid ${accent.header}33`,
+                paddingBottom: "8px",
+                marginBottom: "14px",
               }}>
-                SCAN FOR OFFER
+                {logoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={logoUrl}
+                    alt={dealershipName}
+                    style={{ height: "22px", width: "auto", maxWidth: "68px", objectFit: "contain", display: "block" }}
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                  />
+                )}
+                <span style={{
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: "9px",
+                  fontWeight: 700,
+                  color: accent.header,
+                  letterSpacing: "0.09em",
+                  textTransform: "uppercase",
+                }}>
+                  {dealershipName}
+                </span>
+              </div>
+
+              {/* Handwritten message */}
+              <HandwrittenContent text={content} fontSize={16} lineHeight={1.85} />
+
+              {/* Offer callout */}
+              {offer && <OfferStrip offer={offer} accent={accent} />}
+
+              {/* QR code — bottom right */}
+              <div style={{ position: "absolute", bottom: "14px", right: "14px", textAlign: "center" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={qrPreviewUrl}
+                  alt="Tracking QR"
+                  width={72}
+                  height={72}
+                  style={{ display: "block", borderRadius: "6px", border: "1px solid #D1C9B0", boxShadow: "0 1px 3px rgba(0,0,0,0.10)" }}
+                />
+                <div style={{
+                  fontSize: "7px", color: "#8A8070", marginTop: "4px",
+                  fontFamily: "'Inter', sans-serif", fontWeight: 700, letterSpacing: "0.06em",
+                }}>
+                  SCAN FOR OFFER
+                </div>
               </div>
             </div>
+          ) : (
+            /* BACK — design mode */
+            <PostcardBack
+              dealershipName={dealershipName}
+              customerName={customerName}
+              accent={accent}
+              logoUrl={logoUrl}
+            />
+          )}
+        </div>
+      ) : (
+        /* Realistic mode */
+        <div style={{
+          background: "linear-gradient(145deg, #EAE5DE 0%, #E0D9D0 100%)",
+          padding: "24px 20px 28px",
+          borderRadius: 14,
+        }}>
+          <div className="text-center mb-3">
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", color: "#8B7265", textTransform: "uppercase", fontFamily: "'Inter', sans-serif" }}>
+              ✉ Realistic preview · Matches PostGrid output
+            </span>
           </div>
-        ) : (
-          /* BACK */
-          <PostcardBack
-            dealershipName={dealershipName}
-            customerName={customerName}
-            accent={accent}
-            logoUrl={logoUrl}
-          />
-        )}
-      </div>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <div style={{ width: "100%", maxWidth: 520, transform: "rotate(-0.4deg)", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.18))" }}>
+              {!showBack ? (
+                <RealPostcardFront
+                  content={content}
+                  dealershipName={dealershipName}
+                  offer={offer}
+                  qrPreviewUrl={qrPreviewUrl}
+                  logoUrl={logoUrl}
+                  accent={accent}
+                  dealershipAddress={dealershipAddress}
+                  dealershipPhone={dealershipPhone}
+                />
+              ) : (
+                <RealPostcardBack
+                  dealershipName={dealershipName}
+                  customerName={customerName}
+                  logoUrl={logoUrl}
+                  accent={accent}
+                  dealershipAddress={dealershipAddress}
+                  dealershipPhone={dealershipPhone}
+                  customerAddress={customerAddress}
+                />
+              )}
+            </div>
+          </div>
+          {/* Recipient label below the card */}
+          {customerName && (
+            <p className="text-center mt-3" style={{ fontSize: 9, color: "#9B8E83", fontFamily: "'Inter', sans-serif" }}>
+              Will be mailed to: <strong style={{ color: "#6B5E54" }}>{customerName}</strong>
+              {customerAddress?.street ? ` · ${customerAddress.street}, ${[customerAddress.city, customerAddress.state].filter(Boolean).join(", ")}` : ""}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="text-center">
         <span className="chip chip-slate text-[10px]">
-          {showBack ? "↑ Mailing side · Back has address + USPS indicia" : "↑ Front · Shows handwritten message + offer"}
+          {previewMode === "realistic"
+            ? (showBack ? "✦ Mailing side · USPS First Class · PostGrid prints this exact layout" : "✦ Front · Handwritten by Claude · Printed by PostGrid")
+            : (showBack ? "↑ Mailing side · Back has address + USPS indicia" : "↑ Front · Shows handwritten message + offer")}
         </span>
       </div>
     </div>
@@ -449,66 +973,104 @@ function Postcard6x9Preview({
 
 function LetterPreview({
   content, dealershipName, templateType, logoUrl, accent,
+  customerName, customerAddress, dealershipAddress, dealershipPhone,
 }: {
   content: string;
   dealershipName: string;
   templateType: MailTemplateType;
   logoUrl?: string | null;
   accent: AccentConfig;
+  customerName?: string;
+  customerAddress?: AddressRecord | null;
+  dealershipAddress?: AddressRecord | null;
+  dealershipPhone?: string | null;
 }) {
   const aspectRatio = templateType === "letter_8.5x11" ? "8.5/11" : "6/9";
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("design");
 
   return (
-    <div
-      className="rounded-xl border border-slate-200 shadow-xl bg-white overflow-hidden"
-      style={{
-        width: "100%",
-        maxWidth: templateType === "letter_8.5x11" ? "480px" : "360px",
-        aspectRatio,
-        padding: templateType === "letter_8.5x11" ? "24px 28px" : "18px 20px",
-        position: "relative",
-      }}
-    >
-      {/* Letterhead */}
-      <div style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        borderBottom: accent.letterBorder,
-        paddingBottom: "8px",
-        marginBottom: "12px",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          {logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={logoUrl}
-              alt={dealershipName}
-              style={{ height: "30px", width: "auto", maxWidth: "84px", objectFit: "contain", display: "block" }}
-              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-            />
-          )}
-          <span style={{
-            fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 700, color: "#1E2937",
-          }}>
-            {dealershipName}
-          </span>
-        </div>
-        <div style={{
-          fontFamily: "'Inter', sans-serif", fontSize: "8px", color: "#94A3B8",
-          textAlign: "right", fontWeight: 500,
-        }}>
-          {today}
-        </div>
+    <div className="space-y-2.5">
+      {/* Mode toggle */}
+      <div className="flex justify-center">
+        <ModeToggle mode={previewMode} onChange={setPreviewMode} />
       </div>
 
-      {/* Body */}
-      <HandwrittenContent
-        text={content}
-        fontSize={templateType === "letter_8.5x11" ? 14 : 13}
-        lineHeight={1.85}
-      />
+      {previewMode === "design" ? (
+        <div
+          className="rounded-xl border border-slate-200 shadow-xl bg-white overflow-hidden"
+          style={{
+            width: "100%",
+            maxWidth: templateType === "letter_8.5x11" ? "480px" : "360px",
+            aspectRatio,
+            padding: templateType === "letter_8.5x11" ? "24px 28px" : "18px 20px",
+            position: "relative",
+          }}
+        >
+          {/* Letterhead */}
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            borderBottom: accent.letterBorder,
+            paddingBottom: "8px",
+            marginBottom: "12px",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              {logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logoUrl}
+                  alt={dealershipName}
+                  style={{ height: "30px", width: "auto", maxWidth: "84px", objectFit: "contain", display: "block" }}
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                />
+              )}
+              <span style={{
+                fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 700, color: "#1E2937",
+              }}>
+                {dealershipName}
+              </span>
+            </div>
+            <div style={{
+              fontFamily: "'Inter', sans-serif", fontSize: "8px", color: "#94A3B8",
+              textAlign: "right", fontWeight: 500,
+            }}>
+              {today}
+            </div>
+          </div>
+
+          {/* Body */}
+          <HandwrittenContent
+            text={content}
+            fontSize={templateType === "letter_8.5x11" ? 14 : 13}
+            lineHeight={1.85}
+          />
+        </div>
+      ) : (
+        <div style={{ background: "linear-gradient(145deg, #EAE5DE 0%, #E0D9D0 100%)", padding: "24px 20px 28px", borderRadius: 14 }}>
+          <div className="text-center mb-3">
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", color: "#8B7265", textTransform: "uppercase", fontFamily: "'Inter', sans-serif" }}>
+              ✉ Realistic preview · Matches PostGrid output
+            </span>
+          </div>
+          <div className="flex justify-center">
+            <div style={{ transform: "rotate(-0.3deg)", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.18))" }}>
+              <RealLetterPreview
+                content={content}
+                dealershipName={dealershipName}
+                templateType={templateType}
+                logoUrl={logoUrl}
+                accent={accent}
+                customerName={customerName}
+                customerAddress={customerAddress}
+                dealershipAddress={dealershipAddress}
+                dealershipPhone={dealershipPhone}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -813,6 +1375,9 @@ interface TemplatePreviewProps {
   accentColor?: AccentColor;
   designStyle?: DesignStyle;
   layoutSpec?: LayoutSpec;
+  customerAddress?: { street?: string | null; city?: string | null; state?: string | null; zip?: string | null } | null;
+  dealershipAddress?: { street?: string | null; city?: string | null; state?: string | null; zip?: string | null } | null;
+  dealershipPhone?: string | null;
 }
 
 export function TemplatePreview({
@@ -826,6 +1391,9 @@ export function TemplatePreview({
   accentColor = "indigo",
   designStyle = "standard",
   layoutSpec,
+  customerAddress,
+  dealershipAddress,
+  dealershipPhone,
 }: TemplatePreviewProps) {
   const qrUrl = qrPropUrl ?? buildPreviewQRImageUrl(
     `${typeof window !== "undefined" ? window.location.origin : ""}/track/preview`,
@@ -913,6 +1481,9 @@ export function TemplatePreview({
             qrPreviewUrl={qrUrl}
             logoUrl={logoUrl}
             accent={accent}
+            customerAddress={customerAddress}
+            dealershipAddress={dealershipAddress}
+            dealershipPhone={dealershipPhone}
           />
         </div>
       ) : (
@@ -922,6 +1493,10 @@ export function TemplatePreview({
           templateType={templateType}
           logoUrl={logoUrl}
           accent={accent}
+          customerName={customerName}
+          customerAddress={customerAddress}
+          dealershipAddress={dealershipAddress}
+          dealershipPhone={dealershipPhone}
         />
       )}
     </div>
