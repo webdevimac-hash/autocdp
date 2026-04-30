@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Key, Bell, Shield, Webhook, BookOpen, Gauge } from "lucide-react";
+import { Building2, Key, Bell, Shield, Webhook, BookOpen, Gauge, BrainCircuit } from "lucide-react";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { TrainingDataSection } from "@/components/settings/training-data";
 import { LimitsSection } from "@/components/settings/limits-section";
+import { MemoriesSection } from "@/components/settings/memories-section";
 import type { Dealership } from "@/types";
 
 export const metadata = { title: "Settings" };
@@ -156,6 +157,22 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <LimitsSection />
+          </CardContent>
+        </Card>
+
+        {/* Guidance & Memories */}
+        <Card className="border-0 shadow-sm" id="memories">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <BrainCircuit className="w-4 h-4 text-muted-foreground" />
+              <CardTitle className="text-base">Guidance &amp; Memories</CardTitle>
+            </div>
+            <CardDescription className="text-xs">
+              Soft suggestions injected into every AI campaign — tone, offers, style, things to avoid. The swarm reads these before writing any copy.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <MemoriesSection />
           </CardContent>
         </Card>
 

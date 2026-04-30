@@ -41,6 +41,8 @@ export interface CreativeAgentInput {
   includeDisclaimer?: boolean;
   /** Pre-loaded baseline examples — injected as style guidelines in the system prompt. */
   baselineExamples?: Array<{ example_text: string; mail_type?: string | null; notes?: string | null }>;
+  /** Dealer guidance memories formatted string — soft suggestions from the team. */
+  dealerMemories?: string;
   /** Design style — controls whether Claude outputs a structured layoutSpec in addition to copy. */
   designStyle?: DesignStyle;
   /** Image URLs the dealer has provided for use in the layout (for advanced styles). */
@@ -380,13 +382,15 @@ export async function runCreativeAgent(
       ? `\nDEALER-PROVIDED IMAGES (use in imageZone placeholders):\n${input.designImages.map((u, i) => `  ${i + 1}. ${u}`).join("\n")}\n`
       : "";
 
+  const memoriesSection = input.dealerMemories ?? "";
+
   const systemPrompt =
     `You are the Creative Agent for AutoCDP. You write hyper-personalized outreach ` +
     `messages for auto dealership customers. Your copy feels human, warm, and specific — never generic.\n\n` +
     `Tone: ${input.dealershipTone || "friendly and professional"}\n` +
     `Dealership: ${input.context.dealershipName}\n` +
     (profileSection ? `\nDEALERSHIP CONTACT INFO (use in CTAs when relevant):\n${profileSection}\n` : "") +
-    `${designStyleNote}${imagesNote}${baselineSection}${learningsSection}${inventorySection}${bookNowSection}\n` +
+    `${designStyleNote}${imagesNote}${baselineSection}${memoriesSection}${learningsSection}${inventorySection}${bookNowSection}\n` +
     `Rules:\n` +
     `- Reference specific details from the customer's visit history when available\n` +
     `- When network learnings apply to this customer's vehicle or segment, weave them in naturally\n` +

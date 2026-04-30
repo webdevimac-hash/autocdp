@@ -32,6 +32,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { filterAndRankCustomers, SCORE_THRESHOLD } from "@/lib/scoring";
 import { matchCustomersToVehicles, formatAssignedVehicleForPrompt } from "@/lib/aged-inventory";
 import { loadBaselineExamples } from "@/lib/anthropic/baseline";
+import { loadDealershipMemories, formatMemoriesForPrompt } from "@/lib/memories";
 import type {
   AgentContext, Customer, Visit, CampaignChannel, CampaignType,
   InventoryVehicle, AgedInventoryMatch,
@@ -279,7 +280,7 @@ export async function runDirectMailOrchestrator(
 
   try {
     // Load the selected customers + their most recent visits + dealership profile + baseline
-    const [{ data: customers }, { data: dealershipProfile }, dmBaselineExamples] = await Promise.all([
+    const [{ data: customers }, { data: dealershipProfile }, dmBaselineExamples, dealerMemories] = await Promise.all([
       supabase
         .from("customers")
         .select("*")
@@ -291,6 +292,7 @@ export async function runDirectMailOrchestrator(
         .eq("id", input.context.dealershipId)
         .single() as Promise<{ data: { phone?: string | null; address?: Record<string, string> | null; hours?: Record<string, string> | null; website_url?: string | null; logo_url?: string | null; settings?: Record<string, unknown> | null } | null }>,
       loadBaselineExamples(input.context.dealershipId),
+      loadDealershipMemories(input.context.dealershipId),
     ]);
 
     const xtimeUrl = (dealershipProfile?.settings?.xtime_url as string | undefined) ?? null;
@@ -385,6 +387,8 @@ export async function runDirectMailOrchestrator(
       const disclaimerNote =
         `\nDO NOT write any opt-out, unsubscribe, STOP, or legal disclaimer text — appended automatically after send.\n`;
 
+      const dealerMemoriesSection = formatMemoriesForPrompt(dealerMemories);
+
       const dmBaselineSection = dmBaselineExamples.length > 0
         ? `\nDEALERSHIP STYLE GUIDELINES — mirror the tone, length, and structure of these past mail pieces:\n\n` +
           dmBaselineExamples.slice(0, 8).map((ex, i) => {
@@ -419,6 +423,7 @@ export async function runDirectMailOrchestrator(
           : "") +
         dealershipContactSection +
         dmBaselineSection +
+        dealerMemoriesSection +
         bookNowSystemNote +
         disclaimerNote +
         designStyleNote +

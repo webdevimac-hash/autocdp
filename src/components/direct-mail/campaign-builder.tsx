@@ -270,6 +270,22 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
   } | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
+  // Variations
+  type VariationResult = {
+    customerId: string;
+    customerName: string;
+    content: string;
+    smsBody: string | null;
+    subject: string | null;
+    previewQrUrl: string | null;
+    vehicle: string | null;
+    confidence: number;
+    designStyle?: DesignStyle;
+  };
+  const [variations, setVariations] = useState<VariationResult[]>([]);
+  const [generatingVariations, setGeneratingVariations] = useState(false);
+  const [selectedVariation, setSelectedVariation] = useState<number | null>(null);
+
   // Step 5
   const [sending, setSending] = useState(false);
   const [dryRun, setDryRun] = useState(true);
@@ -408,6 +424,63 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
       setGeneratingPreview(false);
     }
   }, [previewCustomerId, customers, selectedIds, templateType, campaignGoal, channel]);
+
+  // ── Generate variations ───────────────────────────────────
+
+  const generateVariations = useCallback(async () => {
+    const selectedArr = Array.from(selectedIds);
+    if (selectedArr.length === 0) return;
+
+    // Pick up to 3 different customers
+    const sampleIds = selectedArr.slice(0, Math.min(3, selectedArr.length));
+    setGeneratingVariations(true);
+    setVariations([]);
+    setSelectedVariation(null);
+
+    try {
+      const results = await Promise.allSettled(
+        sampleIds.map((id) =>
+          fetch("/api/mail/preview", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              customerId: id,
+              templateType: channel === "direct_mail" || channel === "multi_channel" ? templateType : undefined,
+              campaignGoal,
+              channel: channel === "multi_channel" ? "email" : channel,
+              designStyle: channel === "direct_mail" ? designStyle : undefined,
+            }),
+          }).then((r) => r.json())
+        )
+      );
+
+      const built: VariationResult[] = results
+        .map((r, i) => {
+          if (r.status === "rejected") return null;
+          const d = r.value;
+          if (d.error) return null;
+          return {
+            customerId: sampleIds[i],
+            customerName: d.customerName ?? `Customer ${i + 1}`,
+            content: d.content,
+            smsBody: d.smsBody ?? null,
+            subject: d.subject ?? null,
+            previewQrUrl: d.previewQrUrl ?? null,
+            vehicle: d.vehicle ?? null,
+            confidence: d.confidence ?? 0.8,
+            designStyle: d.designStyle,
+          } as VariationResult;
+        })
+        .filter((v): v is VariationResult => v !== null);
+
+      setVariations(built);
+      if (built.length > 0) setSelectedVariation(0);
+    } catch {
+      // silent — user can retry
+    } finally {
+      setGeneratingVariations(false);
+    }
+  }, [selectedIds, templateType, campaignGoal, channel, designStyle]);
 
   // ── Step 5: Send ──────────────────────────────────────────
 
@@ -1046,10 +1119,23 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               </div>
             )}
 
-            <div className="flex items-center gap-2">
-              <Button onClick={generatePreview} disabled={generatingPreview || selectedCount === 0} className="flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={generatePreview} disabled={generatingPreview || generatingVariations || selectedCount === 0} className="flex-1 min-w-[160px]">
                 {generatingPreview ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating…</> : <><Zap className="mr-2 h-4 w-4" />Generate AI Copy</>}
               </Button>
+              {channel === "direct_mail" && (
+                <Button
+                  variant="outline"
+                  onClick={generateVariations}
+                  disabled={generatingVariations || generatingPreview || selectedCount === 0}
+                  className="flex-1 min-w-[160px] border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                >
+                  {generatingVariations
+                    ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating…</>
+                    : <><Sparkles className="mr-2 h-4 w-4" />Generate {Math.min(3, selectedCount)} Variations</>
+                  }
+                </Button>
+              )}
               <Button variant="ghost" size="sm" className="h-10" onClick={() => setCurrentStep(2)}>Back</Button>
             </div>
           </div>
@@ -1079,6 +1165,59 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
             <div className="p-3.5 bg-indigo-50 border border-indigo-100 rounded-[var(--radius)] text-xs text-indigo-800">
               <strong>AI reasoning:</strong> {previewResult.reasoning}
             </div>
+
+            {/* Variations carousel */}
+            {variations.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-indigo-400" /> {variations.length} Personalized Variations
+                  </p>
+                  <button
+                    onClick={generateVariations}
+                    disabled={generatingVariations}
+                    className="text-[10px] text-indigo-500 font-semibold hover:text-indigo-700 flex items-center gap-1"
+                  >
+                    <RefreshCw className={cn("w-3 h-3", generatingVariations && "animate-spin")} />
+                    Regenerate
+                  </button>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                  {variations.map((v, i) => (
+                    <button
+                      key={v.customerId}
+                      onClick={() => {
+                        setSelectedVariation(i);
+                        setPreviewResult({
+                          content: v.content,
+                          subject: v.subject,
+                          smsBody: v.smsBody,
+                          reasoning: previewResult.reasoning,
+                          confidence: v.confidence,
+                          previewQrUrl: v.previewQrUrl,
+                          vehicle: v.vehicle,
+                          channel: previewResult.channel,
+                          designStyle: v.designStyle,
+                          layoutSpec: previewResult.layoutSpec,
+                        });
+                      }}
+                      className={cn(
+                        "shrink-0 w-44 text-left p-3 rounded-lg border-2 transition-all space-y-1",
+                        selectedVariation === i
+                          ? "border-indigo-400 bg-indigo-50/60"
+                          : "border-slate-200 bg-white hover:border-indigo-300"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-slate-500 truncate">{v.customerName}</span>
+                        <span className="text-[9px] font-bold text-emerald-600 shrink-0 ml-1">{Math.round(v.confidence * 100)}%</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 line-clamp-3 leading-snug">{v.content}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {previewResult.channel === "direct_mail" && previewResult.previewQrUrl && (
               <TemplatePreview

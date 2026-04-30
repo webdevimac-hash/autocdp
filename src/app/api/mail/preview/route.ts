@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { runCreativeAgent } from "@/lib/anthropic/agents/creative-agent";
 import { buildPreviewQRImageUrl } from "@/lib/qrcode-gen";
+import { loadDealershipMemories, formatMemoriesForPrompt } from "@/lib/memories";
 import type { Customer, Visit, CommunicationChannel, MailTemplateType } from "@/types";
 
 /**
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "ANTHROPIC_API_KEY not configured" }, { status: 503 });
     }
 
-    const [{ data: customer }, { data: visits }] = await Promise.all([
+    const [{ data: customer }, { data: visits }, dealerMemories] = await Promise.all([
       supabase
         .from("customers")
         .select("*")
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
         .eq("dealership_id", ud.dealership_id)
         .order("visit_date", { ascending: false })
         .limit(1),
+      loadDealershipMemories(ud.dealership_id),
     ]);
 
     if (!customer) {
@@ -97,6 +99,7 @@ export async function POST(req: NextRequest) {
       dealershipTone: tone,
       template: templateHint,
       designStyle: resolvedChannel === "direct_mail" ? designStyle : undefined,
+      dealerMemories: dealerMemories.length ? formatMemoriesForPrompt(dealerMemories) : undefined,
       dealershipProfile: {
         phone: dealership?.phone as string | null,
         address: dealership?.address as { street?: string; city?: string; state?: string; zip?: string } | null,

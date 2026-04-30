@@ -150,7 +150,7 @@ function HandwrittenContent({
 }) {
   const paras = buildParaLayout(text);
   return (
-    <div style={{ fontSize: `${fontSize}px`, lineHeight, color: "#1e293b", fontFamily: "'Caveat', cursive" }}>
+    <div style={{ fontSize: `${fontSize}px`, lineHeight, color: "#1a1f36", fontFamily: "'Caveat', cursive", textShadow: "0 0.5px 0 rgba(26,31,54,0.12)" }}>
       {paras.map((para, pi) => (
         <div key={pi} style={{ marginBottom: pi < paras.length - 1 ? `${fontSize * 0.65}px` : 0 }}>
           {para.lines.map((line, li) => (
@@ -215,11 +215,12 @@ function PostcardBack({
       style={{
         width: "100%",
         maxWidth: "420px",
-        background: "#ffffff",
-        border: "1px solid #e2e8f0",
+        background: "#FEFCF3",
+        border: "1px solid #D1C9B0",
         borderRadius: "12px",
         overflow: "hidden",
         fontFamily: "'Inter', sans-serif",
+        boxShadow: "0 4px 6px -1px rgba(0,0,0,0.08), 0 10px 24px -4px rgba(0,0,0,0.10)",
       }}
     >
       {/* Top strip: indicia + return address */}
@@ -357,16 +358,17 @@ function Postcard6x9Preview({
         {!showBack ? (
           /* FRONT */
           <div
-            className="rounded-xl border border-slate-200 shadow-xl overflow-hidden"
+            className="rounded-xl border border-slate-200 overflow-hidden"
             style={{
               width: "100%",
               maxWidth: "420px",
-              background: "#ffffff",
+              background: "#FEFCF3",
               backgroundImage:
-                "repeating-linear-gradient(transparent, transparent 30px, #f1f5f9 30px, #f1f5f9 31px)",
+                "repeating-linear-gradient(transparent, transparent 30px, #EDE8D8 30px, #EDE8D8 31px)",
               backgroundPositionY: "52px",
-              padding: "16px 20px 80px 20px",
+              padding: "16px 20px 88px 20px",
               position: "relative",
+              boxShadow: "0 4px 6px -1px rgba(0,0,0,0.08), 0 10px 24px -4px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9)",
             }}
           >
             {/* Dealership header with logo */}
@@ -411,13 +413,13 @@ function Postcard6x9Preview({
               <img
                 src={qrPreviewUrl}
                 alt="Tracking QR"
-                width={56}
-                height={56}
-                style={{ display: "block", borderRadius: "5px", border: "1px solid #E2E8F0" }}
+                width={72}
+                height={72}
+                style={{ display: "block", borderRadius: "6px", border: "1px solid #D1C9B0", boxShadow: "0 1px 3px rgba(0,0,0,0.10)" }}
               />
               <div style={{
-                fontSize: "7px", color: "#94a3b8", marginTop: "3px",
-                fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: "0.04em",
+                fontSize: "7px", color: "#8A8070", marginTop: "4px",
+                fontFamily: "'Inter', sans-serif", fontWeight: 700, letterSpacing: "0.06em",
               }}>
                 SCAN FOR OFFER
               </div>
