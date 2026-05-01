@@ -133,7 +133,7 @@ export interface Communication {
 }
 
 export type AgentType =
-  | "orchestrator" | "data" | "targeting" | "creative" | "optimization";
+  | "orchestrator" | "data" | "targeting" | "creative" | "optimization" | "coop";
 
 export interface AgentRun {
   id: string;
@@ -347,8 +347,8 @@ export interface SendEmailToolResult {
   error?: string;
 }
 
-// Campaign type (standard vs aged inventory)
-export type CampaignType = "standard" | "aged_inventory";
+// Campaign type (standard, aged inventory, or manufacturer co-op)
+export type CampaignType = "standard" | "aged_inventory" | "coop";
 
 // Vehicle interest extracted from visit history
 export interface CustomerVehicleInterest {

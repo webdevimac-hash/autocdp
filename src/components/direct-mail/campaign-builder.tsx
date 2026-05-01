@@ -7,11 +7,12 @@ import type { AccentColor } from "./template-preview";
 import { useToast } from "@/hooks/use-toast";
 import { CreditInsightPanel } from "@/components/campaigns/credit-insight-panel";
 import { CampaignImpactPanel } from "@/components/campaigns/campaign-impact-panel";
+import { CoopPanel } from "@/components/campaigns/coop-panel";
 import {
   FileText, Send, Loader2, CheckCircle, AlertCircle,
   ChevronRight, RefreshCw, Zap, Eye, FlaskConical,
   ExternalLink, Mail, MessageSquare, Layers, Phone,
-  AtSign, Car, Clock, Sparkles, ShieldCheck, X,
+  AtSign, Car, Clock, Sparkles, ShieldCheck, X, Award,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Customer, MailTemplateType, CampaignType, DesignStyle } from "@/types";
@@ -852,7 +853,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
             {/* Campaign type toggle */}
             <div className="space-y-2">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Campaign Type</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <button
                   onClick={() => {
                     setCampaignType("standard");
@@ -895,6 +896,33 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                   {campaignType === "aged_inventory" && (
                     <div className="mt-2 flex items-center gap-1.5 text-[10px] text-amber-700 font-medium">
                       <Clock className="w-3 h-3" /> Vehicles 45+ days on lot prioritized
+                    </div>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setCampaignType("coop");
+                    setCampaignGoal("Run a manufacturer co-op campaign with compliant copy, required disclaimers, and reimbursement tracking.");
+                  }}
+                  className={cn(
+                    "text-left p-4 rounded-[var(--radius)] border-2 transition-all relative overflow-hidden",
+                    campaignType === "coop"
+                      ? "border-violet-400 bg-violet-50/60"
+                      : "bg-white border-slate-200 hover:border-violet-300"
+                  )}
+                >
+                  {campaignType === "coop" && (
+                    <div className="absolute top-0 left-0 right-0 h-[3px] bg-violet-400" />
+                  )}
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Award className={cn("w-4 h-4", campaignType === "coop" ? "text-violet-600" : "text-slate-400")} />
+                    <p className="text-[13px] font-semibold text-slate-900">Co-op</p>
+                    <span className="ml-auto text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">OEM</span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-snug">Manufacturer-funded campaigns with automatic compliance checking and reimbursement estimation.</p>
+                  {campaignType === "coop" && (
+                    <div className="mt-2 flex items-center gap-1.5 text-[10px] text-violet-700 font-medium">
+                      <Award className="w-3 h-3" /> Disclaimers auto-injected
                     </div>
                   )}
                 </button>
@@ -1120,6 +1148,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               Claude writes personalized {channelCfg.label.toLowerCase()} copy for each customer using their visit history
               {channel !== "direct_mail" ? " and contact data" : ""}.
               {campaignType === "aged_inventory" && " Aged inventory vehicles are automatically matched per customer."}
+              {campaignType === "coop" && " Manufacturer co-op compliance is enforced automatically."}
             </p>
           </div>
           <div className="p-5 space-y-4">
@@ -1128,6 +1157,14 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                 <Car className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" />
                 <span>
                   <strong>Aged Inventory mode:</strong> The AI will query your vAuto inventory for vehicles 45+ days on lot, match each customer to their best-fit vehicle by service history, and write copy that names the exact year/make/model.
+                </span>
+              </div>
+            )}
+            {campaignType === "coop" && (
+              <div className="flex items-start gap-2 p-3 bg-violet-50 border border-violet-100 rounded-[var(--radius)] text-xs text-violet-800">
+                <Award className="w-3.5 h-3.5 mt-0.5 shrink-0 text-violet-600" />
+                <span>
+                  <strong>Co-op mode:</strong> The Co-op Agent will check active manufacturer programs, verify eligibility, and inject required disclaimers and copy rules before the Creative Agent writes any message.
                 </span>
               </div>
             )}
@@ -1379,6 +1416,14 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               channel={channel}
               estimatedCostStr={estimateCost()}
             />
+
+            {/* Co-op eligibility panel — only for co-op campaigns */}
+            {campaignType === "coop" && (
+              <CoopPanel
+                recipientCount={selectedCount}
+                estimatedCostUsd={selectedCount * (channel === "direct_mail" ? 1.35 : channel === "sms" ? 0.02 : 0)}
+              />
+            )}
 
             {/* Dry run toggle */}
             <label className="flex items-start gap-3 p-4 border border-slate-200 rounded-[var(--radius)] cursor-pointer hover:bg-slate-50/60 transition-colors">

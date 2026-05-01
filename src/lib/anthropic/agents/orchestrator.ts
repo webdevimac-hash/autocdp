@@ -12,6 +12,7 @@ import { runDataAgent } from "./data-agent";
 import { runTargetingAgent } from "./targeting-agent";
 import { runCreativeAgent } from "./creative-agent";
 import { runOptimizationAgent } from "./optimization-agent";
+import { runCoopAgent, type CoopAgentOutput } from "./coop-agent";
 import {
   SEND_DIRECT_MAIL_TOOL_DEFINITION,
   executeSendDirectMailTool,
@@ -365,6 +366,23 @@ export async function runDirectMailOrchestrator(
       }
     }
 
+    // ── Co-op eligibility check ───────────────────────────────
+    let coopOutput: CoopAgentOutput | null = null;
+    if (input.campaignType === "coop") {
+      const estCost = filteredCustomers.length * 1.35;
+      coopOutput = await runCoopAgent({
+        context: input.context,
+        channel: "direct_mail",
+        campaignGoal: input.campaignGoal,
+        recipientCount: filteredCustomers.length,
+        estimatedCostUsd: estCost,
+      });
+      totalTokens += coopOutput.tokensUsed;
+      if (coopOutput.eligible) {
+        console.info(`[direct-mail-orchestrator] Co-op: ${coopOutput.programs.length} program(s), est. reimb. $${coopOutput.reimbursementEstimateUsd.toFixed(0)}`);
+      }
+    }
+
     const results: DirectMailResult[] = [];
 
     // Process each customer — each gets its own tool-use conversation
@@ -420,6 +438,8 @@ export async function runDirectMailOrchestrator(
         (input.dryRun ? `⚠ DRY RUN MODE: Generate copy and call the tool, but note this is a simulation.\n` : "") +
         (input.campaignType === "aged_inventory"
           ? `\nCAMPAIGN TYPE: Aged Inventory — move specific vehicles that have been on the lot 45+ days.\n`
+          : input.campaignType === "coop" && coopOutput?.coopContext
+          ? coopOutput.coopContext
           : "") +
         dealershipContactSection +
         dmBaselineSection +
@@ -795,6 +815,24 @@ export async function runOmnichannelOrchestrator(
       }
     }
 
+    // ── Co-op eligibility check ───────────────────────────────
+    let omnichannelCoopOutput: CoopAgentOutput | null = null;
+    if (input.campaignType === "coop") {
+      const primaryChannel = input.channels.find((ch) => ch !== "multi_channel") ?? input.channels[0] ?? "email";
+      const estCost = filteredCustomers.length * (primaryChannel === "direct_mail" ? 1.35 : 0.02);
+      omnichannelCoopOutput = await runCoopAgent({
+        context: input.context,
+        channel: primaryChannel,
+        campaignGoal: input.campaignGoal,
+        recipientCount: filteredCustomers.length,
+        estimatedCostUsd: estCost,
+      });
+      totalTokens += omnichannelCoopOutput.tokensUsed;
+      if (omnichannelCoopOutput.eligible) {
+        console.info(`[omnichannel-orchestrator] Co-op: ${omnichannelCoopOutput.programs.length} program(s), est. reimb. $${omnichannelCoopOutput.reimbursementEstimateUsd.toFixed(0)}`);
+      }
+    }
+
     const tools = [];
     if (input.channels.includes("sms") || input.channels.includes("multi_channel")) {
       tools.push(SEND_SMS_TOOL_DEFINITION);
@@ -846,6 +884,8 @@ export async function runOmnichannelOrchestrator(
         (input.dryRun ? `⚠ DRY RUN MODE: Generate copy and call the tool — this is a simulation.\n` : "") +
         (input.campaignType === "aged_inventory"
           ? `CAMPAIGN TYPE: Aged Inventory — move specific vehicles that have been on lot 45+ days.\n`
+          : input.campaignType === "coop" && omnichannelCoopOutput?.coopContext
+          ? omnichannelCoopOutput.coopContext
           : "") +
         omnichannelContactSection +
         omniBaselineSection +
