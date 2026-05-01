@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { TemplatePreview } from "./template-preview";
 import type { AccentColor } from "./template-preview";
 import { useToast } from "@/hooks/use-toast";
+import { CreditInsightPanel } from "@/components/campaigns/credit-insight-panel";
+import { CampaignImpactPanel } from "@/components/campaigns/campaign-impact-panel";
 import {
   FileText, Send, Loader2, CheckCircle, AlertCircle,
   ChevronRight, RefreshCw, Zap, Eye, FlaskConical,
   ExternalLink, Mail, MessageSquare, Layers, Phone,
-  AtSign, Car, Clock, Sparkles,
+  AtSign, Car, Clock, Sparkles, ShieldCheck, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Customer, MailTemplateType, CampaignType, DesignStyle } from "@/types";
@@ -286,11 +288,17 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
   const [generatingVariations, setGeneratingVariations] = useState(false);
   const [selectedVariation, setSelectedVariation] = useState<number | null>(null);
 
-  // Step 5
+  // Step 5 — send
   const [sending, setSending] = useState(false);
   const [dryRun, setDryRun] = useState(true);
   const [sendResults, setSendResults] = useState<ChannelResult[] | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+
+  // GM Approval flow
+  type ApprovalUiState = "idle" | "input_gm" | "submitting" | "sent" | "error";
+  const [approvalState, setApprovalState] = useState<ApprovalUiState>("idle");
+  const [gmEmail, setGmEmail] = useState("");
+  const [approvalSentTo, setApprovalSentTo] = useState("");
 
   // ── Send Test Mail panel ──────────────────────────────────
   const [testPanelOpen, setTestPanelOpen] = useState(false);
@@ -552,6 +560,42 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
       setSendError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function requestApproval() {
+    if (!gmEmail.trim().includes("@")) { return; }
+    setApprovalState("submitting");
+    try {
+      const res = await fetch("/api/campaign/request-approval", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gmEmail: gmEmail.trim(),
+          customerIds: Array.from(selectedIds),
+          channel,
+          templateType: channel === "direct_mail" || channel === "multi_channel" ? templateType : undefined,
+          campaignGoal,
+          designStyle: channel === "direct_mail" ? designStyle : undefined,
+          accentColor,
+          includeBookNow,
+          campaignType,
+          dealershipName,
+          estimatedCost: estimateCost(),
+          channelLabel: channelCfg.label,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to send approval request");
+      setApprovalSentTo(gmEmail.trim());
+      setApprovalState("sent");
+      toast({
+        title: "Approval request sent",
+        description: `Email sent to ${gmEmail.trim()}. Campaign will execute only after GM approval.`,
+      });
+    } catch (err) {
+      setApprovalState("error");
+      setSendError(err instanceof Error ? err.message : "Unknown error");
     }
   }
 
@@ -1259,6 +1303,11 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               </div>
             )}
 
+            {/* Credit Insight — shown for existing customers only (FCRA) */}
+            <CreditInsightPanel
+              selectedCustomers={customers.filter((c) => selectedIds.has(c.id))}
+            />
+
             {previewResult.channel === "sms" ? (
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Edit SMS body:</label>
@@ -1305,7 +1354,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
             <p className="text-[13px] font-semibold text-slate-900">Send Campaign</p>
           </div>
           <div className="p-5 space-y-4">
-            {/* Summary */}
+            {/* Summary bar */}
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <div className="p-3 sm:p-4 bg-indigo-50/60 rounded-[var(--radius)] border border-indigo-100 text-center">
                 <p className="text-xl sm:text-2xl font-bold text-indigo-700 tabular-nums">{selectedCount}</p>
@@ -1324,35 +1373,30 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               </div>
             </div>
 
+            {/* GM Impact metrics */}
+            <CampaignImpactPanel
+              recipientCount={selectedCount}
+              channel={channel}
+              estimatedCostStr={estimateCost()}
+            />
+
             {/* Dry run toggle */}
             <label className="flex items-start gap-3 p-4 border border-slate-200 rounded-[var(--radius)] cursor-pointer hover:bg-slate-50/60 transition-colors">
-              <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} className="rounded mt-0.5" />
+              <input type="checkbox" checked={dryRun} onChange={(e) => {
+                setDryRun(e.target.checked);
+                setApprovalState("idle");
+                setSendError(null);
+              }} className="rounded mt-0.5" />
               <div>
                 <p className="text-[13px] font-semibold text-slate-900">
                   Dry Run Mode
                   {dryRun && <span className="chip chip-amber ml-2">Active</span>}
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Generate copy for all customers without sending. Toggle off for real sends.
+                  Generate copy for all customers without sending. Toggle off for live campaigns.
                 </p>
               </div>
             </label>
-
-            {!dryRun && (
-              <div className="p-3.5 bg-amber-50 border border-amber-100 rounded-[var(--radius)] flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-[13px] font-semibold text-amber-800">Live mode — messages will be sent</p>
-                  <p className="text-xs text-amber-700 mt-0.5">
-                    {channel === "direct_mail" && `PostGrid will print and mail ${selectedCount} piece${selectedCount !== 1 ? "s" : ""}. ~${estimateCost()}.`}
-                    {channel === "sms" && `Twilio will send ${withPhone} SMS messages. ~${estimateCost()}.`}
-                    {channel === "email" && `Resend will send ${withEmail} emails.`}
-                    {channel === "multi_channel" && `Claude will send across SMS, email, and direct mail for all ${selectedCount} customers.`}
-                    {" "}This cannot be undone.
-                  </p>
-                </div>
-              </div>
-            )}
 
             {sendError && (
               <div className="flex items-start gap-2 p-3.5 bg-red-50 border border-red-100 rounded-[var(--radius)]">
@@ -1361,12 +1405,12 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               </div>
             )}
 
-            {/* Results */}
+            {/* Dry run results */}
             {sendResults && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-[13px] font-semibold text-emerald-700">
                   <CheckCircle className="w-4 h-4" />
-                  {dryRun ? "Dry run" : "Campaign"} complete — {sendResults.filter(r => r.success).length}/{sendResults.length} succeeded
+                  Dry run complete — {sendResults.filter(r => r.success).length}/{sendResults.length} processed
                 </div>
                 <div className="divide-y divide-slate-50 border border-slate-100 rounded-[var(--radius)] max-h-60 overflow-y-auto">
                   {sendResults.map((r, i) => (
@@ -1378,41 +1422,129 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                           <span className="chip chip-slate capitalize">{r.channel.replace("_", " ")}</span>
                         </div>
                         <p className="text-xs text-slate-400">{r.message}</p>
-                        {r.result?.postgrid_id && (
-                          <p className="text-[10px] text-slate-400 font-mono">PostGrid: {r.result.postgrid_id}</p>
-                        )}
-                        {r.result?.provider_id && !r.result?.postgrid_id && (
-                          <p className="text-[10px] text-slate-400 font-mono">ID: {r.result.provider_id}</p>
-                        )}
                       </div>
-                      {r.result?.estimated_delivery && (
-                        <span className="text-[10px] text-slate-400 shrink-0">
-                          ~{new Date(r.result.estimated_delivery).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                        </span>
-                      )}
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
+            {/* ── GM Approval flow (live sends only) ──────────── */}
+            {!dryRun && (
+              <div className="rounded-[var(--radius)] border-2 border-indigo-200 bg-indigo-50/40 overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-indigo-100">
+                  <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <div>
+                    <p className="text-[13px] font-semibold text-indigo-900">GM Approval Required</p>
+                    <p className="text-[10px] text-indigo-500 mt-0.5">
+                      Live campaigns require GM sign-off before any messages are sent.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-4 space-y-3">
+                  {/* idle: show request button */}
+                  {approvalState === "idle" && (
+                    <Button
+                      size="sm"
+                      className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white gap-2"
+                      onClick={() => setApprovalState("input_gm")}
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      Request GM Approval
+                    </Button>
+                  )}
+
+                  {/* input_gm: enter GM email */}
+                  {approvalState === "input_gm" && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                        GM / Owner email address
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="email"
+                          placeholder="gm@yourdealership.com"
+                          value={gmEmail}
+                          onChange={(e) => setGmEmail(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && requestApproval()}
+                          className="flex-1 border border-slate-200 rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                          autoFocus
+                        />
+                        <Button
+                          size="sm"
+                          className="h-10 shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white"
+                          onClick={requestApproval}
+                          disabled={!gmEmail.trim().includes("@")}
+                        >
+                          Send
+                        </Button>
+                        <button
+                          onClick={() => { setApprovalState("idle"); setGmEmail(""); }}
+                          className="p-2 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        The GM will receive an email with a secure review link. Campaign executes only after they approve.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* submitting */}
+                  {approvalState === "submitting" && (
+                    <div className="flex items-center gap-2 py-2 text-indigo-600">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm">Sending approval request…</span>
+                    </div>
+                  )}
+
+                  {/* sent */}
+                  {approvalState === "sent" && (
+                    <div className="flex items-start gap-2.5 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                      <CheckCircle className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-[13px] font-semibold text-emerald-800">Approval request sent</p>
+                        <p className="text-xs text-emerald-700 mt-0.5">
+                          Email sent to <strong>{approvalSentTo}</strong>. The campaign will execute automatically after GM approval.
+                          The link expires in 24 hours.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* error */}
+                  {approvalState === "error" && (
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                        <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                        {sendError ?? "Failed to send approval request"}
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => setApprovalState("input_gm")}>
+                        Try again
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <Button variant="outline" size="sm" className="h-11 sm:h-9" onClick={() => setCurrentStep(4)} disabled={sending}>Back</Button>
-              <Button
-                size="sm"
-                variant={!dryRun ? "emerald" : "default"}
-                className="flex-1 h-12 sm:h-9"
-                onClick={sendCampaign}
-                disabled={sending || selectedCount === 0}
-              >
-                {sending ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{dryRun ? "Running…" : "Sending…"}</>
-                ) : dryRun ? (
-                  <><Eye className="mr-2 h-4 w-4" />Run Dry Run ({selectedCount})</>
-                ) : (
-                  <><Send className="mr-2 h-4 w-4" />Send {selectedCount} {channelCfg.label} Message{selectedCount !== 1 ? "s" : ""} — {estimateCost()}</>
-                )}
-              </Button>
+              {/* Dry run button — always available */}
+              {dryRun && (
+                <Button
+                  size="sm"
+                  className="flex-1 h-12 sm:h-9"
+                  onClick={sendCampaign}
+                  disabled={sending || selectedCount === 0}
+                >
+                  {sending
+                    ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Running…</>
+                    : <><Eye className="mr-2 h-4 w-4" />Run Dry Run ({selectedCount})</>}
+                </Button>
+              )}
             </div>
           </div>
         </div>
