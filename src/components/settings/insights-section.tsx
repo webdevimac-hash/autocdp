@@ -7,8 +7,8 @@ import {
   RefreshCw, Loader2, ChevronDown, ChevronUp, Pencil, Check, X,
   TrendingUp, Car, Palette, BarChart2, MessageSquare, Star, Lightbulb,
 } from "lucide-react";
-import type { InsightType } from "@/lib/insights";
-import { INSIGHT_TITLES, INSIGHT_DESCRIPTIONS } from "@/lib/insights";
+import type { InsightType } from "@/lib/insights-shared";
+import { INSIGHT_TITLES, INSIGHT_DESCRIPTIONS } from "@/lib/insights-shared";
 
 interface Insight {
   id: string;
