@@ -12,6 +12,8 @@ export interface DataAgentInput {
   question?: string;
   campaignType?: CampaignType;
   agedInventory?: InventoryVehicle[];
+  /** Pre-formatted insights context from formatInsightsForPrompt() — soft guidance only. */
+  dealershipInsights?: string;
 }
 
 export interface DataAgentOutput {
@@ -77,6 +79,7 @@ export async function runDataAgent(input: DataAgentInput): Promise<DataAgentOutp
   const systemPrompt =
     `You are the Data Agent for AutoCDP, an AI-powered Customer Data Platform for auto dealerships.\n\n` +
     `Your role is to analyze customer data and extract actionable insights for ${input.context.dealershipName}.\n` +
+    (input.dealershipInsights ?? "") +
     `Focus on:\n` +
     `1. Customer lifecycle stage distribution and trends\n` +
     `2. Churn risk signals (customers overdue for service)\n` +

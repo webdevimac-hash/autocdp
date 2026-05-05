@@ -49,6 +49,8 @@ export interface CreativeAgentInput {
   designImages?: string[];
   /** Co-op agent context — compliance rules, required disclaimers, copy guidelines from manufacturer program. */
   coopGuidance?: string;
+  /** Pre-formatted dealership insights from formatInsightsForPrompt() — use naturally, not verbatim. */
+  dealershipInsights?: string;
 }
 
 export interface CreativeAgentOutput extends PersonalizedMessage {
@@ -386,6 +388,7 @@ export async function runCreativeAgent(
 
   const memoriesSection = input.dealerMemories ?? "";
   const coopSection = input.coopGuidance ?? "";
+  const insightsSection = input.dealershipInsights ?? "";
 
   const systemPrompt =
     `You are the Creative Agent for AutoCDP. You write hyper-personalized outreach ` +
@@ -393,7 +396,7 @@ export async function runCreativeAgent(
     `Tone: ${input.dealershipTone || "friendly and professional"}\n` +
     `Dealership: ${input.context.dealershipName}\n` +
     (profileSection ? `\nDEALERSHIP CONTACT INFO (use in CTAs when relevant):\n${profileSection}\n` : "") +
-    `${coopSection}${designStyleNote}${imagesNote}${baselineSection}${memoriesSection}${learningsSection}${inventorySection}${bookNowSection}\n` +
+    `${coopSection}${designStyleNote}${imagesNote}${baselineSection}${memoriesSection}${insightsSection}${learningsSection}${inventorySection}${bookNowSection}\n` +
     `Rules:\n` +
     `- Reference specific details from the customer's visit history when available\n` +
     `- When network learnings apply to this customer's vehicle or segment, weave them in naturally\n` +

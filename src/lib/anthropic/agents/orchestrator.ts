@@ -34,6 +34,7 @@ import { filterAndRankCustomers, SCORE_THRESHOLD } from "@/lib/scoring";
 import { matchCustomersToVehicles, formatAssignedVehicleForPrompt } from "@/lib/aged-inventory";
 import { loadBaselineExamples } from "@/lib/anthropic/baseline";
 import { loadDealershipMemories, formatMemoriesForPrompt } from "@/lib/memories";
+import { loadDealershipInsights, formatInsightsForPrompt } from "@/lib/insights";
 import type {
   AgentContext, Customer, Visit, CampaignChannel, CampaignType,
   InventoryVehicle, AgedInventoryMatch,
@@ -100,11 +101,13 @@ Output JSON: {"plan": "summary", "priority_segments": ["segment1"], "risk_flags"
     });
     totalTokens += planResponse.usage.input_tokens + planResponse.usage.output_tokens;
 
-    const [customersRes, dealershipRes, baselineExamples] = await Promise.all([
+    const [customersRes, dealershipRes, baselineExamples, dealershipInsightsRaw] = await Promise.all([
       supabase.from("customers").select("*").eq("dealership_id", input.context.dealershipId).order("last_visit_date", { ascending: false }).limit(200),
       supabase.from("dealerships").select("phone, address, hours, logo_url, website_url, settings").eq("id", input.context.dealershipId).single(),
       loadBaselineExamples(input.context.dealershipId),
+      loadDealershipInsights(input.context.dealershipId),
     ]);
+    const insightsContext = formatInsightsForPrompt(dealershipInsightsRaw);
     const customers = customersRes.data;
     const dealershipRaw = dealershipRes.data ?? undefined;
     const dealershipProfile = dealershipRaw
@@ -125,6 +128,7 @@ Output JSON: {"plan": "summary", "priority_segments": ["segment1"], "risk_flags"
       context: input.context,
       customers: customers as Customer[],
       recentVisits: (recentVisits ?? []) as Visit[],
+      dealershipInsights: insightsContext,
     });
     totalTokens += dataOutput.tokensUsed;
 
@@ -134,6 +138,7 @@ Output JSON: {"plan": "summary", "priority_segments": ["segment1"], "risk_flags"
       channel: input.channel,
       totalCustomers: customers.length,
       segmentStats: dataOutput.segmentSummary,
+      dealershipInsights: insightsContext,
     });
     totalTokens += targetingOutput.tokensUsed;
 
@@ -155,6 +160,7 @@ Output JSON: {"plan": "summary", "priority_segments": ["segment1"], "risk_flags"
         dealershipTone: input.dealershipTone,
         dealershipProfile,
         baselineExamples,
+        dealershipInsights: insightsContext,
       });
       totalTokens += creative.tokensUsed;
 
@@ -281,7 +287,7 @@ export async function runDirectMailOrchestrator(
 
   try {
     // Load the selected customers + their most recent visits + dealership profile + baseline
-    const [{ data: customers }, { data: dealershipProfile }, dmBaselineExamples, dealerMemories] = await Promise.all([
+    const [{ data: customers }, { data: dealershipProfile }, dmBaselineExamples, dealerMemories, dmInsightsRaw] = await Promise.all([
       supabase
         .from("customers")
         .select("*")
@@ -294,7 +300,9 @@ export async function runDirectMailOrchestrator(
         .single() as Promise<{ data: { phone?: string | null; address?: Record<string, string> | null; hours?: Record<string, string> | null; website_url?: string | null; logo_url?: string | null; settings?: Record<string, unknown> | null } | null }>,
       loadBaselineExamples(input.context.dealershipId),
       loadDealershipMemories(input.context.dealershipId),
+      loadDealershipInsights(input.context.dealershipId),
     ]);
+    const dmInsightsContext = formatInsightsForPrompt(dmInsightsRaw);
 
     const xtimeUrl = (dealershipProfile?.settings?.xtime_url as string | undefined) ?? null;
 
@@ -444,6 +452,7 @@ export async function runDirectMailOrchestrator(
         dealershipContactSection +
         dmBaselineSection +
         dealerMemoriesSection +
+        dmInsightsContext +
         bookNowSystemNote +
         disclaimerNote +
         designStyleNote +
@@ -733,7 +742,7 @@ export async function runOmnichannelOrchestrator(
     .single();
 
   try {
-    const [{ data: customers }, { data: omnichannelDealershipProfile }, omniBaselineExamples] = await Promise.all([
+    const [{ data: customers }, { data: omnichannelDealershipProfile }, omniBaselineExamples, omniInsightsRaw] = await Promise.all([
       supabase
         .from("customers")
         .select("*")
@@ -745,7 +754,9 @@ export async function runOmnichannelOrchestrator(
         .eq("id", input.context.dealershipId)
         .single() as Promise<{ data: { phone?: string | null; address?: Record<string, string> | null; hours?: Record<string, string> | null; website_url?: string | null; settings?: Record<string, unknown> | null } | null }>,
       loadBaselineExamples(input.context.dealershipId),
+      loadDealershipInsights(input.context.dealershipId),
     ]);
+    const omniInsightsContext = formatInsightsForPrompt(omniInsightsRaw);
 
     const omnichannelXtimeUrl = (omnichannelDealershipProfile?.settings?.xtime_url as string | undefined) ?? null;
 
@@ -889,6 +900,7 @@ export async function runOmnichannelOrchestrator(
           : "") +
         omnichannelContactSection +
         omniBaselineSection +
+        omniInsightsContext +
         omnichannelBookNowNote +
         omnichannelDisclaimerNote +
         agedVehicleSystemNote +

@@ -18,6 +18,8 @@ export interface TargetingAgentInput {
   };
   globalLearnings?: string[];
   campaignType?: CampaignType;
+  /** Pre-formatted insights context from formatInsightsForPrompt() — soft guidance only. */
+  dealershipInsights?: string;
   agedInventoryStats?: {
     totalAgedVehicles: number;
     avgDaysOnLot: number;
@@ -87,6 +89,7 @@ export async function runTargetingAgent(
     `- Lapsed: ${input.segmentStats.lapsed}\n` +
     agedInventoryContext +
     (input.globalLearnings?.length ? `\nCROSS-DEALER INSIGHTS:\n${input.globalLearnings.join("\n")}` : "") +
+    (input.dealershipInsights ?? "") +
     `\n\nRespond with JSON:\n` +
     `{\n` +
     `  "segment": {\n` +
