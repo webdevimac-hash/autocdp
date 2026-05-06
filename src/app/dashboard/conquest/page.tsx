@@ -80,16 +80,16 @@ export default async function ConquestPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Import Conquest Leads</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Import prospect lists from third-party data providers (LotLogix, Experian, etc.)
+              Import prospect lists from third-party data providers or your CRM. Natively supports DriveCentric exports — no cleaning required.
             </p>
           </CardHeader>
           <CardContent>
             <CsvUploader
               type="customers"
               uploadUrl="/api/conquest/upload"
-              label="Drop conquest CSV here"
-              description="One row per prospect"
-              requiredColumns={["first_name", "last_name", "email", "phone", "address", "vehicle_interest", "score"]}
+              label="Drop conquest or CRM leads CSV here"
+              description="DriveCentric, LotLogix, Experian, or any standard leads export"
+              requiredColumns={["Customer (or first_name+last_name)", "Cell Phone (or phone)", "Address 1 (or street)", "Source Description", "Current Stage", "Last Note"]}
             />
           </CardContent>
         </Card>
