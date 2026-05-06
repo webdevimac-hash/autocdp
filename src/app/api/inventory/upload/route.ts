@@ -193,13 +193,21 @@ export async function POST(req: NextRequest) {
 
       try {
         if (vin) {
-          // Standard upsert by VIN
-          const { error } = await svc
-            .from("inventory")
-            .upsert(payload, { onConflict: "vin,dealership_id" });
-          if (error) throw error;
+          // VIN-based update-or-insert using the pre-loaded map
+          const existingId = vinMap.get(vin.toUpperCase());
+          if (existingId) {
+            const { error } = await svc
+              .from("inventory")
+              .update(payload)
+              .eq("id", existingId);
+            if (error) throw error;
+          } else {
+            const { error } = await svc.from("inventory").insert(payload);
+            if (error) throw error;
+            vinMap.set(vin.toUpperCase(), "pending");
+          }
         } else {
-          // Stock-number based upsert (DriveCentric exports without VIN)
+          // Stock-number based update-or-insert (DriveCentric exports without VIN)
           const existingId = stockNumMap.get(stockNum!.toUpperCase());
           if (existingId) {
             const { error } = await svc
@@ -210,12 +218,7 @@ export async function POST(req: NextRequest) {
           } else {
             const { error } = await svc.from("inventory").insert(payload);
             if (error) throw error;
-            // Track new stock number so later rows in this batch don't duplicate it
-            // We don't have the new id here, but subsequent rows with the same stock
-            // number are uncommon; a second import will catch any remaining dupes.
           }
-          // Keep stockNumMap current for this batch (we don't get the new id easily,
-          // but the important case is preventing double-insert within one import run)
           if (stockNum) stockNumMap.set(stockNum.toUpperCase(), "pending");
         }
 
