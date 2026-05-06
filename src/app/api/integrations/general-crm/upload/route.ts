@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
         lead_source: l.leadSource ?? null,
         lead_status: l.leadStatus ?? null,
         vehicle_interest: l.vehicleInterest ?? null,
+        last_note: l.lastNote ? l.lastNote.slice(0, 1000) : null,
         csv_import: true,
       },
     }));

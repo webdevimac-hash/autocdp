@@ -87,7 +87,8 @@ export default async function InventoryPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Import Inventory</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Upload a CSV from your DMS or inventory management system. Existing VINs are updated, new ones are added.
+              Upload a CSV from your DMS or inventory management system. Existing VINs and Stock Numbers are updated, new ones are added.
+              Natively supports DriveCentric exports — no cleaning required.
             </p>
           </CardHeader>
           <CardContent>
@@ -95,8 +96,8 @@ export default async function InventoryPage() {
               type="customers"
               uploadUrl="/api/inventory/upload"
               label="Drop inventory CSV here"
-              description="Accepts most DMS export formats"
-              requiredColumns={["vin", "year", "make", "model", "trim", "color", "mileage", "price", "condition", "days_on_lot"]}
+              description="DriveCentric, vAuto, CDK, or any DMS — drop the raw export"
+              requiredColumns={["Vehicle (or year+make+model)", "Stock Number (or vin)", "Pricing (or price)", "Mileage", "Trim", "Age (or days_on_lot)", "Sold"]}
             />
           </CardContent>
         </Card>

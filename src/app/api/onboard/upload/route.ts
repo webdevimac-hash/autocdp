@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { parseDriveCentricName, DC_NULL_VALUES } from "@/lib/csv";
 
 /**
  * POST /api/onboard/upload
@@ -9,6 +10,8 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
  *
  * Customers: deduplicates on (email | phone | first+last+zip) per dealership.
  *            Normalizes email, phone, state, zip before writing.
+ *            Natively understands DriveCentric export column names.
+ *
  * Visits:    deduplicates on (customer_id, visit_date) and (customer_id, ro_number).
  *            Validates date format and numeric fields before writing.
  */
@@ -37,14 +40,19 @@ export async function POST(req: NextRequest) {
 
     const serviceClient = createServiceClient();
     let inserted = 0;
-    let skipped = 0;
+    let skipped  = 0;
     const errors: { row: number; field?: string; message: string }[] = [];
 
-    // ── Column helpers ─────────────────────────────────────────
+    // ── Column helper ──────────────────────────────────────────
+    // Returns the first non-empty, non-DC-null value found for any of the given keys.
 
     function col(row: Record<string, string>, ...keys: string[]): string {
       for (const k of keys) {
-        if (row[k] !== undefined && row[k] !== null) return String(row[k]).trim();
+        const v = row[k];
+        if (v !== undefined && v !== null) {
+          const trimmed = String(v).trim();
+          if (trimmed && !DC_NULL_VALUES.has(trimmed.toLowerCase())) return trimmed;
+        }
       }
       return "";
     }
@@ -58,7 +66,6 @@ export async function POST(req: NextRequest) {
 
     function normalizePhone(raw: string): string | null {
       const digits = raw.replace(/\D/g, "");
-      // Normalize to E.164 (+1XXXXXXXXXX) — required by Twilio
       if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
       if (digits.length === 10) return `+1${digits}`;
       return null;
@@ -79,17 +86,17 @@ export async function POST(req: NextRequest) {
     function normalizeZip(raw: string): string | null {
       const digits = raw.trim().replace(/\D/g, "");
       if (digits.length === 5) return digits;
-      if (digits.length === 9) return digits.slice(0, 5); // ZIP+4
+      if (digits.length === 9) return digits.slice(0, 5);   // ZIP+4 → ZIP5
+      if (digits.length === 4) return "0" + digits;          // e.g. NJ 07701 exported as 7701
       return null;
     }
 
     function parseDate(raw: string): string | null {
       if (!raw) return null;
-      // Attempt ISO, M/D/Y, M-D-Y, etc.
       const cleaned = raw.trim().replace(/\//g, "-");
       const d = new Date(cleaned);
       if (isNaN(d.getTime())) return null;
-      return d.toISOString().slice(0, 10); // YYYY-MM-DD
+      return d.toISOString().slice(0, 10);
     }
 
     function parseAmount(raw: string): number | null {
@@ -105,13 +112,35 @@ export async function POST(req: NextRequest) {
     function parseYear(raw: string): number | null {
       const n = parseInt(raw, 10);
       const currentYear = new Date().getFullYear();
-      return isNaN(n) || n < 1980 || n > currentYear + 1 ? null : n;
+      return isNaN(n) || n < 1980 || n > currentYear + 2 ? null : n;
+    }
+
+    // ── DriveCentric lifecycle stage mapping ───────────────────
+
+    type LifecycleStage = "prospect" | "active" | "at_risk" | "lapsed" | "vip";
+
+    function mapLifecycleStage(raw: string): LifecycleStage {
+      switch (raw.trim().toLowerCase()) {
+        case "active":
+        case "customer":
+        case "won":
+          return "active";
+        case "dead":
+        case "lost":
+        case "no follow-up":
+          return "lapsed";
+        case "at risk":
+          return "at_risk";
+        case "vip":
+          return "vip";
+        default:
+          return "prospect";
+      }
     }
 
     // ── Customers ──────────────────────────────────────────────
 
     if (type === "customers") {
-      // Load existing email + phone set for fast dedup without per-row queries
       const { data: existing } = await serviceClient
         .from("customers")
         .select("email, phone, first_name, last_name, address")
@@ -119,9 +148,9 @@ export async function POST(req: NextRequest) {
           data: { email: string | null; phone: string | null; first_name: string; last_name: string; address: Record<string, string> | null }[] | null;
         };
 
-      const emailSet = new Set<string>();
-      const phoneSet = new Set<string>();
-      const nameZipSet = new Set<string>(); // "first|last|zip"
+      const emailSet   = new Set<string>();
+      const phoneSet   = new Set<string>();
+      const nameZipSet = new Set<string>();
 
       for (const c of existing ?? []) {
         if (c.email) emailSet.add(c.email.toLowerCase());
@@ -133,80 +162,112 @@ export async function POST(req: NextRequest) {
       }
 
       for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
+        const row    = rows[i];
         const rowNum = i + 1;
 
         try {
-          const firstName = col(row, "first_name", "First Name", "first");
-          const lastName  = col(row, "last_name",  "Last Name",  "last");
-          const rawEmail  = col(row, "email",  "Email");
-          const rawPhone  = col(row, "phone",  "Phone",  "mobile");
+          // ── Name resolution (standard cols first, then DriveCentric "Customer") ──
+          let firstName = col(row, "first_name", "First Name", "first");
+          let lastName  = col(row, "last_name",  "Last Name",  "last");
 
-          // Skip entirely empty rows
+          if (!firstName && !lastName) {
+            const rawCustomer = row["Customer"] ?? "";
+            if (rawCustomer.trim()) {
+              const parsed = parseDriveCentricName(rawCustomer);
+              firstName = parsed.firstName;
+              lastName  = parsed.lastName;
+            }
+          }
+
+          // ── Contact info ────────────────────────────────────────
+          // DriveCentric: prefer Cell Phone for SMS campaigns, fall back to Phone/Home Phone
+          const rawEmail = col(row, "email", "Email");
+          const rawPhone = col(
+            row,
+            "Cell Phone", "phone", "Phone", "mobile", "Home Phone"
+          );
+
+          // Skip completely empty rows
           if (!firstName && !lastName && !rawEmail && !rawPhone) {
             skipped++;
             continue;
           }
 
-          // Normalize
           const email = rawEmail ? normalizeEmail(rawEmail) : null;
-          const phone = rawPhone ? normalizePhone(rawPhone) : null;
+          const phone = rawPhone ? normalizePhone(rawPhone)  : null;
 
-          // Warn on invalid email/phone but don't skip (they may still have name)
           if (rawEmail && !email) {
-            errors.push({ row: rowNum, field: "email", message: `Invalid email format: "${rawEmail}"` });
+            errors.push({ row: rowNum, field: "email", message: `Invalid email: "${rawEmail}"` });
           }
           if (rawPhone && !phone) {
-            errors.push({ row: rowNum, field: "phone", message: `Invalid phone (expected 10 digits): "${rawPhone}"` });
+            errors.push({ row: rowNum, field: "phone", message: `Invalid phone (need 10 digits): "${rawPhone}"` });
           }
 
-          // Dedup by email, phone, or name+zip
-          const rawState = col(row, "state", "State");
-          const rawZip   = col(row, "zip",   "Zip",  "postal_code");
-          const zip      = normalizeZip(rawZip) ?? rawZip.trim();
+          // ── Address ─────────────────────────────────────────────
+          // DriveCentric: "Address 1" for street, standard cols also supported
+          const rawStreet = col(row, "Address 1", "street", "address", "Address");
+          const rawCity   = col(row, "city", "City");
+          const rawState  = col(row, "state", "State");
+          const rawZip    = col(row, "zip", "Zip", "postal_code");
 
+          const zip   = normalizeZip(rawZip)   ?? rawZip.trim();
+          const state = normalizeState(rawState) ?? (rawState.toUpperCase() || undefined);
+
+          // ── Dedup ────────────────────────────────────────────────
           const isDup =
             (email && emailSet.has(email)) ||
-            (phone && phoneSet.has(phone)) ||
+            (phone && phoneSet.has(phone.replace(/\D/g, ""))) ||
             (firstName && lastName && zip &&
               nameZipSet.has(`${firstName.toLowerCase()}|${lastName.toLowerCase()}|${zip}`));
 
-          if (isDup) {
-            skipped++;
-            continue;
-          }
+          if (isDup) { skipped++; continue; }
 
-          const rawStreet = col(row, "street", "address", "Address");
-          const rawCity   = col(row, "city",   "City");
-          const state     = normalizeState(rawState) ?? (rawState.toUpperCase() || undefined);
-
+          // ── Build address object ─────────────────────────────────
           const address: Record<string, string> = {};
-          if (rawStreet)  address.street = rawStreet;
-          if (rawCity)    address.city   = rawCity;
-          if (state)      address.state  = state;
-          if (zip)        address.zip    = zip;
+          if (rawStreet) address.street = rawStreet;
+          if (rawCity)   address.city   = rawCity;
+          if (state)     address.state  = state;
+          if (zip)       address.zip    = zip;
+
+          // ── DriveCentric extra metadata ──────────────────────────
+          const sourceDesc   = col(row, "Source Description", "lead_source");
+          const currentStage = col(row, "Current Stage",      "lead_status");
+          const lastNote     = col(row, "Last Note", "Last DealLog Message", "service_notes");
+          const store        = col(row, "Store");
+          const buyer        = col(row, "Buyer");
+
+          const extraMeta: Record<string, unknown> = {};
+          if (sourceDesc)   extraMeta.lead_source  = sourceDesc;
+          if (currentStage) extraMeta.lead_status  = currentStage;
+          if (lastNote)     extraMeta.last_note     = lastNote.slice(0, 1000);
+          if (store)        extraMeta.dms_store     = store;
+          if (buyer)        extraMeta.assigned_to   = buyer;
+
+          // Map DriveCentric "Current Stage" to our lifecycle enum
+          const lifecycleStage: LifecycleStage = currentStage
+            ? mapLifecycleStage(currentStage)
+            : "prospect";
 
           const newCustomer = {
             dealership_id:   ud.dealership_id,
             first_name:      firstName || "Unknown",
             last_name:       lastName  || "",
-            email:           email ?? null,
-            phone:           phone    ?? null,
+            email:           email  ?? null,
+            phone:           phone  ?? null,
             address:         Object.keys(address).length > 0 ? address : {},
-            lifecycle_stage: "prospect",
+            lifecycle_stage: lifecycleStage,
             total_visits:    0,
             total_spend:     0,
             tags:            [],
-            metadata:        {},
+            metadata:        extraMeta,
           };
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { error: insertErr } = await serviceClient.from("customers").insert(newCustomer as any);
           if (insertErr) throw new Error(insertErr.message);
 
-          // Update in-memory dedup sets so later rows in this batch don't duplicate
           if (email) emailSet.add(email);
-          if (phone) phoneSet.add(phone);
+          if (phone) phoneSet.add(phone.replace(/\D/g, ""));
           if (firstName && lastName && zip) {
             nameZipSet.add(`${firstName.toLowerCase()}|${lastName.toLowerCase()}|${zip}`);
           }
@@ -239,8 +300,7 @@ export async function POST(req: NextRequest) {
         if (c.phone) phoneToId.set(c.phone.replace(/\D/g, ""), c.id);
       }
 
-      // Cache existing visit keys per customer to avoid per-row DB queries
-      const visitKeys = new Set<string>(); // "customerId|YYYY-MM-DD" and "customerId|ro_number"
+      const visitKeys = new Set<string>();
       const { data: existingVisits } = await serviceClient
         .from("visits")
         .select("customer_id, visit_date, ro_number")
@@ -255,12 +315,12 @@ export async function POST(req: NextRequest) {
       }
 
       for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
+        const row    = rows[i];
         const rowNum = i + 1;
 
         try {
-          const rawEmail  = col(row, "email", "Email").toLowerCase();
-          const rawPhone  = col(row, "phone", "Phone").replace(/\D/g, "");
+          const rawEmail = col(row, "email", "Email").toLowerCase();
+          const rawPhone = col(row, "phone", "Phone", "Cell Phone").replace(/\D/g, "");
 
           let customerId = col(row, "customer_id", "customer_uuid");
           if (!customerId && rawEmail) customerId = emailToId.get(rawEmail) ?? "";
@@ -268,7 +328,7 @@ export async function POST(req: NextRequest) {
 
           if (!customerId) {
             skipped++;
-            errors.push({ row: rowNum, message: "No customer match — no id, email, or phone found in your customer list" });
+            errors.push({ row: rowNum, message: "No customer match — no id, email, or phone found" });
             continue;
           }
 
@@ -288,7 +348,6 @@ export async function POST(req: NextRequest) {
 
           const roNumber = col(row, "ro_number", "ro", "repair_order") || null;
 
-          // Dedup by visit_date or ro_number
           if (visitKeys.has(`${customerId}|${visitDate}`)) { skipped++; continue; }
           if (roNumber && visitKeys.has(`ro|${customerId}|${roNumber}`)) { skipped++; continue; }
 
@@ -301,24 +360,24 @@ export async function POST(req: NextRequest) {
           const year    = rawYear    ? parseYear(rawYear)        : null;
 
           if (rawAmount && amount === null) {
-            errors.push({ row: rowNum, field: "total_amount", message: `Invalid amount value: "${rawAmount}"` });
+            errors.push({ row: rowNum, field: "total_amount", message: `Invalid amount: "${rawAmount}"` });
           }
           if (rawYear && year === null) {
-            errors.push({ row: rowNum, field: "year", message: `Year out of valid range (1980–${new Date().getFullYear() + 1}): "${rawYear}"` });
+            errors.push({ row: rowNum, field: "year", message: `Year out of range: "${rawYear}"` });
           }
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { error: insertErr } = await serviceClient.from("visits").insert({
             dealership_id: ud.dealership_id,
             customer_id:   customerId,
-            vin:           col(row, "vin", "VIN")                   || null,
-            make:          col(row, "make", "Make")                  || null,
-            model:         col(row, "model", "Model")                || null,
+            vin:           col(row, "vin", "VIN") || null,
+            make:          col(row, "make", "Make") || null,
+            model:         col(row, "model", "Model") || null,
             year,
             mileage,
             service_type:  col(row, "service_type", "service", "Service") || null,
             service_notes: col(row, "notes", "service_notes", "description") || null,
-            technician:    col(row, "technician", "tech")            || null,
+            technician:    col(row, "technician", "tech") || null,
             ro_number:     roNumber,
             total_amount:  amount,
             visit_date:    visitDate,
@@ -326,11 +385,9 @@ export async function POST(req: NextRequest) {
 
           if (insertErr) throw new Error(insertErr.message);
 
-          // Update in-memory dedup cache
           visitKeys.add(`${customerId}|${visitDate}`);
           if (roNumber) visitKeys.add(`ro|${customerId}|${roNumber}`);
 
-          // Increment customer visit count + spend
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (serviceClient.rpc as any)("increment_customer_visits", {
             p_customer_id: customerId,
@@ -352,7 +409,6 @@ export async function POST(req: NextRequest) {
       success: true,
       inserted,
       skipped,
-      // Return up to 50 structured errors so the UI can display them clearly
       errors: errors.slice(0, 50),
     });
   } catch (error) {

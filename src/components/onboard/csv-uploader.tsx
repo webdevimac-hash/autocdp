@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileText, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { parseCsvToRows } from "@/lib/csv";
 
 interface CsvUploaderProps {
   type: "customers" | "visits";
@@ -12,53 +13,6 @@ interface CsvUploaderProps {
   description?: string;
   requiredColumns?: string[];
   onSuccess?: (result: { inserted: number; skipped: number }) => void;
-}
-
-// Quote-aware CSV parser — no external deps
-function parseCsv(text: string): Record<string, string>[] {
-  const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-  if (lines.length < 2) return [];
-
-  const headers = splitCsvLine(lines[0]);
-  const rows: Record<string, string>[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    const values = splitCsvLine(line);
-    const row: Record<string, string> = {};
-    headers.forEach((h, idx) => {
-      row[h.trim()] = (values[idx] ?? "").trim();
-    });
-    rows.push(row);
-  }
-
-  return rows;
-}
-
-function splitCsvLine(line: string): string[] {
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (ch === "," && !inQuotes) {
-      result.push(current);
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  result.push(current);
-  return result;
 }
 
 export function CsvUploader({
@@ -88,7 +42,7 @@ export function CsvUploader({
     reader.onload = (e) => {
       const text = e.target?.result as string;
       try {
-        const parsed = parseCsv(text);
+        const parsed = parseCsvToRows(text);
         setRows(parsed);
         if (parsed.length > 0) setHeaders(Object.keys(parsed[0]));
       } catch {

@@ -8,6 +8,7 @@ import {
   PlugZap, FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { parseCsvToRows } from "@/lib/csv";
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -31,33 +32,9 @@ interface UploadResult {
   errors?: string[];
 }
 
-// ── CSV parser (no external deps) ─────────────────────────────
-
-function parseCsv(text: string): Record<string, string>[] {
-  const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-  if (lines.length < 2) return [];
-  const headers = splitCsvLine(lines[0]);
-  return lines.slice(1).filter(Boolean).map((line) => {
-    const vals = splitCsvLine(line);
-    const row: Record<string, string> = {};
-    headers.forEach((h, i) => { row[h.trim()] = (vals[i] ?? "").trim(); });
-    return row;
-  });
-}
-
-function splitCsvLine(line: string): string[] {
-  const result: string[] = [];
-  let cur = "";
-  let inQ = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (c === '"') { if (inQ && line[i + 1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
-    else if (c === "," && !inQ) { result.push(cur); cur = ""; }
-    else cur += c;
-  }
-  result.push(cur);
-  return result;
-}
+// ── CSV parser ────────────────────────────────────────────────
+// RFC 4180-compliant — handles multi-line quoted fields (e.g. DriveCentric).
+const parseCsv = parseCsvToRows;
 
 // ── Step indicator ────────────────────────────────────────────
 

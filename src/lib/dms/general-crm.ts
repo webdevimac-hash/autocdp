@@ -1,5 +1,5 @@
 /**
- * General CRM connector — covers Dealertrack, Elead, DealerSocket, and others.
+ * General CRM connector — covers Dealertrack, Elead, DealerSocket, DriveCentric, and others.
  *
  * Two ingestion paths:
  *   1. Generic REST API (if the CRM exposes a leads/contacts endpoint).
@@ -11,6 +11,8 @@
  *   GENERAL_CRM_API_BASE  (default: https://api.generic-crm.example.com/v1)
  *   — overridden per-dealership via the baseUrl field in encrypted_tokens
  */
+
+import { parseCsvRecords, parseDriveCentricName, DC_NULL_VALUES } from "@/lib/csv";
 
 export const GENERAL_CRM_API_BASE =
   process.env.GENERAL_CRM_API_BASE ?? "https://api.generic-crm.example.com/v1";
@@ -38,15 +40,12 @@ async function crmFetch<T>(
     return crmFetch(path, apiKey, baseUrl, retries - 1);
   }
 
-  if (!res.ok) {
-    throw new Error(`General CRM API ${path} → ${res.status}`);
-  }
-
+  if (!res.ok) throw new Error(`General CRM API ${path} → ${res.status}`);
   return res.json() as Promise<T>;
 }
 
 // ---------------------------------------------------------------------------
-// Generic lead / contact shape (normalized across Dealertrack, Elead, etc.)
+// Generic lead / contact shape (normalized across Dealertrack, Elead, DriveCentric, etc.)
 // ---------------------------------------------------------------------------
 
 export interface GeneralCrmLead {
@@ -69,6 +68,7 @@ export interface GeneralCrmLead {
     model?: string;
     vin?: string;
   };
+  lastNote?: string;
   lastActivityDate?: string;
   createdDate?: string;
   lastModifiedDate?: string;
@@ -117,50 +117,172 @@ export async function fetchGeneralCrmActivities(
 }
 
 // ---------------------------------------------------------------------------
-// CSV parsing — dealer-exported leads file
+// CSV parsing — dealer-exported leads / customers file
 //
-// Expected columns (order flexible, matched by header name):
-//   first_name, last_name, email, phone, lead_source, lead_status,
-//   street, city, state, zip, vehicle_year, vehicle_make, vehicle_model,
-//   vehicle_vin, created_date, last_modified_date
+// Natively understands two formats:
+//
+//  A) Standard format (Dealertrack, Elead, generic):
+//       first_name, last_name, email, phone, lead_source, lead_status,
+//       street, city, state, zip, vehicle_year, vehicle_make, vehicle_model,
+//       vehicle_vin, created_date, last_modified_date
+//
+//  B) DriveCentric format:
+//       Customer (multi-line "ML\n\nMiyah Lowe"), Store, Created,
+//       Source, Source Description, Cell Phone, Home Phone, Phone,
+//       Address 1, Address 2, City, State, Zip,
+//       Current Stage, Last Note, Last DealLog Message, ...
+//
+// Column matching is case-insensitive and space-normalised.
+// The parser uses an RFC 4180-compliant CSV reader that handles
+// multi-line quoted fields — safe for DriveCentric exports.
 // ---------------------------------------------------------------------------
 
+/** Return first non-empty, non-DC-null value for any of the given normalised headers. */
+function pick(
+  row: string[],
+  headerIndex: Map<string, number>,
+  ...names: string[]
+): string | undefined {
+  for (const name of names) {
+    const idx = headerIndex.get(name);
+    if (idx === undefined) continue;
+    const v = (row[idx] ?? "").trim();
+    if (v && !DC_NULL_VALUES.has(v.toLowerCase())) return v;
+  }
+  return undefined;
+}
+
+/** Normalise a header string the same way the parser does. */
+function normHeader(h: string): string {
+  return h.trim().toLowerCase().replace(/\s+/g, "_");
+}
+
 export function parseLeadsCsv(csv: string): GeneralCrmLead[] {
-  const lines = csv.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
+  const records = parseCsvRecords(csv);
+  if (records.length < 2) return [];
 
-  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/\s+/g, "_"));
+  // Build a case-insensitive, space-normalised header index
+  const rawHeaders = records[0].map((h) => h.trim());
+  const headerIndex = new Map<string, number>();
+  rawHeaders.forEach((h, i) => {
+    headerIndex.set(normHeader(h), i);
+    // Also store original (lower) so exact matches still work
+    headerIndex.set(h.toLowerCase(), i);
+  });
 
-  const col = (row: string[], name: string): string | undefined => {
-    const idx = headers.indexOf(name);
-    return idx >= 0 ? (row[idx]?.trim() || undefined) : undefined;
-  };
+  const leads: GeneralCrmLead[] = [];
 
-  return lines.slice(1).map((line, i): GeneralCrmLead => {
-    // Handle quoted CSV values naively (no embedded commas in quotes)
-    const row = line.split(",").map((c) => c.replace(/^"|"$/g, "").trim());
-    return {
-      leadId: col(row, "lead_id") ?? col(row, "id") ?? `csv-row-${i + 2}`,
-      firstName: col(row, "first_name") ?? "",
-      lastName: col(row, "last_name") ?? "",
-      email: col(row, "email"),
-      phone: col(row, "phone"),
-      leadSource: col(row, "lead_source"),
-      leadStatus: col(row, "lead_status"),
-      address: {
-        street: col(row, "street"),
-        city: col(row, "city"),
-        state: col(row, "state"),
-        zip: col(row, "zip"),
-      },
-      vehicleInterest: {
-        year: col(row, "vehicle_year") ? parseInt(col(row, "vehicle_year")!, 10) : undefined,
-        make: col(row, "vehicle_make"),
-        model: col(row, "vehicle_model"),
-        vin: col(row, "vehicle_vin"),
-      },
-      createdDate: col(row, "created_date"),
-      lastModifiedDate: col(row, "last_modified_date"),
+  records.slice(1).forEach((row, i) => {
+    // ── Name ─────────────────────────────────────────────────────
+    let firstName: string | undefined;
+    let lastName:  string | undefined;
+
+    // Standard columns first
+    firstName = pick(row, headerIndex, "first_name");
+    lastName  = pick(row, headerIndex, "last_name");
+
+    if (!firstName && !lastName) {
+      // DriveCentric combined "Customer" column
+      const customerRaw = pick(row, headerIndex, "customer");
+      if (customerRaw) {
+        const parsed = parseDriveCentricName(customerRaw);
+        if (parsed.firstName) firstName = parsed.firstName;
+        if (parsed.lastName)  lastName  = parsed.lastName;
+      }
+    }
+
+    if (!firstName && !lastName) {
+      // Check Store column — some DriveCentric records shift the name there
+      const storeRaw = pick(row, headerIndex, "store");
+      if (storeRaw && /\n/.test(storeRaw)) {
+        const parsed = parseDriveCentricName(storeRaw);
+        if (parsed.firstName) firstName = parsed.firstName;
+        if (parsed.lastName)  lastName  = parsed.lastName;
+      }
+    }
+
+    // ── Contact ───────────────────────────────────────────────────
+    const email = pick(row, headerIndex, "email");
+    // DriveCentric: prefer Cell Phone for SMS, fall back to Phone / Home Phone
+    const phone = pick(
+      row, headerIndex,
+      "cell_phone", "phone", "mobile", "home_phone"
+    );
+
+    // Skip entirely empty rows
+    if (!firstName && !lastName && !email && !phone) return;
+
+    // ── Lead identity ─────────────────────────────────────────────
+    const leadId =
+      pick(row, headerIndex, "lead_id", "id") ??
+      pick(row, headerIndex, "dms_deal_no.", "dms_deal_no") ??
+      `csv-row-${i + 2}`;
+
+    // ── Address ───────────────────────────────────────────────────
+    // Standard: street | DriveCentric: address_1 / address 1
+    const street = pick(row, headerIndex, "street", "address_1", "address 1");
+    const city   = pick(row, headerIndex, "city");
+    const state  = pick(row, headerIndex, "state");
+    const zip    = pick(row, headerIndex, "zip", "postal_code");
+
+    // ── Lead metadata ─────────────────────────────────────────────
+    // Standard: lead_source | DriveCentric: source_description
+    const leadSource =
+      pick(row, headerIndex, "lead_source") ??
+      pick(row, headerIndex, "source_description", "source description");
+
+    // Standard: lead_status | DriveCentric: current_stage
+    const leadStatus =
+      pick(row, headerIndex, "lead_status") ??
+      pick(row, headerIndex, "current_stage", "current stage");
+
+    // ── Vehicle interest ──────────────────────────────────────────
+    const vehicleYearRaw = pick(row, headerIndex, "vehicle_year");
+    const vehicleYear    = vehicleYearRaw ? parseInt(vehicleYearRaw, 10) : undefined;
+
+    const vehicleInterest: GeneralCrmLead["vehicleInterest"] = {
+      year:  isNaN(vehicleYear ?? NaN) ? undefined : vehicleYear,
+      make:  pick(row, headerIndex, "vehicle_make"),
+      model: pick(row, headerIndex, "vehicle_model"),
+      vin:   pick(row, headerIndex, "vehicle_vin"),
     };
-  }).filter((l) => l.firstName || l.lastName || l.email);
+
+    const hasVehicleInterest = Object.values(vehicleInterest).some((v) => v !== undefined);
+
+    // ── Notes (DriveCentric "Last Note" / "Last DealLog Message") ──
+    const lastNote =
+      pick(row, headerIndex, "last_note") ??
+      pick(row, headerIndex, "last_deallog_message", "last deallog message");
+
+    // ── Dates ─────────────────────────────────────────────────────
+    // Ignore DriveCentric relative dates ("7 days ago") — they can't be parsed.
+    function parseAbsoluteDate(raw: string | undefined): string | undefined {
+      if (!raw) return undefined;
+      if (/ago|yesterday|tomorrow/i.test(raw)) return undefined; // relative, skip
+      const d = new Date(raw.trim().replace(/\//g, "-"));
+      return isNaN(d.getTime()) ? undefined : d.toISOString().slice(0, 10);
+    }
+
+    const createdDate      = parseAbsoluteDate(pick(row, headerIndex, "created_date", "created"));
+    const lastModifiedDate = parseAbsoluteDate(pick(row, headerIndex, "last_modified_date", "last_modified"));
+
+    leads.push({
+      leadId,
+      firstName: firstName ?? "",
+      lastName:  lastName  ?? "",
+      email,
+      phone,
+      leadSource,
+      leadStatus,
+      address: (street || city || state || zip)
+        ? { street, city, state, zip }
+        : undefined,
+      vehicleInterest: hasVehicleInterest ? vehicleInterest : undefined,
+      lastNote,
+      createdDate,
+      lastModifiedDate,
+    });
+  });
+
+  return leads;
 }
