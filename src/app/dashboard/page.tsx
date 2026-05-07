@@ -58,7 +58,7 @@ export default async function DashboardPage() {
 
   const vipCount = customers.filter((c) => c.lifecycle_stage === "vip").length;
   const atRiskCount = customers.filter((c) => c.lifecycle_stage === "at_risk").length;
-  const totalRevenue = customers.reduce((s, c) => s + (c.total_spend ?? 0), 0);
+  const totalRevenue = customers.reduce((s, c) => s + (Number(c.total_spend) || 0), 0);
   const activeCampaigns = campaigns.filter((c) => c.status === "active").length;
   const sentThisMonth = comms.filter((c) => c.status === "sent" || c.status === "delivered").length;
 

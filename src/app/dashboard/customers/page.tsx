@@ -118,7 +118,8 @@ export default async function CustomersPage() {
                     const stage = customer.lifecycle_stage as LifecycleStage;
                     const style = STAGE_STYLES[stage] ?? STAGE_STYLES.prospect;
                     const initials = getInitials(customer.first_name, customer.last_name);
-                    const ltv = customer.total_spend ?? 0;
+                    const ltv = Number(customer.total_spend) || 0;
+                    const visits = Number(customer.total_visits) || 0;
 
                     return (
                       <tr key={customer.id} className="cursor-pointer">
@@ -144,7 +145,7 @@ export default async function CustomersPage() {
                           </span>
                         </td>
                         <td className="text-right tabular-nums text-slate-500 font-medium text-[13px]">
-                          {customer.total_visits ?? 0}
+                          {visits}
                         </td>
                         <td className="text-right">
                           <span className={`font-bold text-[13px] tabular-nums ${ltv >= 10000 ? "text-emerald-700" : "text-slate-900"}`}>
