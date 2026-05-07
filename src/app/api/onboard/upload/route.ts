@@ -162,16 +162,19 @@ export async function POST(req: NextRequest) {
       }
 
       for (let i = 0; i < rows.length; i++) {
-        const row    = rows[i];
+        // Normalize keys to lowercase so ALL-CAPS exports (household files, etc.) map correctly
+        const row = Object.fromEntries(
+          Object.entries(rows[i]).map(([k, v]) => [k.toLowerCase(), v])
+        ) as Record<string, string>;
         const rowNum = i + 1;
 
         try {
           // ── Name resolution (standard cols first, then DriveCentric "Customer") ──
-          let firstName = col(row, "first_name", "First Name", "first");
-          let lastName  = col(row, "last_name",  "Last Name",  "last");
+          let firstName = col(row, "first_name", "first name", "first");
+          let lastName  = col(row, "last_name",  "last name",  "last");
 
           if (!firstName && !lastName) {
-            const rawCustomer = row["Customer"] ?? "";
+            const rawCustomer = row["customer"] ?? "";
             if (rawCustomer.trim()) {
               const parsed = parseDriveCentricName(rawCustomer);
               firstName = parsed.firstName;
@@ -180,11 +183,11 @@ export async function POST(req: NextRequest) {
           }
 
           // ── Contact info ────────────────────────────────────────
-          // DriveCentric: prefer Cell Phone for SMS campaigns, fall back to Phone/Home Phone
-          const rawEmail = col(row, "email", "Email");
+          // Prefer cell phone for SMS campaigns; fall back to primary phone
+          const rawEmail = col(row, "email");
           const rawPhone = col(
             row,
-            "Cell Phone", "phone", "Phone", "mobile", "Home Phone"
+            "cell phone", "phonecell", "phone", "mobile", "home phone"
           );
 
           // Skip completely empty rows
@@ -204,11 +207,10 @@ export async function POST(req: NextRequest) {
           }
 
           // ── Address ─────────────────────────────────────────────
-          // DriveCentric: "Address 1" for street, standard cols also supported
-          const rawStreet = col(row, "Address 1", "street", "address", "Address");
-          const rawCity   = col(row, "city", "City");
-          const rawState  = col(row, "state", "State");
-          const rawZip    = col(row, "zip", "Zip", "postal_code");
+          const rawStreet = col(row, "address 1", "street", "address");
+          const rawCity   = col(row, "city");
+          const rawState  = col(row, "state");
+          const rawZip    = col(row, "zip", "postal_code");
 
           const zip   = normalizeZip(rawZip)   ?? rawZip.trim();
           const state = normalizeState(rawState) ?? (rawState.toUpperCase() || undefined);
@@ -229,12 +231,12 @@ export async function POST(req: NextRequest) {
           if (state)     address.state  = state;
           if (zip)       address.zip    = zip;
 
-          // ── DriveCentric extra metadata ──────────────────────────
-          const sourceDesc   = col(row, "Source Description", "lead_source");
-          const currentStage = col(row, "Current Stage",      "lead_status");
-          const lastNote     = col(row, "Last Note", "Last DealLog Message", "service_notes");
-          const store        = col(row, "Store");
-          const buyer        = col(row, "Buyer");
+          // ── Extra metadata (DriveCentric + generic CRM) ──────────
+          const sourceDesc   = col(row, "source description", "lead_source");
+          const currentStage = col(row, "current stage",      "lead_status");
+          const lastNote     = col(row, "last note", "last deallog message", "service_notes");
+          const store        = col(row, "store");
+          const buyer        = col(row, "buyer");
 
           const extraMeta: Record<string, unknown> = {};
           if (sourceDesc)   extraMeta.lead_source  = sourceDesc;
@@ -315,12 +317,14 @@ export async function POST(req: NextRequest) {
       }
 
       for (let i = 0; i < rows.length; i++) {
-        const row    = rows[i];
+        const row = Object.fromEntries(
+          Object.entries(rows[i]).map(([k, v]) => [k.toLowerCase(), v])
+        ) as Record<string, string>;
         const rowNum = i + 1;
 
         try {
-          const rawEmail = col(row, "email", "Email").toLowerCase();
-          const rawPhone = col(row, "phone", "Phone", "Cell Phone").replace(/\D/g, "");
+          const rawEmail = col(row, "email").toLowerCase();
+          const rawPhone = col(row, "phone", "cell phone", "phonecell").replace(/\D/g, "");
 
           let customerId = col(row, "customer_id", "customer_uuid");
           if (!customerId && rawEmail) customerId = emailToId.get(rawEmail) ?? "";
@@ -332,7 +336,7 @@ export async function POST(req: NextRequest) {
             continue;
           }
 
-          const rawDate = col(row, "visit_date", "date", "Date", "service_date");
+          const rawDate = col(row, "visit_date", "date", "service_date", "svc_date");
           if (!rawDate) {
             skipped++;
             errors.push({ row: rowNum, field: "visit_date", message: "Missing visit date" });
@@ -351,9 +355,9 @@ export async function POST(req: NextRequest) {
           if (visitKeys.has(`${customerId}|${visitDate}`)) { skipped++; continue; }
           if (roNumber && visitKeys.has(`ro|${customerId}|${roNumber}`)) { skipped++; continue; }
 
-          const rawAmount  = col(row, "total_amount", "total", "amount", "invoice_total");
+          const rawAmount  = col(row, "total_amount", "total", "amount", "invoice_total", "lastsvcamount");
           const rawMileage = col(row, "mileage", "odometer");
-          const rawYear    = col(row, "year", "Year");
+          const rawYear    = col(row, "year");
 
           const amount  = rawAmount  ? parseAmount(rawAmount)   : null;
           const mileage = rawMileage ? parseMileage(rawMileage) : null;
@@ -370,12 +374,12 @@ export async function POST(req: NextRequest) {
           const { error: insertErr } = await serviceClient.from("visits").insert({
             dealership_id: ud.dealership_id,
             customer_id:   customerId,
-            vin:           col(row, "vin", "VIN") || null,
-            make:          col(row, "make", "Make") || null,
-            model:         col(row, "model", "Model") || null,
+            vin:           col(row, "vin") || null,
+            make:          col(row, "make") || null,
+            model:         col(row, "model") || null,
             year,
             mileage,
-            service_type:  col(row, "service_type", "service", "Service") || null,
+            service_type:  col(row, "service_type", "service") || null,
             service_notes: col(row, "notes", "service_notes", "description") || null,
             technician:    col(row, "technician", "tech") || null,
             ro_number:     roNumber,

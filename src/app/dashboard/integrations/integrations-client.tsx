@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ConnectionCard, type ConnectionStatus } from "@/components/integrations/connection-card";
+import { parseCsvToRows } from "@/lib/csv";
 import { Database, RefreshCw, AlertCircle, CheckCircle2, Info, Car, CreditCard, FileText, Webhook, Copy, Check } from "lucide-react";
 
 type DmsProvider = "cdk_fortellis" | "reynolds" | "vinsolutions" | "vauto" | "seven_hundred_credit" | "general_crm";
@@ -137,12 +138,13 @@ function CsvUploadModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onUpload: (file: File) => Promise<void>;
+  onUpload: (file: File, reportProgress: (current: number, total: number) => void) => Promise<{ inserted: number; skipped: number }>;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
-  const [result, setResult] = useState<{ parsed: number; upserted: number } | null>(null);
+  const [result, setResult] = useState<{ inserted: number; skipped: number } | null>(null);
+  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -150,18 +152,22 @@ function CsvUploadModal({
     setLoading(true);
     setErr("");
     setResult(null);
+    setProgress(null);
     try {
-      await onUpload(file);
-      setResult({ parsed: 0, upserted: 0 }); // server returns actual counts
+      const r = await onUpload(file, (current, total) => setProgress({ current, total }));
+      setResult(r);
       setFile(null);
     } catch (error) {
       setErr(error instanceof Error ? error.message : "Upload failed");
     } finally {
       setLoading(false);
+      setProgress(null);
     }
   }
 
   if (!open) return null;
+
+  const pct = progress ? Math.round((progress.current / progress.total) * 100) : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -171,15 +177,29 @@ function CsvUploadModal({
           Export your leads from Dealertrack, Elead, DealerSocket, or any CRM and upload the CSV here.
         </p>
         <p className="text-xs text-gray-400 mb-5">
-          Expected columns: first_name, last_name, email, phone, lead_source, lead_status, street, city, state, zip, vehicle_year, vehicle_make, vehicle_model, vehicle_vin, created_date
+          Supports any CSV export — column names are matched automatically (case-insensitive).
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="file"
             accept=".csv,text/csv"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => { setFile(e.target.files?.[0] ?? null); setResult(null); setErr(""); }}
             className="w-full text-sm text-gray-600 file:mr-3 file:px-3 file:py-1.5 file:rounded file:border file:border-gray-300 file:text-sm file:bg-gray-50 hover:file:bg-gray-100"
           />
+          {loading && progress && (
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Processing rows…</span>
+                <span>{progress.current.toLocaleString()} / {progress.total.toLocaleString()} ({pct}%)</span>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-2">
+                <div
+                  className="bg-brand-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          )}
           {err && (
             <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -189,7 +209,7 @@ function CsvUploadModal({
           {result && (
             <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
-              Upload complete. Leads imported successfully.
+              Import complete — {result.inserted.toLocaleString()} customers added, {result.skipped.toLocaleString()} skipped (duplicates or invalid).
             </div>
           )}
           <div className="flex gap-3 pt-1">
@@ -543,20 +563,36 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
     }
   }
 
-  async function handleCsvUpload(file: File) {
-    const form = new FormData();
-    form.append("file", file);
-    const res = await fetch("/api/integrations/general-crm/upload", {
-      method: "POST",
-      body: form,
-    });
-    if (!res.ok) {
-      const data = await res.json() as { error?: string };
-      throw new Error(data.error ?? "Upload failed");
+  async function handleCsvUpload(file: File, reportProgress: (current: number, total: number) => void) {
+    const text = await file.text();
+    const rows = parseCsvToRows(text);
+    if (rows.length === 0) throw new Error("CSV contained no valid rows.");
+
+    const BATCH = 500;
+    let totalInserted = 0;
+    let totalSkipped = 0;
+
+    for (let i = 0; i < rows.length; i += BATCH) {
+      const batch = rows.slice(i, i + BATCH);
+      const res = await fetch("/api/onboard/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "customers", rows: batch }),
+      });
+      if (!res.ok) {
+        const respText = await res.text();
+        let message = "Upload failed";
+        try { message = (JSON.parse(respText) as { error?: string }).error ?? message; } catch { /* non-JSON error */ }
+        throw new Error(message);
+      }
+      const data = await res.json() as { inserted: number; skipped: number };
+      totalInserted += data.inserted ?? 0;
+      totalSkipped += data.skipped ?? 0;
+      reportProgress(Math.min(i + BATCH, rows.length), rows.length);
     }
-    const data = await res.json() as { upserted: number };
-    setToast({ type: "success", message: `CSV uploaded — ${data.upserted} leads imported.` });
+
     setTimeout(() => router.refresh(), 1000);
+    return { inserted: totalInserted, skipped: totalSkipped };
   }
 
   const [currentXtimeUrl, setCurrentXtimeUrl] = useState(xtimeUrl ?? null);
@@ -832,7 +868,7 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
       <CsvUploadModal
         open={openModal === "csv_upload"}
         onClose={() => setOpenModal(null)}
-        onUpload={handleCsvUpload}
+        onUpload={(file, reportProgress) => handleCsvUpload(file, reportProgress)}
       />
     </div>
   );
