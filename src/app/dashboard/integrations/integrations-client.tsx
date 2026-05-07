@@ -186,16 +186,21 @@ function CsvUploadModal({
             onChange={(e) => { setFile(e.target.files?.[0] ?? null); setResult(null); setErr(""); }}
             className="w-full text-sm text-gray-600 file:mr-3 file:px-3 file:py-1.5 file:rounded file:border file:border-gray-300 file:text-sm file:bg-gray-50 hover:file:bg-gray-100"
           />
-          {loading && progress && (
+          {loading && (
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs text-gray-500">
-                <span>Processing rows…</span>
-                <span>{progress.current.toLocaleString()} / {progress.total.toLocaleString()} ({pct}%)</span>
+                {progress
+                  ? <span>Importing rows…</span>
+                  : <span>Enriching segments…</span>
+                }
+                {progress && (
+                  <span>{progress.current.toLocaleString()} / {progress.total.toLocaleString()} ({pct}%)</span>
+                )}
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2">
                 <div
                   className="bg-brand-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${pct}%` }}
+                  style={{ width: progress ? `${pct}%` : "100%" }}
                 />
               </div>
             </div>
@@ -591,7 +596,10 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
       reportProgress(Math.min(i + BATCH, rows.length), rows.length);
     }
 
-    setTimeout(() => router.refresh(), 1000);
+    // Refresh segment stats + write dealership_insights so swarm has context
+    await fetch("/api/onboard/enrich", { method: "POST" }).catch(() => null);
+
+    setTimeout(() => router.refresh(), 500);
     return { inserted: totalInserted, skipped: totalSkipped };
   }
 

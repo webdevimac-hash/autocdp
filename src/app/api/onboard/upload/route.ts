@@ -5,15 +5,22 @@ import { parseDriveCentricName, DC_NULL_VALUES } from "@/lib/csv";
 /**
  * POST /api/onboard/upload
  *
- * Accepts parsed CSV rows for customers or visits.
  * Body: { type: "customers" | "visits"; rows: Record<string, string>[] }
  *
- * Customers: deduplicates on (email | phone | first+last+zip) per dealership.
- *            Normalizes email, phone, state, zip before writing.
- *            Natively understands DriveCentric export column names.
+ * customers — auto-detects source format:
  *
- * Visits:    deduplicates on (customer_id, visit_date) and (customer_id, ro_number).
- *            Validates date format and numeric fields before writing.
+ *   DMS household (Braman / CDK / Reynolds — has CUST_NO, SOLD_DATE, SVC_DATE):
+ *     • Batch upserts on dms_external_id → idempotent re-imports
+ *     • Derives lifecycle_stage, tags, metadata from CSV fields
+ *     • Inserts purchase + service visit records per row;
+ *       the update_customer_stats trigger then corrects total_visits /
+ *       total_spend / last_visit_date from real visit data
+ *
+ *   Generic CRM (DriveCentric, Elead, DealerSocket …):
+ *     • Deduplicates on email | phone | first+last+zip
+ *     • Normalises email / phone / state / zip
+ *
+ * visits — links rows to existing customers via email / phone / explicit id.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -32,32 +39,36 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { type, rows } = body as { type: "customers" | "visits"; rows: Record<string, string>[] };
+    const { type, rows } = body as {
+      type: "customers" | "visits";
+      rows: Record<string, string>[];
+    };
 
     if (!type || !Array.isArray(rows) || rows.length === 0) {
       return NextResponse.json({ error: "type and rows are required" }, { status: 400 });
     }
 
-    const serviceClient = createServiceClient();
+    const svc = createServiceClient();
     let inserted = 0;
     let skipped  = 0;
     const errors: { row: number; field?: string; message: string }[] = [];
 
-    // ── Column helper ──────────────────────────────────────────
-    // Returns the first non-empty, non-DC-null value found for any of the given keys.
+    // ── Helpers ────────────────────────────────────────────────────────────────
 
     function col(row: Record<string, string>, ...keys: string[]): string {
       for (const k of keys) {
         const v = row[k];
         if (v !== undefined && v !== null) {
-          const trimmed = String(v).trim();
-          if (trimmed && !DC_NULL_VALUES.has(trimmed.toLowerCase())) return trimmed;
+          const t = String(v).trim();
+          if (t && !DC_NULL_VALUES.has(t.toLowerCase())) return t;
         }
       }
       return "";
     }
 
-    // ── Normalizers ────────────────────────────────────────────
+    function normaliseKeys(raw: Record<string, string>): Record<string, string> {
+      return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k.toLowerCase(), v]));
+    }
 
     function normalizeEmail(raw: string): string | null {
       const v = raw.trim().toLowerCase();
@@ -65,9 +76,9 @@ export async function POST(req: NextRequest) {
     }
 
     function normalizePhone(raw: string): string | null {
-      const digits = raw.replace(/\D/g, "");
-      if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
-      if (digits.length === 10) return `+1${digits}`;
+      const d = raw.replace(/\D/g, "");
+      if (d.length === 11 && d.startsWith("1")) return `+${d}`;
+      if (d.length === 10) return `+1${d}`;
       return null;
     }
 
@@ -84,19 +95,17 @@ export async function POST(req: NextRequest) {
     }
 
     function normalizeZip(raw: string): string | null {
-      const digits = raw.trim().replace(/\D/g, "");
-      if (digits.length === 5) return digits;
-      if (digits.length === 9) return digits.slice(0, 5);   // ZIP+4 → ZIP5
-      if (digits.length === 4) return "0" + digits;          // e.g. NJ 07701 exported as 7701
+      const d = raw.trim().replace(/\D/g, "");
+      if (d.length === 5) return d;
+      if (d.length === 9) return d.slice(0, 5);
+      if (d.length === 4) return "0" + d;
       return null;
     }
 
     function parseDate(raw: string): string | null {
       if (!raw) return null;
-      const cleaned = raw.trim().replace(/\//g, "-");
-      const d = new Date(cleaned);
-      if (isNaN(d.getTime())) return null;
-      return d.toISOString().slice(0, 10);
+      const d = new Date(raw.trim().replace(/\//g, "-"));
+      return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
     }
 
     function parseAmount(raw: string): number | null {
@@ -111,184 +120,453 @@ export async function POST(req: NextRequest) {
 
     function parseYear(raw: string): number | null {
       const n = parseInt(raw, 10);
-      const currentYear = new Date().getFullYear();
-      return isNaN(n) || n < 1980 || n > currentYear + 2 ? null : n;
+      const yr = new Date().getFullYear();
+      return isNaN(n) || n < 1980 || n > yr + 2 ? null : n;
     }
-
-    // ── DriveCentric lifecycle stage mapping ───────────────────
 
     type LifecycleStage = "prospect" | "active" | "at_risk" | "lapsed" | "vip";
 
+    // Lifecycle from CRM stage string (DriveCentric)
     function mapLifecycleStage(raw: string): LifecycleStage {
       switch (raw.trim().toLowerCase()) {
-        case "active":
-        case "customer":
-        case "won":
-          return "active";
-        case "dead":
-        case "lost":
-        case "no follow-up":
-          return "lapsed";
-        case "at risk":
-          return "at_risk";
-        case "vip":
-          return "vip";
-        default:
-          return "prospect";
+        case "active": case "customer": case "won": return "active";
+        case "dead": case "lost": case "no follow-up": return "lapsed";
+        case "at risk": return "at_risk";
+        case "vip": return "vip";
+        default: return "prospect";
       }
     }
 
-    // ── Customers ──────────────────────────────────────────────
+    // Lifecycle from last-visit recency + spend (DMS household)
+    function deriveLifecycleFromRecency(
+      lastVisitDate: string | null,
+      totalSpend: number,
+    ): LifecycleStage {
+      if (!lastVisitDate) return "prospect";
+      const days = (Date.now() - new Date(lastVisitDate).getTime()) / 86_400_000;
+      if (totalSpend >= 40_000 && days <= 365) return "vip";
+      if (days <= 180) return "active";
+      if (days <= 540) return "at_risk";
+      return "lapsed";
+    }
 
-    if (type === "customers") {
-      const { data: existing } = await serviceClient
-        .from("customers")
-        .select("email, phone, first_name, last_name, address")
-        .eq("dealership_id", ud.dealership_id) as {
-          data: { email: string | null; phone: string | null; first_name: string; last_name: string; address: Record<string, string> | null }[] | null;
-        };
+    // Auto-generated tags from DMS row data
+    function deriveDmsTags(
+      row: Record<string, string>,
+      daysSince: number | null,
+      price: number,
+    ): string[] {
+      const tags = new Set<string>(["dms_import"]);
 
-      const emailSet   = new Set<string>();
-      const phoneSet   = new Set<string>();
-      const nameZipSet = new Set<string>();
+      const soldType = col(row, "sold_type").toUpperCase();
+      const dealType = col(row, "dealtype").toUpperCase();
 
-      for (const c of existing ?? []) {
-        if (c.email) emailSet.add(c.email.toLowerCase());
-        if (c.phone) phoneSet.add(c.phone.replace(/\D/g, ""));
-        const zip = c.address?.zip ?? "";
-        if (c.first_name && c.last_name && zip) {
-          nameZipSet.add(`${c.first_name.toLowerCase()}|${c.last_name.toLowerCase()}|${zip}`);
-        }
+      if (dealType === "P" || soldType) tags.add("buyer");
+      if (soldType === "N") tags.add("new_car_buyer");
+      else if (soldType === "U") tags.add("used_car_buyer");
+
+      const make = col(row, "make").toLowerCase().replace(/[\s-]+/g, "_");
+      if (make) tags.add(`${make}_owner`);
+
+      const vt = col(row, "vehicletype").toLowerCase();
+      if (vt.includes("multipurpose") || vt.includes("mpv")) tags.add("suv_owner");
+      else if (vt.includes("passenger"))                      tags.add("sedan_owner");
+      else if (vt.includes("truck"))                          tags.add("truck_owner");
+
+      const term    = parseInt(col(row, "term"), 10);
+      const payment = parseAmount(col(row, "payment")) ?? 0;
+      if (!isNaN(term) && term > 0 && payment > 0) tags.add("financed");
+      else if (price > 0)                          tags.add("cash_buyer");
+
+      if (daysSince !== null) {
+        if (daysSince <= 90)  tags.add("recent_customer");
+        if (daysSince > 365)  tags.add("service_due");
       }
 
-      for (let i = 0; i < rows.length; i++) {
-        // Normalize keys to lowercase so ALL-CAPS exports (household files, etc.) map correctly
-        const row = Object.fromEntries(
-          Object.entries(rows[i]).map(([k, v]) => [k.toLowerCase(), v])
-        ) as Record<string, string>;
-        const rowNum = i + 1;
+      return [...tags];
+    }
 
-        try {
-          // ── Name resolution (standard cols first, then DriveCentric "Customer") ──
+    // ══════════════════════════════════════════════════════════════════════════
+    // CUSTOMERS
+    // ══════════════════════════════════════════════════════════════════════════
+
+    if (type === "customers") {
+
+      // Detect DMS household format (CUST_NO + date columns present)
+      const firstRow = normaliseKeys(rows[0]);
+      const isDmsHousehold =
+        firstRow.cust_no !== undefined ||
+        (firstRow.sold_date !== undefined && firstRow.svc_date !== undefined);
+
+      // ── DMS FAST PATH — batch upsert + visit records ───────────────────────
+      if (isDmsHousehold) {
+        type CustRow  = Record<string, unknown>;
+        type VisitRow = Record<string, unknown>;
+
+        const custsToUpsert: CustRow[]   = [];
+        const visitsByCustNo = new Map<string, VisitRow[]>();
+
+        for (const rawRow of rows) {
+          const row = normaliseKeys(rawRow);
+
+          // ── Name ────────────────────────────────────────────────────────────
           let firstName = col(row, "first_name", "first name", "first");
           let lastName  = col(row, "last_name",  "last name",  "last");
 
           if (!firstName && !lastName) {
-            const rawCustomer = row["customer"] ?? "";
-            if (rawCustomer.trim()) {
-              const parsed = parseDriveCentricName(rawCustomer);
-              firstName = parsed.firstName;
-              lastName  = parsed.lastName;
+            const rawCust = row["customer"] ?? "";
+            if (rawCust.trim()) {
+              const p = parseDriveCentricName(rawCust);
+              firstName = p.firstName; lastName = p.lastName;
             }
           }
+          if (!firstName && !lastName) { skipped++; continue; }
 
-          // ── Contact info ────────────────────────────────────────
-          // Prefer cell phone for SMS campaigns; fall back to primary phone
+          // ── Contact — prefer PHONECELL (SMS-capable) ─────────────────────
           const rawEmail = col(row, "email");
-          const rawPhone = col(
-            row,
-            "cell phone", "phonecell", "phone", "mobile", "home phone"
-          );
+          const email    = rawEmail ? normalizeEmail(rawEmail) : null;
 
-          // Skip completely empty rows
-          if (!firstName && !lastName && !rawEmail && !rawPhone) {
-            skipped++;
-            continue;
+          let phone: string | null = null;
+          for (const raw of [col(row, "phonecell"), col(row, "phone"), col(row, "phone2")]) {
+            if (raw) { phone = normalizePhone(raw); if (phone) break; }
           }
 
-          const email = rawEmail ? normalizeEmail(rawEmail) : null;
-          const phone = rawPhone ? normalizePhone(rawPhone)  : null;
-
-          if (rawEmail && !email) {
-            errors.push({ row: rowNum, field: "email", message: `Invalid email: "${rawEmail}"` });
-          }
-          if (rawPhone && !phone) {
-            errors.push({ row: rowNum, field: "phone", message: `Invalid phone (need 10 digits): "${rawPhone}"` });
-          }
-
-          // ── Address ─────────────────────────────────────────────
+          // ── Address ──────────────────────────────────────────────────────
           const rawStreet = col(row, "address 1", "street", "address");
           const rawCity   = col(row, "city");
           const rawState  = col(row, "state");
           const rawZip    = col(row, "zip", "postal_code");
 
-          const zip   = normalizeZip(rawZip)   ?? rawZip.trim();
-          const state = normalizeState(rawState) ?? (rawState.toUpperCase() || undefined);
+          const zip   = normalizeZip(rawZip)    ?? rawZip.trim();
+          const state = normalizeState(rawState) ?? (rawState.trim().toUpperCase() || undefined);
 
-          // ── Dedup ────────────────────────────────────────────────
-          const isDup =
-            (email && emailSet.has(email)) ||
-            (phone && phoneSet.has(phone.replace(/\D/g, ""))) ||
-            (firstName && lastName && zip &&
-              nameZipSet.has(`${firstName.toLowerCase()}|${lastName.toLowerCase()}|${zip}`));
-
-          if (isDup) { skipped++; continue; }
-
-          // ── Build address object ─────────────────────────────────
           const address: Record<string, string> = {};
           if (rawStreet) address.street = rawStreet;
           if (rawCity)   address.city   = rawCity;
           if (state)     address.state  = state;
           if (zip)       address.zip    = zip;
 
-          // ── Extra metadata (DriveCentric + generic CRM) ──────────
-          const sourceDesc   = col(row, "source description", "lead_source");
-          const currentStage = col(row, "current stage",      "lead_status");
-          const lastNote     = col(row, "last note", "last deallog message", "service_notes");
-          const store        = col(row, "store");
-          const buyer        = col(row, "buyer");
+          // ── Vehicle ──────────────────────────────────────────────────────
+          const vYear    = parseYear(col(row, "year"));
+          const vMake    = col(row, "make");
+          const vModel   = col(row, "model");
+          const vVin     = col(row, "vin");
+          const stockNo  = col(row, "stockno");
+          const vMileage = parseMileage(col(row, "mileage"));
 
-          const extraMeta: Record<string, unknown> = {};
-          if (sourceDesc)   extraMeta.lead_source  = sourceDesc;
-          if (currentStage) extraMeta.lead_status  = currentStage;
-          if (lastNote)     extraMeta.last_note     = lastNote.slice(0, 1000);
-          if (store)        extraMeta.dms_store     = store;
-          if (buyer)        extraMeta.assigned_to   = buyer;
+          // ── Dates — determine last visit and distinct event count ─────────
+          const soldDate = parseDate(col(row, "sold_date", "del_date"));
+          const svcDate  = parseDate(col(row, "svc_date"));
+          const lastDate = parseDate(col(row, "last_date"));
 
-          // Map DriveCentric "Current Stage" to our lifecycle enum
-          const lifecycleStage: LifecycleStage = currentStage
-            ? mapLifecycleStage(currentStage)
-            : "prospect";
+          const uniqueDates = [...new Set(
+            [soldDate, svcDate, lastDate].filter(Boolean) as string[]
+          )].sort();
+          const lastVisitDate = uniqueDates.at(-1) ?? null;
+          const daysSince     = lastVisitDate
+            ? (Date.now() - new Date(lastVisitDate).getTime()) / 86_400_000
+            : null;
 
-          const newCustomer = {
+          // Each distinct transaction type = 1 visit event
+          const hasSale = !!soldDate;
+          const hasSvc  = !!(svcDate && svcDate !== soldDate);
+          const totalVisits = hasSale || hasSvc
+            ? (hasSale ? 1 : 0) + (hasSvc ? 1 : 0)
+            : lastVisitDate ? 1 : 0;
+
+          // ── Spend ────────────────────────────────────────────────────────
+          const price      = parseAmount(col(row, "price")) ?? 0;
+          const svcAmt     = parseAmount(col(row, "lastsvcamount")) ?? 0;
+          // Also consider PAYMENT × TERM as a spend proxy when PRICE absent
+          const pmtTerm    = (() => {
+            const pmt  = parseAmount(col(row, "payment")) ?? 0;
+            const term = parseInt(col(row, "term"), 10);
+            return pmt > 0 && !isNaN(term) && term > 0 ? pmt * term : 0;
+          })();
+          const totalSpend = price > 0 ? price + svcAmt : pmtTerm + svcAmt;
+
+          // ── Lifecycle + tags ─────────────────────────────────────────────
+          const lifecycleStage = deriveLifecycleFromRecency(lastVisitDate, totalSpend);
+          const tags           = deriveDmsTags(row, daysSince, price);
+
+          // ── Metadata ────────────────────────────────────────────────────
+          const term    = parseInt(col(row, "term"), 10);
+          const payment = parseAmount(col(row, "payment")) ?? 0;
+          const apr     = parseAmount(col(row, "apr"));
+
+          const metadata: Record<string, unknown> = { import_source: "braman_dms" };
+
+          if (vMake || vModel || vVin) {
+            metadata.current_vehicle = {
+              year: vYear, make: vMake || null, model: vModel || null,
+              vin: vVin || null, stock_no: stockNo || null,
+              mileage: vMileage, vehicle_type: col(row, "vehicletype") || null,
+            };
+          }
+
+          if (price > 0 || col(row, "dealtype")) {
+            metadata.deal = {
+              type:      col(row, "dealtype")  || null,
+              sold_type: col(row, "sold_type") || null,
+              price:     price  || null,
+              payment:   payment || null,
+              term:      (!isNaN(term) && term > 0) ? term : null,
+              apr,
+              del_date:  soldDate,
+              term_end:  parseDate(col(row, "termend")),
+              trade_vin: col(row, "soldtradevin") || null,
+            };
+          }
+
+          const salesRep = col(row, "salesname", "sls");
+          if (salesRep)  metadata.sales_rep              = salesRep;
+          if (svcAmt > 0) metadata.last_service_amount   = svcAmt;
+
+          // ── DMS external ID ──────────────────────────────────────────────
+          const custNo = col(row, "cust_no");
+          const dmsId  = custNo ? `braman_dms:${custNo}` : null;
+
+          custsToUpsert.push({
             dealership_id:   ud.dealership_id,
+            dms_external_id: dmsId,
             first_name:      firstName || "Unknown",
             last_name:       lastName  || "",
             email:           email  ?? null,
             phone:           phone  ?? null,
             address:         Object.keys(address).length > 0 ? address : {},
             lifecycle_stage: lifecycleStage,
-            total_visits:    0,
-            total_spend:     0,
-            tags:            [],
-            metadata:        extraMeta,
+            total_visits:    totalVisits,
+            total_spend:     totalSpend,
+            last_visit_date: lastVisitDate,
+            tags,
+            metadata,
+          });
+
+          // ── Visit records (trigger re-computes denorm stats on insert) ───
+          if (custNo) {
+            const visits: VisitRow[] = [];
+
+            if (soldDate) {
+              const st = col(row, "sold_type").toUpperCase();
+              visits.push({
+                dealership_id:   ud.dealership_id,
+                dms_external_id: `braman_dms:sale:${custNo}:${soldDate}`,
+                vin:          vVin   || null,
+                make:         vMake  || null,
+                model:        vModel || null,
+                year:         vYear,
+                mileage:      parseMileage(col(row, "del_miles")),
+                service_type: "purchase",
+                service_notes: st === "N" ? "New vehicle sale"
+                              : st === "U" ? "Used vehicle sale"
+                              : "Vehicle sale",
+                total_amount: price || null,
+                visit_date:   soldDate,
+              });
+            }
+
+            if (svcDate && svcDate !== soldDate) {
+              visits.push({
+                dealership_id:   ud.dealership_id,
+                dms_external_id: `braman_dms:svc:${custNo}:${svcDate}`,
+                vin:          vVin   || null,
+                make:         vMake  || null,
+                model:        vModel || null,
+                year:         vYear,
+                mileage:      vMileage,
+                service_type: "service",
+                total_amount: svcAmt || null,
+                visit_date:   svcDate,
+              });
+            }
+
+            if (visits.length > 0) visitsByCustNo.set(custNo, visits);
+          }
+        }
+
+        // ── Batch upsert customers (1 DB round trip per 500-row batch) ──────
+        if (custsToUpsert.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: upserted, error: upsertErr } = await (svc
+            .from("customers")
+            .upsert(custsToUpsert as any, { onConflict: "dealership_id,dms_external_id" })
+            .select("id, dms_external_id") as any) as {
+              data: Array<{ id: string; dms_external_id: string | null }> | null;
+              error: { message: string } | null;
+            };
+
+          if (upsertErr) {
+            errors.push({ row: 0, message: `Customer batch failed: ${upsertErr.message}` });
+            skipped += rows.length;
+          } else {
+            inserted = upserted?.length ?? 0;
+            skipped += rows.length - inserted;
+
+            // ── Batch upsert visits (trigger fires per row → updates stats) ─
+            const visitsToInsert: VisitRow[] = [];
+            for (const c of upserted ?? []) {
+              if (!c.dms_external_id) continue;
+              const custNo = c.dms_external_id.replace("braman_dms:", "");
+              for (const v of visitsByCustNo.get(custNo) ?? []) {
+                visitsToInsert.push({ ...v, customer_id: c.id });
+              }
+            }
+
+            if (visitsToInsert.length > 0) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const { error: visitErr } = await (svc
+                .from("visits")
+                .upsert(visitsToInsert as any, {
+                  onConflict: "dealership_id,dms_external_id",
+                }) as any) as { error: { message: string } | null };
+
+              if (visitErr) {
+                errors.push({ row: 0, message: `Visit upsert warning: ${visitErr.message}` });
+              }
+            }
+          }
+        }
+
+      // ── GENERIC CRM PATH ──────────────────────────────────────────────────
+      } else {
+        const { data: existing } = await svc
+          .from("customers")
+          .select("email, phone, first_name, last_name, address")
+          .eq("dealership_id", ud.dealership_id) as {
+            data: {
+              email: string | null; phone: string | null;
+              first_name: string; last_name: string;
+              address: Record<string, string> | null;
+            }[] | null;
           };
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { error: insertErr } = await serviceClient.from("customers").insert(newCustomer as any);
-          if (insertErr) throw new Error(insertErr.message);
+        const emailSet   = new Set<string>();
+        const phoneSet   = new Set<string>();
+        const nameZipSet = new Set<string>();
 
-          if (email) emailSet.add(email);
-          if (phone) phoneSet.add(phone.replace(/\D/g, ""));
-          if (firstName && lastName && zip) {
-            nameZipSet.add(`${firstName.toLowerCase()}|${lastName.toLowerCase()}|${zip}`);
+        for (const c of existing ?? []) {
+          if (c.email) emailSet.add(c.email.toLowerCase());
+          if (c.phone) phoneSet.add(c.phone.replace(/\D/g, ""));
+          const zip = c.address?.zip ?? "";
+          if (c.first_name && c.last_name && zip) {
+            nameZipSet.add(`${c.first_name.toLowerCase()}|${c.last_name.toLowerCase()}|${zip}`);
           }
+        }
 
-          inserted++;
-        } catch (err) {
-          errors.push({
-            row: rowNum,
-            message: err instanceof Error ? err.message : "Unknown error",
-          });
-          skipped++;
+        for (let i = 0; i < rows.length; i++) {
+          const row    = normaliseKeys(rows[i]);
+          const rowNum = i + 1;
+
+          try {
+            // Name
+            let firstName = col(row, "first_name", "first name", "first");
+            let lastName  = col(row, "last_name",  "last name",  "last");
+
+            if (!firstName && !lastName) {
+              const rawCust = row["customer"] ?? "";
+              if (rawCust.trim()) {
+                const p = parseDriveCentricName(rawCust);
+                firstName = p.firstName; lastName = p.lastName;
+              }
+            }
+
+            // Contact
+            const rawEmail = col(row, "email");
+            const rawPhone = col(row, "cell phone", "phonecell", "phone", "mobile", "home phone");
+
+            if (!firstName && !lastName && !rawEmail && !rawPhone) { skipped++; continue; }
+
+            const email = rawEmail ? normalizeEmail(rawEmail) : null;
+            let   phone: string | null = null;
+            for (const raw of [
+              col(row, "cell phone"), col(row, "phonecell"),
+              col(row, "phone"),      col(row, "mobile"),
+              col(row, "home phone"), col(row, "phone2"),
+            ]) {
+              if (raw) { phone = normalizePhone(raw); if (phone) break; }
+            }
+
+            if (rawEmail && !email)
+              errors.push({ row: rowNum, field: "email", message: `Invalid email: "${rawEmail}"` });
+
+            // Address
+            const rawStreet = col(row, "address 1", "street", "address");
+            const rawCity   = col(row, "city");
+            const rawState  = col(row, "state");
+            const rawZip    = col(row, "zip", "postal_code");
+
+            const zip   = normalizeZip(rawZip)    ?? rawZip.trim();
+            const state = normalizeState(rawState) ?? (rawState.toUpperCase() || undefined);
+
+            // Dedup
+            const isDup =
+              (email && emailSet.has(email)) ||
+              (phone && phoneSet.has(phone.replace(/\D/g, ""))) ||
+              (firstName && lastName && zip &&
+                nameZipSet.has(`${firstName.toLowerCase()}|${lastName.toLowerCase()}|${zip}`));
+
+            if (isDup) { skipped++; continue; }
+
+            const address: Record<string, string> = {};
+            if (rawStreet) address.street = rawStreet;
+            if (rawCity)   address.city   = rawCity;
+            if (state)     address.state  = state;
+            if (zip)       address.zip    = zip;
+
+            const sourceDesc   = col(row, "source description", "lead_source");
+            const currentStage = col(row, "current stage",      "lead_status");
+            const lastNote     = col(row, "last note", "last deallog message", "service_notes");
+            const store        = col(row, "store");
+            const buyer        = col(row, "buyer");
+
+            const extraMeta: Record<string, unknown> = {};
+            if (sourceDesc)   extraMeta.lead_source  = sourceDesc;
+            if (currentStage) extraMeta.lead_status  = currentStage;
+            if (lastNote)     extraMeta.last_note     = lastNote.slice(0, 1000);
+            if (store)        extraMeta.dms_store     = store;
+            if (buyer)        extraMeta.assigned_to   = buyer;
+
+            const lifecycleStage: LifecycleStage = currentStage
+              ? mapLifecycleStage(currentStage)
+              : "prospect";
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error: insertErr } = await svc.from("customers").insert({
+              dealership_id:   ud.dealership_id,
+              first_name:      firstName || "Unknown",
+              last_name:       lastName  || "",
+              email:           email  ?? null,
+              phone:           phone  ?? null,
+              address:         Object.keys(address).length > 0 ? address : {},
+              lifecycle_stage: lifecycleStage,
+              total_visits:    0,
+              total_spend:     0,
+              tags:            [],
+              metadata:        extraMeta,
+            } as any);
+            if (insertErr) throw new Error(insertErr.message);
+
+            if (email) emailSet.add(email);
+            if (phone) phoneSet.add(phone.replace(/\D/g, ""));
+            if (firstName && lastName && zip) {
+              nameZipSet.add(`${firstName.toLowerCase()}|${lastName.toLowerCase()}|${zip}`);
+            }
+
+            inserted++;
+          } catch (err) {
+            errors.push({ row: rowNum, message: err instanceof Error ? err.message : "Unknown error" });
+            skipped++;
+          }
         }
       }
     }
 
-    // ── Visits ─────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+    // VISITS
+    // ══════════════════════════════════════════════════════════════════════════
 
     else if (type === "visits") {
-      const { data: existingCustomers } = await serviceClient
+      const { data: existingCustomers } = await svc
         .from("customers")
         .select("id, email, phone")
         .eq("dealership_id", ud.dealership_id) as {
@@ -303,7 +581,7 @@ export async function POST(req: NextRequest) {
       }
 
       const visitKeys = new Set<string>();
-      const { data: existingVisits } = await serviceClient
+      const { data: existingVisits } = await svc
         .from("visits")
         .select("customer_id, visit_date, ro_number")
         .eq("dealership_id", ud.dealership_id) as {
@@ -311,15 +589,13 @@ export async function POST(req: NextRequest) {
         };
 
       for (const v of existingVisits ?? []) {
-        const date = v.visit_date?.slice(0, 10);
-        if (date) visitKeys.add(`${v.customer_id}|${date}`);
+        const d = v.visit_date?.slice(0, 10);
+        if (d) visitKeys.add(`${v.customer_id}|${d}`);
         if (v.ro_number) visitKeys.add(`ro|${v.customer_id}|${v.ro_number}`);
       }
 
       for (let i = 0; i < rows.length; i++) {
-        const row = Object.fromEntries(
-          Object.entries(rows[i]).map(([k, v]) => [k.toLowerCase(), v])
-        ) as Record<string, string>;
+        const row    = normaliseKeys(rows[i]);
         const rowNum = i + 1;
 
         try {
@@ -332,7 +608,7 @@ export async function POST(req: NextRequest) {
 
           if (!customerId) {
             skipped++;
-            errors.push({ row: rowNum, message: "No customer match — no id, email, or phone found" });
+            errors.push({ row: rowNum, message: "No customer match — no id, email, or phone" });
             continue;
           }
 
@@ -346,7 +622,7 @@ export async function POST(req: NextRequest) {
           const visitDate = parseDate(rawDate);
           if (!visitDate) {
             skipped++;
-            errors.push({ row: rowNum, field: "visit_date", message: `Unrecognised date format: "${rawDate}"` });
+            errors.push({ row: rowNum, field: "visit_date", message: `Bad date: "${rawDate}"` });
             continue;
           }
 
@@ -361,24 +637,21 @@ export async function POST(req: NextRequest) {
 
           const amount  = rawAmount  ? parseAmount(rawAmount)   : null;
           const mileage = rawMileage ? parseMileage(rawMileage) : null;
-          const year    = rawYear    ? parseYear(rawYear)        : null;
+          const year    = rawYear    ? parseYear(rawYear)       : null;
 
-          if (rawAmount && amount === null) {
+          if (rawAmount && amount === null)
             errors.push({ row: rowNum, field: "total_amount", message: `Invalid amount: "${rawAmount}"` });
-          }
-          if (rawYear && year === null) {
+          if (rawYear && year === null)
             errors.push({ row: rowNum, field: "year", message: `Year out of range: "${rawYear}"` });
-          }
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { error: insertErr } = await serviceClient.from("visits").insert({
+          const { error: insertErr } = await svc.from("visits").insert({
             dealership_id: ud.dealership_id,
             customer_id:   customerId,
             vin:           col(row, "vin") || null,
             make:          col(row, "make") || null,
             model:         col(row, "model") || null,
-            year,
-            mileage,
+            year, mileage,
             service_type:  col(row, "service_type", "service") || null,
             service_notes: col(row, "notes", "service_notes", "description") || null,
             technician:    col(row, "technician", "tech") || null,
@@ -393,33 +666,25 @@ export async function POST(req: NextRequest) {
           if (roNumber) visitKeys.add(`ro|${customerId}|${roNumber}`);
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (serviceClient.rpc as any)("increment_customer_visits", {
+          await (svc.rpc as any)("increment_customer_visits", {
             p_customer_id: customerId,
             p_amount:      amount ?? 0,
           }).catch(() => null);
 
           inserted++;
         } catch (err) {
-          errors.push({
-            row: rowNum,
-            message: err instanceof Error ? err.message : "Unknown error",
-          });
+          errors.push({ row: rowNum, message: err instanceof Error ? err.message : "Unknown error" });
           skipped++;
         }
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      inserted,
-      skipped,
-      errors: errors.slice(0, 50),
-    });
+    return NextResponse.json({ success: true, inserted, skipped, errors: errors.slice(0, 50) });
   } catch (error) {
     console.error("[/api/onboard/upload]", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
