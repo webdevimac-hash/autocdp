@@ -9,7 +9,7 @@
       "maxDuration": 30
     },
     "src/app/api/campaign/approve/[token]/route.ts": {
-      "maxDuration": 120
+      "maxDuration": 60
     }
   }
 }
