@@ -198,21 +198,62 @@ export async function POST(req: NextRequest) {
         firstRow.cust_no !== undefined ||
         (firstRow.sold_date !== undefined && firstRow.svc_date !== undefined);
 
-      // ── DMS FAST PATH — batch upsert + visit records ───────────────────────
+      // ── DMS FAST PATH — merge-aware upsert + visit records ──────────────
       if (isDmsHousehold) {
         type CustRow  = Record<string, unknown>;
         type VisitRow = Record<string, unknown>;
 
-        const custsToUpsert: CustRow[]   = [];
+        // ── Step 1: pre-fetch existing customers by email / phone ─────────
+        // Collect normalised emails + phones from every row in this batch
+        const batchEmails: string[] = [];
+        const batchPhones: string[] = [];
+        for (const rawRow of rows) {
+          const r = normaliseKeys(rawRow);
+          const e = normalizeEmail(col(r, "email"));
+          if (e) batchEmails.push(e);
+          for (const raw of [col(r, "phonecell"), col(r, "phone"), col(r, "phone2")]) {
+            if (raw) { const p = normalizePhone(raw); if (p) { batchPhones.push(p); break; } }
+          }
+        }
+
+        // Two parallel lookups — deduplicate values to keep IN clauses small
+        type ExistingRow = { id: string; email: string | null; phone: string | null };
+        const [emailLookup, phoneLookup] = await Promise.all([
+          batchEmails.length > 0
+            ? svc.from("customers")
+                .select("id, email, phone")
+                .eq("dealership_id", ud.dealership_id)
+                .in("email", [...new Set(batchEmails)])
+            : Promise.resolve({ data: [] as ExistingRow[] }),
+          batchPhones.length > 0
+            ? svc.from("customers")
+                .select("id, email, phone")
+                .eq("dealership_id", ud.dealership_id)
+                .in("phone", [...new Set(batchPhones)])
+            : Promise.resolve({ data: [] as ExistingRow[] }),
+        ]);
+
+        const emailToId = new Map<string, string>();
+        const phoneToId = new Map<string, string>();
+        for (const c of [
+          ...((emailLookup as { data: ExistingRow[] | null }).data ?? []),
+          ...((phoneLookup  as { data: ExistingRow[] | null }).data ?? []),
+        ]) {
+          if (c.email) emailToId.set(c.email.toLowerCase(), c.id);
+          if (c.phone) phoneToId.set(c.phone, c.id); // already E.164 in DB
+        }
+
+        // ── Step 2: build per-row enriched data; split update vs insert ───
+        const custsToUpdate: CustRow[] = []; // existing rows → backfill derived fields
+        const custsToInsert: CustRow[] = []; // net-new rows
         const visitsByCustNo = new Map<string, VisitRow[]>();
 
         for (const rawRow of rows) {
           const row = normaliseKeys(rawRow);
 
-          // ── Name ────────────────────────────────────────────────────────────
+          // Name
           let firstName = col(row, "first_name", "first name", "first");
           let lastName  = col(row, "last_name",  "last name",  "last");
-
           if (!firstName && !lastName) {
             const rawCust = row["customer"] ?? "";
             if (rawCust.trim()) {
@@ -222,31 +263,28 @@ export async function POST(req: NextRequest) {
           }
           if (!firstName && !lastName) { skipped++; continue; }
 
-          // ── Contact — prefer PHONECELL (SMS-capable) ─────────────────────
+          // Contact — prefer PHONECELL (SMS-capable)
           const rawEmail = col(row, "email");
           const email    = rawEmail ? normalizeEmail(rawEmail) : null;
-
           let phone: string | null = null;
           for (const raw of [col(row, "phonecell"), col(row, "phone"), col(row, "phone2")]) {
             if (raw) { phone = normalizePhone(raw); if (phone) break; }
           }
 
-          // ── Address ──────────────────────────────────────────────────────
+          // Address
           const rawStreet = col(row, "address 1", "street", "address");
           const rawCity   = col(row, "city");
           const rawState  = col(row, "state");
           const rawZip    = col(row, "zip", "postal_code");
-
           const zip   = normalizeZip(rawZip)    ?? rawZip.trim();
           const state = normalizeState(rawState) ?? (rawState.trim().toUpperCase() || undefined);
-
           const address: Record<string, string> = {};
           if (rawStreet) address.street = rawStreet;
           if (rawCity)   address.city   = rawCity;
           if (state)     address.state  = state;
           if (zip)       address.zip    = zip;
 
-          // ── Vehicle ──────────────────────────────────────────────────────
+          // Vehicle
           const vYear    = parseYear(col(row, "year"));
           const vMake    = col(row, "make");
           const vModel   = col(row, "model");
@@ -254,48 +292,42 @@ export async function POST(req: NextRequest) {
           const stockNo  = col(row, "stockno");
           const vMileage = parseMileage(col(row, "mileage"));
 
-          // ── Dates — determine last visit and distinct event count ─────────
+          // Dates
           const soldDate = parseDate(col(row, "sold_date", "del_date"));
           const svcDate  = parseDate(col(row, "svc_date"));
           const lastDate = parseDate(col(row, "last_date"));
-
-          const uniqueDates = [...new Set(
-            [soldDate, svcDate, lastDate].filter(Boolean) as string[]
-          )].sort();
+          const uniqueDates = [...new Set([soldDate, svcDate, lastDate].filter(Boolean) as string[])].sort();
           const lastVisitDate = uniqueDates.at(-1) ?? null;
-          const daysSince     = lastVisitDate
+          const daysSince = lastVisitDate
             ? (Date.now() - new Date(lastVisitDate).getTime()) / 86_400_000
             : null;
 
-          // Each distinct transaction type = 1 visit event
+          // Visit count
           const hasSale = !!soldDate;
           const hasSvc  = !!(svcDate && svcDate !== soldDate);
           const totalVisits = hasSale || hasSvc
             ? (hasSale ? 1 : 0) + (hasSvc ? 1 : 0)
             : lastVisitDate ? 1 : 0;
 
-          // ── Spend ────────────────────────────────────────────────────────
-          const price      = parseAmount(col(row, "price")) ?? 0;
-          const svcAmt     = parseAmount(col(row, "lastsvcamount")) ?? 0;
-          // Also consider PAYMENT × TERM as a spend proxy when PRICE absent
-          const pmtTerm    = (() => {
+          // Spend
+          const price   = parseAmount(col(row, "price")) ?? 0;
+          const svcAmt  = parseAmount(col(row, "lastsvcamount")) ?? 0;
+          const pmtTerm = (() => {
             const pmt  = parseAmount(col(row, "payment")) ?? 0;
             const term = parseInt(col(row, "term"), 10);
             return pmt > 0 && !isNaN(term) && term > 0 ? pmt * term : 0;
           })();
           const totalSpend = price > 0 ? price + svcAmt : pmtTerm + svcAmt;
 
-          // ── Lifecycle + tags ─────────────────────────────────────────────
+          // Lifecycle + tags
           const lifecycleStage = deriveLifecycleFromRecency(lastVisitDate, totalSpend);
           const tags           = deriveDmsTags(row, daysSince, price);
 
-          // ── Metadata ────────────────────────────────────────────────────
+          // Metadata
           const term    = parseInt(col(row, "term"), 10);
           const payment = parseAmount(col(row, "payment")) ?? 0;
           const apr     = parseAmount(col(row, "apr"));
-
           const metadata: Record<string, unknown> = { import_source: "braman_dms" };
-
           if (vMake || vModel || vVin) {
             metadata.current_vehicle = {
               year: vYear, make: vMake || null, model: vModel || null,
@@ -303,7 +335,6 @@ export async function POST(req: NextRequest) {
               mileage: vMileage, vehicle_type: col(row, "vehicletype") || null,
             };
           }
-
           if (price > 0 || col(row, "dealtype")) {
             metadata.deal = {
               type:      col(row, "dealtype")  || null,
@@ -317,16 +348,15 @@ export async function POST(req: NextRequest) {
               trade_vin: col(row, "soldtradevin") || null,
             };
           }
-
           const salesRep = col(row, "salesname", "sls");
-          if (salesRep)  metadata.sales_rep              = salesRep;
+          if (salesRep)   metadata.sales_rep             = salesRep;
           if (svcAmt > 0) metadata.last_service_amount   = svcAmt;
 
-          // ── DMS external ID ──────────────────────────────────────────────
+          // DMS ID
           const custNo = col(row, "cust_no");
           const dmsId  = custNo ? `braman_dms:${custNo}` : null;
 
-          custsToUpsert.push({
+          const custRow: CustRow = {
             dealership_id:   ud.dealership_id,
             dms_external_id: dmsId,
             first_name:      firstName || "Unknown",
@@ -340,23 +370,30 @@ export async function POST(req: NextRequest) {
             last_visit_date: lastVisitDate,
             tags,
             metadata,
-          });
+          };
 
-          // ── Visit records (trigger re-computes denorm stats on insert) ───
+          // Route: update existing (backfill) or insert new
+          const existingId =
+            (email && emailToId.get(email)) ||
+            (phone && phoneToId.get(phone));
+
+          if (existingId) {
+            custsToUpdate.push({ ...custRow, id: existingId });
+          } else {
+            custsToInsert.push(custRow);
+          }
+
+          // Visit records
           if (custNo) {
             const visits: VisitRow[] = [];
-
             if (soldDate) {
               const st = col(row, "sold_type").toUpperCase();
               visits.push({
                 dealership_id:   ud.dealership_id,
                 dms_external_id: `braman_dms:sale:${custNo}:${soldDate}`,
-                vin:          vVin   || null,
-                make:         vMake  || null,
-                model:        vModel || null,
-                year:         vYear,
-                mileage:      parseMileage(col(row, "del_miles")),
-                service_type: "purchase",
+                vin: vVin || null, make: vMake || null, model: vModel || null,
+                year: vYear, mileage: parseMileage(col(row, "del_miles")),
+                service_type:  "purchase",
                 service_notes: st === "N" ? "New vehicle sale"
                               : st === "U" ? "Used vehicle sale"
                               : "Vehicle sale",
@@ -364,66 +401,79 @@ export async function POST(req: NextRequest) {
                 visit_date:   soldDate,
               });
             }
-
             if (svcDate && svcDate !== soldDate) {
               visits.push({
                 dealership_id:   ud.dealership_id,
                 dms_external_id: `braman_dms:svc:${custNo}:${svcDate}`,
-                vin:          vVin   || null,
-                make:         vMake  || null,
-                model:        vModel || null,
-                year:         vYear,
-                mileage:      vMileage,
+                vin: vVin || null, make: vMake || null, model: vModel || null,
+                year: vYear, mileage: vMileage,
                 service_type: "service",
                 total_amount: svcAmt || null,
                 visit_date:   svcDate,
               });
             }
-
             if (visits.length > 0) visitsByCustNo.set(custNo, visits);
           }
         }
 
-        // ── Batch upsert customers (1 DB round trip per 500-row batch) ──────
-        if (custsToUpsert.length > 0) {
+        // ── Step 3: execute database writes ──────────────────────────────
+        skipped += rows.length - custsToUpdate.length - custsToInsert.length;
+        const allUpserted: Array<{ id: string; dms_external_id: string | null }> = [];
+
+        // Update existing customers: backfill dms_external_id + all derived fields
+        if (custsToUpdate.length > 0) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: upserted, error: upsertErr } = await (svc
+          const { data: updated, error: updateErr } = await (svc
             .from("customers")
-            .upsert(custsToUpsert as any, { onConflict: "dealership_id,dms_external_id" })
+            .upsert(custsToUpdate as any, { onConflict: "id" })
             .select("id, dms_external_id") as any) as {
               data: Array<{ id: string; dms_external_id: string | null }> | null;
               error: { message: string } | null;
             };
-
-          if (upsertErr) {
-            errors.push({ row: 0, message: `Customer batch failed: ${upsertErr.message}` });
-            skipped += rows.length;
+          if (updateErr) {
+            errors.push({ row: 0, message: `Merge update failed: ${updateErr.message}` });
           } else {
-            inserted = upserted?.length ?? 0;
-            skipped += rows.length - inserted;
+            allUpserted.push(...(updated ?? []));
+            inserted += updated?.length ?? 0;
+          }
+        }
 
-            // ── Batch upsert visits (trigger fires per row → updates stats) ─
-            const visitsToInsert: VisitRow[] = [];
-            for (const c of upserted ?? []) {
-              if (!c.dms_external_id) continue;
-              const custNo = c.dms_external_id.replace("braman_dms:", "");
-              for (const v of visitsByCustNo.get(custNo) ?? []) {
-                visitsToInsert.push({ ...v, customer_id: c.id });
-              }
-            }
+        // Insert net-new customers
+        if (custsToInsert.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: newRows, error: insertErr } = await (svc
+            .from("customers")
+            .upsert(custsToInsert as any, { onConflict: "dealership_id,dms_external_id" })
+            .select("id, dms_external_id") as any) as {
+              data: Array<{ id: string; dms_external_id: string | null }> | null;
+              error: { message: string } | null;
+            };
+          if (insertErr) {
+            errors.push({ row: 0, message: `Customer insert failed: ${insertErr.message}` });
+            skipped += custsToInsert.length;
+          } else {
+            allUpserted.push(...(newRows ?? []));
+            inserted += newRows?.length ?? 0;
+          }
+        }
 
-            if (visitsToInsert.length > 0) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const { error: visitErr } = await (svc
-                .from("visits")
-                .upsert(visitsToInsert as any, {
-                  onConflict: "dealership_id,dms_external_id",
-                }) as any) as { error: { message: string } | null };
-
-              if (visitErr) {
-                errors.push({ row: 0, message: `Visit upsert warning: ${visitErr.message}` });
-              }
-            }
+        // ── Step 4: batch upsert visits; trigger corrects denorm stats ───
+        const visitsToInsert: VisitRow[] = [];
+        for (const c of allUpserted) {
+          if (!c.dms_external_id) continue;
+          const custNo = c.dms_external_id.replace("braman_dms:", "");
+          for (const v of visitsByCustNo.get(custNo) ?? []) {
+            visitsToInsert.push({ ...v, customer_id: c.id });
+          }
+        }
+        if (visitsToInsert.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: visitErr } = await (svc
+            .from("visits")
+            .upsert(visitsToInsert as any, { onConflict: "dealership_id,dms_external_id" }) as any
+          ) as { error: { message: string } | null };
+          if (visitErr) {
+            errors.push({ row: 0, message: `Visit upsert warning: ${visitErr.message}` });
           }
         }
 
