@@ -153,6 +153,9 @@ Output JSON: {"plan": "summary", "priority_segments": ["segment1"], "risk_flags"
         (v) => v.customer_id === customer.id
       ) as Visit | undefined;
 
+      const customerCreditTier =
+        ((customer.metadata as Record<string, unknown> | null)?.credit_tier as string | undefined) ?? undefined;
+
       const creative = await runCreativeAgent({
         context: input.context,
         customer,
@@ -163,6 +166,7 @@ Output JSON: {"plan": "summary", "priority_segments": ["segment1"], "risk_flags"
         dealershipProfile,
         baselineExamples,
         dealershipInsights: insightsContext,
+        customerCreditTier,
       });
       totalTokens += creative.tokensUsed;
 

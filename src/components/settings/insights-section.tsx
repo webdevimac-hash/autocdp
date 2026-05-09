@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   RefreshCw, Loader2, ChevronDown, ChevronUp, Pencil, Check, X,
-  TrendingUp, Car, Palette, BarChart2, MessageSquare, Star, Lightbulb,
+  TrendingUp, Car, Palette, BarChart2, MessageSquare, Star, Lightbulb, CreditCard,
 } from "lucide-react";
 import type { InsightType } from "@/lib/insights-shared";
 import { INSIGHT_TITLES, INSIGHT_DESCRIPTIONS } from "@/lib/insights-shared";
@@ -28,6 +28,7 @@ const INSIGHT_ICONS: Record<InsightType, React.ReactNode> = {
   inventory_turnover:   <BarChart2 className="w-4 h-4" />,
   sentiment_patterns:   <MessageSquare className="w-4 h-4" />,
   google_review_trends: <Star className="w-4 h-4" />,
+  credit_tier_patterns: <CreditCard className="w-4 h-4" />,
 };
 
 const INSIGHT_COLORS: Record<InsightType, string> = {
@@ -37,6 +38,7 @@ const INSIGHT_COLORS: Record<InsightType, string> = {
   inventory_turnover:   "text-amber-600 bg-amber-50 border-amber-200",
   sentiment_patterns:   "text-rose-600 bg-rose-50 border-rose-200",
   google_review_trends: "text-yellow-600 bg-yellow-50 border-yellow-200",
+  credit_tier_patterns: "text-indigo-600 bg-indigo-50 border-indigo-200",
 };
 
 const TYPE_ORDER: InsightType[] = [
@@ -46,6 +48,7 @@ const TYPE_ORDER: InsightType[] = [
   "inventory_turnover",
   "sentiment_patterns",
   "google_review_trends",
+  "credit_tier_patterns",
 ];
 
 function InsightDataView({ type, data }: { type: InsightType; data: Record<string, unknown> }) {
@@ -210,6 +213,47 @@ function InsightDataView({ type, data }: { type: InsightType; data: Record<strin
               </span>
             </div>
           ))}
+        </div>
+      );
+    }
+
+    case "credit_tier_patterns": {
+      if (!data.available) {
+        return (
+          <p className="text-xs text-slate-400 italic mt-1">
+            Connect 700Credit via Integrations to enable credit-aware targeting and messaging.
+          </p>
+        );
+      }
+      type TierStat = { tier: string; count: number; pct: number; response_rate: number | null };
+      const tiers = (data.tiers as TierStat[] ?? []);
+      const tierColors: Record<string, string> = {
+        excellent: "bg-emerald-500",
+        good: "bg-indigo-400",
+        fair: "bg-amber-400",
+        poor: "bg-red-400",
+      };
+      return (
+        <div className="mt-2 space-y-2">
+          {tiers.map((t) => (
+            <div key={t.tier}>
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-[11px] font-medium text-slate-600 capitalize">{t.tier}</span>
+                <div className="flex items-center gap-2">
+                  {t.response_rate != null && (
+                    <span className="text-[10px] text-indigo-600 font-semibold">{t.response_rate}% response</span>
+                  )}
+                  <span className="text-[10px] text-slate-400 tabular-nums">{t.pct}%</span>
+                </div>
+              </div>
+              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full ${tierColors[t.tier] ?? "bg-slate-400"}`} style={{ width: `${t.pct}%` }} />
+              </div>
+            </div>
+          ))}
+          {data.total != null && (
+            <p className="text-[10px] text-slate-400 pt-1">{String(data.total)} customers with credit data</p>
+          )}
         </div>
       );
     }

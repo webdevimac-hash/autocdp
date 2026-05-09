@@ -9,7 +9,8 @@ export type InsightType =
   | "popular_colors"
   | "inventory_turnover"
   | "sentiment_patterns"
-  | "google_review_trends";
+  | "google_review_trends"
+  | "credit_tier_patterns";
 
 export const INSIGHT_TITLES: Record<InsightType, string> = {
   trade_in_lines:       "Top Trade-In Lines",
@@ -18,6 +19,7 @@ export const INSIGHT_TITLES: Record<InsightType, string> = {
   inventory_turnover:   "Inventory Turnover",
   sentiment_patterns:   "Customer Sentiment",
   google_review_trends: "Google Review Trends",
+  credit_tier_patterns: "Credit Tier Patterns",
 };
 
 export const INSIGHT_DESCRIPTIONS: Record<InsightType, string> = {
@@ -27,4 +29,5 @@ export const INSIGHT_DESCRIPTIONS: Record<InsightType, string> = {
   inventory_turnover:   "How quickly different models move off the lot.",
   sentiment_patterns:   "Recurring themes in customer service notes.",
   google_review_trends: "Key topics and sentiment from your Google reviews.",
+  credit_tier_patterns: "Credit tier distribution and campaign response rates by tier.",
 };

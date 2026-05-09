@@ -107,6 +107,8 @@ export async function POST(req: NextRequest) {
         logo_url: dealership?.logo_url as string | null,
         website_url: dealership?.website_url as string | null,
       },
+      customerCreditTier:
+        ((customer?.metadata as Record<string, unknown> | null)?.credit_tier as string | undefined) ?? undefined,
     });
 
     // QR preview URL — only relevant for direct mail

@@ -51,6 +51,12 @@ export interface CreativeAgentInput {
   coopGuidance?: string;
   /** Pre-formatted dealership insights from formatInsightsForPrompt() — use naturally, not verbatim. */
   dealershipInsights?: string;
+  /**
+   * Customer's credit tier from 700Credit (excellent/good/fair/poor/unknown).
+   * Used to tailor offer framing — do NOT mention the tier to the customer.
+   * FCRA-safe: we personalize the offer type, not the score.
+   */
+  customerCreditTier?: string;
 }
 
 export interface CreativeAgentOutput extends PersonalizedMessage {
@@ -390,13 +396,36 @@ export async function runCreativeAgent(
   const coopSection = input.coopGuidance ?? "";
   const insightsSection = input.dealershipInsights ?? "";
 
+  // Credit tier offer framing (FCRA-safe: tailor offer type, never mention the score)
+  const CREDIT_OFFER_GUIDANCE: Record<string, string> = {
+    excellent:
+      `CREDIT CONTEXT (internal only — do NOT mention credit scores or tiers to the customer):\n` +
+      `This customer likely qualifies for top-tier financing. Lead with: 0% APR offers, loyalty upgrade programs, ` +
+      `low monthly payments on new vehicles, or exclusive VIP-level service perks.`,
+    good:
+      `CREDIT CONTEXT (internal only — do NOT mention credit scores or tiers to the customer):\n` +
+      `This customer likely qualifies for competitive financing rates. Lead with: trade-in value emphasis, ` +
+      `below-market rate offers, or vehicle upgrade opportunities with manageable payments.`,
+    fair:
+      `CREDIT CONTEXT (internal only — do NOT mention credit scores or tiers to the customer):\n` +
+      `This customer may benefit from flexible payment options. Lead with: cash-back offers, service-value ` +
+      `messaging, or "no-pressure" service reminders. Avoid financing-forward language.`,
+    poor:
+      `CREDIT CONTEXT (internal only — do NOT mention credit scores or tiers to the customer):\n` +
+      `Focus on service value and trade-in equity. Lead with: cash incentives, loyalty service discounts, ` +
+      `or trade-in-for-equity offers. Avoid payment/financing language entirely.`,
+  };
+  const creditSection = input.customerCreditTier && input.customerCreditTier !== "unknown"
+    ? `\n${CREDIT_OFFER_GUIDANCE[input.customerCreditTier] ?? ""}\n`
+    : "";
+
   const systemPrompt =
     `You are the Creative Agent for AutoCDP. You write hyper-personalized outreach ` +
     `messages for auto dealership customers. Your copy feels human, warm, and specific — never generic.\n\n` +
     `Tone: ${input.dealershipTone || "friendly and professional"}\n` +
     `Dealership: ${input.context.dealershipName}\n` +
     (profileSection ? `\nDEALERSHIP CONTACT INFO (use in CTAs when relevant):\n${profileSection}\n` : "") +
-    `${coopSection}${designStyleNote}${imagesNote}${baselineSection}${memoriesSection}${insightsSection}${learningsSection}${inventorySection}${bookNowSection}\n` +
+    `${coopSection}${designStyleNote}${imagesNote}${baselineSection}${memoriesSection}${insightsSection}${creditSection}${learningsSection}${inventorySection}${bookNowSection}\n` +
     `Rules:\n` +
     `- Reference specific details from the customer's visit history when available\n` +
     `- When network learnings apply to this customer's vehicle or segment, weave them in naturally\n` +

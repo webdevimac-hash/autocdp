@@ -128,6 +128,16 @@ export function formatInsightsForPrompt(insights: DealershipInsight[]): string {
         }
         break;
       }
+      case "credit_tier_patterns": {
+        if (!d.available) return; // skip if no 700Credit data
+        type TierStat = { tier: string; count: number; pct: number; response_rate: number | null };
+        const tiers = (d.tiers as TierStat[] ?? []).slice(0, 4);
+        lines.push(...tiers.map((t) => {
+          const rr = t.response_rate != null ? `, ${t.response_rate}% response` : "";
+          return `  • ${t.tier}: ${t.pct}% of customers${rr}`;
+        }));
+        break;
+      }
     }
 
     if (lines.length || insight.summary) {
@@ -456,6 +466,100 @@ async function computeGoogleReviewTrends(
   }
 }
 
+// ── Credit tier patterns ──────────────────────────────────────────────────────
+
+async function computeCreditTierPatterns(
+  dealershipId: string,
+  svc: ReturnType<typeof createServiceClient>
+): Promise<{ data: Record<string, unknown>; summary: string }> {
+  // Distribution from customer metadata
+  type CustMeta = { metadata: Record<string, unknown> | null };
+  const { data: custData } = await (svc
+    .from("customers")
+    .select("metadata")
+    .eq("dealership_id", dealershipId)
+    .limit(10000)) as unknown as { data: CustMeta[] | null };
+
+  const dist: Record<string, number> = { excellent: 0, good: 0, fair: 0, poor: 0, unknown: 0 };
+  for (const c of custData ?? []) {
+    const tier = (c.metadata?.credit_tier as string | undefined) ?? "unknown";
+    dist[tier in dist ? tier : "unknown"]++;
+  }
+  const total = Object.values(dist).reduce((s, n) => s + n, 0);
+  const hasCreditData = total > 0 && dist.unknown < total * 0.9;
+
+  if (!hasCreditData) {
+    return {
+      data: { available: false, distribution: dist },
+      summary: "No 700Credit data connected yet. Connect via Integrations → 700Credit to enable credit-aware targeting.",
+    };
+  }
+
+  // Response rates by tier from communications
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  type CommJoin = { status: string; customers: { metadata: Record<string, unknown> | null } | null };
+  const { data: commData } = await (svc
+    .from("communications")
+    .select("status, customers(metadata)")
+    .eq("dealership_id", dealershipId)
+    .in("status", ["sent", "delivered", "opened", "clicked", "converted"])
+    .gte("created_at", ninetyDaysAgo)
+    .limit(5000)) as unknown as { data: CommJoin[] | null };
+
+  const tierResponse: Record<string, { sent: number; engaged: number }> = {
+    excellent: { sent: 0, engaged: 0 },
+    good: { sent: 0, engaged: 0 },
+    fair: { sent: 0, engaged: 0 },
+    poor: { sent: 0, engaged: 0 },
+    unknown: { sent: 0, engaged: 0 },
+  };
+
+  for (const row of commData ?? []) {
+    const tier = (row.customers?.metadata?.credit_tier as string | undefined) ?? "unknown";
+    const key = tier in tierResponse ? tier : "unknown";
+    tierResponse[key].sent++;
+    if (["opened", "clicked", "converted"].includes(row.status)) {
+      tierResponse[key].engaged++;
+    }
+  }
+
+  type TierStat = { tier: string; count: number; pct: number; response_rate: number | null };
+  const tiers: TierStat[] = (["excellent", "good", "fair", "poor"] as const)
+    .filter((t) => dist[t] > 0)
+    .map((tier) => {
+      const r = tierResponse[tier];
+      return {
+        tier,
+        count: dist[tier],
+        pct: total > 0 ? Math.round((dist[tier] / total) * 100) : 0,
+        response_rate: r.sent > 0 ? Math.round((r.engaged / r.sent) * 100) : null,
+      };
+    });
+
+  const dominantTier = tiers.sort((a, b) => b.count - a.count)[0];
+  const bestResponder = tiers
+    .filter((t) => t.response_rate != null)
+    .sort((a, b) => (b.response_rate ?? 0) - (a.response_rate ?? 0))[0];
+
+  const summaryParts: string[] = [];
+  if (dominantTier) {
+    summaryParts.push(`${dominantTier.pct}% of customers are ${dominantTier.tier}-tier.`);
+  }
+  if (bestResponder?.response_rate != null) {
+    summaryParts.push(
+      `${bestResponder.tier.charAt(0).toUpperCase() + bestResponder.tier.slice(1)}-tier customers have the highest campaign response rate (${bestResponder.response_rate}%).`
+    );
+  }
+  if (dist.unknown > 0 && total > 0) {
+    summaryParts.push(`${Math.round((dist.unknown / total) * 100)}% have no credit data yet.`);
+  }
+
+  return {
+    data: { available: true, distribution: dist, tiers, total },
+    summary: summaryParts.join(" ") || "Credit tier data available.",
+  };
+}
+
 // ── Main refresh ──────────────────────────────────────────────────────────────
 
 export async function refreshDealershipInsights(
@@ -503,6 +607,7 @@ export async function refreshDealershipInsights(
     { type: "inventory_turnover",   fn: () => computeInventoryTurnover(inventory) },
     { type: "sentiment_patterns",   fn: () => computeSentimentPatterns(visits, dealership.name, tokensRef) },
     { type: "google_review_trends", fn: () => computeGoogleReviewTrends(dealership, tokensRef) },
+    { type: "credit_tier_patterns", fn: () => computeCreditTierPatterns(dealershipId, svc) },
   ];
 
   for (const { type, fn } of computations) {
