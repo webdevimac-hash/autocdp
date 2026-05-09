@@ -31,6 +31,7 @@ function actionLabel(action: string): string {
     "campaign.approval.approved":           "Campaign approved by GM",
     "campaign.approval.rejected":           "Campaign rejected by GM",
     "campaign.approval.code_verified":      "Confirmation code verified",
+    "campaign.blocked.invoice_overdue":     "Print run blocked — invoice overdue",
     "campaign.governance.memories_applied": "Governance: guidance applied to run",
     "agent.run.started":                    "Agent run started",
     "agent.run.completed":                  "Agent run completed",

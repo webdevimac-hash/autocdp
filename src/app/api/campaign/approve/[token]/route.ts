@@ -6,6 +6,10 @@ import { runDirectMailOrchestrator, runOmnichannelOrchestrator } from "@/lib/ant
 import type { OmnichannelChannel } from "@/lib/anthropic/agents/orchestrator";
 import { logAudit } from "@/lib/audit";
 import type { MailTemplateType, DesignStyle } from "@/types";
+import { checkPrintRunGate, getBillingSettings } from "@/lib/billing/invoices";
+import { getMonthlyUsage } from "@/lib/billing/metering";
+import { buildControllerAlertEmail } from "@/lib/email-templates/controller-alert-email";
+import { sendEmail } from "@/lib/resend-client";
 
 // GET — return approval record details (no auth required — token is the secret)
 export async function GET(
@@ -167,6 +171,59 @@ export async function POST(
   const snap = approval.campaign_snapshot;
 
   try {
+    // Direct mail gate: check for overdue invoices and notify controller if threshold crossed
+    if (snap.channel === "direct_mail") {
+      const printCostCents = snap.customerIds.length * 150; // $1.50 per piece
+      const gateResult = await checkPrintRunGate(approval.dealership_id, printCostCents);
+
+      if (!gateResult.allowed) {
+        // Record in audit log
+        void logAudit({
+          dealershipId: approval.dealership_id,
+          userId: approval.requested_by ?? undefined,
+          action: "campaign.blocked.invoice_overdue",
+          resourceType: "campaign_approval",
+          resourceId: approval.id,
+          metadata: { reason: gateResult.reason, blocked_invoice_id: gateResult.blockedByInvoiceId },
+        });
+        return NextResponse.json({
+          status: "blocked",
+          message: gateResult.reason,
+          invoiceId: gateResult.blockedByInvoiceId,
+        }, { status: 402 });
+      }
+
+      // Notify controller if this run crosses the spend threshold
+      if (gateResult.controllerNotified) {
+        const [billingSettings, monthUsage] = await Promise.all([
+          getBillingSettings(approval.dealership_id),
+          getMonthlyUsage(approval.dealership_id).catch(() => ({ totalCostCents: 0 })),
+        ]);
+        if (billingSettings.invoice_controller_email) {
+          const svc = createServiceClient();
+          const { data: dl } = await svc.from("dealerships").select("name").eq("id", approval.dealership_id).single();
+          const { subject, html } = buildControllerAlertEmail({
+            dealerName: (dl as { name?: string } | null)?.name ?? "Dealership",
+            controllerEmail: billingSettings.invoice_controller_email,
+            printPieces: snap.customerIds.length,
+            printCostCents,
+            thresholdCents: billingSettings.invoice_threshold_cents,
+            currentMonthSpendCents: monthUsage.totalCostCents,
+            channel: snap.channel,
+            requestedByEmail: snap.requestedByEmail,
+            billingPageUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://autocdp.com"}/dashboard/billing`,
+          });
+          void sendEmail({
+            to: billingSettings.invoice_controller_email,
+            subject,
+            html,
+            fromName: "AutoCDP Billing",
+            fromEmail: "billing@autocdp.io",
+          });
+        }
+      }
+    }
+
     let execResult: { successCount?: number; failedCount?: number; status?: string };
 
     if (snap.channel === "direct_mail") {

@@ -1,16 +1,20 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/header";
-import { Button } from "@/components/ui/button";
 import {
-  CreditCard, CheckCircle, Zap, Mail, MessageSquare, FileText, Bot,
+  Mail, MessageSquare, FileText, Bot,
   ArrowUpRight, Sparkles, TrendingDown, ShieldCheck, AlertCircle,
+  CheckCircle,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { getMonthlyUsage, PLAN_BASE_FEES, type PlanTier } from "@/lib/billing/metering";
+import { getBillingSettings, listInvoices } from "@/lib/billing/invoices";
+import { BillingSettingsPanel } from "@/components/billing/billing-settings-panel";
 
 export const metadata = { title: "Billing" };
 
 const PLANS: {
-  name: string; tier: PlanTier | "trial"; price: string; period: string;
+  name: string; tier: string; price: string; period: string;
   description: string; features: string[]; highlight: boolean;
   featureCard: string; badge: string | null;
 }[] = [
@@ -49,7 +53,7 @@ const PLANS: {
       "Unlimited customers",
       "Custom agent workflows",
       "Dedicated infrastructure",
-      "White-label option",
+      "ACH & invoice billing",
       "SLA guarantee",
       "Dedicated CSM",
     ],
@@ -79,91 +83,118 @@ function buildSpendInsight(
     if (usage.mailPiecesSent > 0) {
       const mailCost = usage.mailPiecesSent * 1.50;
       return {
-        message: `Direct mail (${usage.mailPiecesSent} pieces, ~$${mailCost.toFixed(0)}) is your largest variable cost this month. Targeting your top RFM quintile typically cuts list size 30–40% with similar response rates.`,
+        message: `Direct mail (${usage.mailPiecesSent} pieces, ~$${mailCost.toFixed(0)}) is your largest variable cost. Targeting your top RFM quintile typically cuts list size 30–40% with similar response rates.`,
         type: "info",
       };
     }
     if (projectedCents > 0) {
       return {
-        message: `At current activity, projected variable spend is ~$${projected.toFixed(0)} this month. Starter plan ($499/mo) bundles SMS, email, and agent runs — check if that works out cheaper for your volume.`,
+        message: `Projected variable spend at current pace: ~$${projected.toFixed(0)} this month. Starter plan ($499/mo) bundles SMS, email, and agent runs.`,
         type: "info",
       };
     }
-    return {
-      message: "No usage recorded yet this month. Run your first campaign to start seeing spend data here.",
-      type: "neutral",
-    };
+    return { message: "No variable usage recorded yet this month. Run your first campaign to see spend data here.", type: "neutral" };
   }
-
   if (planTier === "growth") {
     const mailCost = usage.mailPiecesSent * 1.50;
     if (usage.mailPiecesSent > 50) {
       return {
-        message: `Direct mail is $${mailCost.toFixed(0)} this month (${usage.mailPiecesSent} pieces). Focusing on customers with an RFM score above 60 typically reduces piece count by 25–35% without a meaningful drop in booked appointments.`,
+        message: `Direct mail is $${mailCost.toFixed(0)} this month (${usage.mailPiecesSent} pieces). Focusing on RFM score ≥60 typically reduces piece count 25–35% without a meaningful drop in booked appointments.`,
         type: "positive",
       };
     }
     return {
-      message: `Variable spend is $${(usage.totalCostCents / 100).toFixed(2)} so far. Your Growth plan includes unlimited campaigns — make sure you're running at least one per week to get full value.`,
+      message: `Variable spend is $${(usage.totalCostCents / 100).toFixed(2)} so far. Growth plan includes unlimited campaigns — aim for at least one per week to get full value.`,
       type: "neutral",
     };
   }
-
   return { message: "Enterprise plan active. Your billing is managed by your account team.", type: "neutral" };
 }
 
 export default async function BillingPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
   const { data: ud } = await supabase
     .from("user_dealerships")
-    .select("dealership_id")
-    .eq("user_id", user!.id)
-    .single();
+    .select("dealership_id, role")
+    .eq("user_id", user.id)
+    .single() as { data: { dealership_id: string; role: string } | null };
 
-  let usage = { agentRuns: 0, smsSent: 0, emailSent: 0, mailPiecesSent: 0, totalCostCents: 0 };
-  let planTier: string = "trial";
+  const dealershipId = ud?.dealership_id;
+  const userRole     = ud?.role ?? "member";
+  const canEdit      = ["owner", "admin"].includes(userRole);
 
-  if (ud?.dealership_id) {
-    try { usage = await getMonthlyUsage(ud.dealership_id); } catch { /* not yet configured */ }
+  let usage        = { agentRuns: 0, smsSent: 0, emailSent: 0, mailPiecesSent: 0, totalCostCents: 0 };
+  let planTier     = "trial";
+  let dealerName   = "My Dealership";
+  let billingSettings = {
+    payment_method_preference: "card" as const,
+    invoice_threshold_cents: 50000,
+    invoice_require_payment_before_print: false,
+  };
+  let invoices = [];
+
+  if (dealershipId) {
+    try { usage = await getMonthlyUsage(dealershipId); } catch { /* not yet configured */ }
 
     const svc = createServiceClient();
     const { data: dl } = await svc
       .from("dealerships")
-      .select("plan_tier")
-      .eq("id", ud.dealership_id)
-      .single();
-    planTier = (dl as { plan_tier?: string } | null)?.plan_tier ?? "trial";
+      .select("name, plan_tier")
+      .eq("id", dealershipId)
+      .single() as { data: { name: string; plan_tier: string } | null };
+
+    planTier   = dl?.plan_tier ?? "trial";
+    dealerName = dl?.name ?? "My Dealership";
+
+    try {
+      [billingSettings, invoices] = await Promise.all([
+        getBillingSettings(dealershipId),
+        listInvoices(dealershipId),
+      ]);
+    } catch { /* tables may not exist yet */ }
   }
 
-  const now = new Date();
-  const dayOfMonth = now.getDate();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const now          = new Date();
+  const dayOfMonth   = now.getDate();
+  const daysInMonth  = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const daysRemaining = daysInMonth - dayOfMonth;
 
-  const usageValues = [usage.agentRuns, usage.smsSent, usage.emailSent, usage.mailPiecesSent];
-  const currentPlan = PLANS.find((p) => p.tier === planTier);
-  const planBaseCents = planTier === "trial" ? 0 : (PLAN_BASE_FEES[planTier as PlanTier] ?? 0);
+  const usageValues  = [usage.agentRuns, usage.smsSent, usage.emailSent, usage.mailPiecesSent];
+  const currentPlan  = PLANS.find((p) => p.tier === planTier);
+  const planBaseCents = planTier in PLAN_BASE_FEES ? PLAN_BASE_FEES[planTier as PlanTier] : 0;
+  const insight       = buildSpendInsight(planTier, usage, dayOfMonth, daysInMonth);
 
-  const insight = buildSpendInsight(planTier, usage, dayOfMonth, daysInMonth);
-
-  // Credit tier chip colors
   const tierColors: Record<string, string> = {
-    trial: "chip-amber",
-    starter: "chip-slate",
-    growth: "chip-indigo",
-    enterprise: "chip-emerald",
+    trial: "chip-amber", starter: "chip-slate", growth: "chip-indigo", enterprise: "chip-emerald",
   };
   const tierChip = tierColors[planTier] ?? "chip-slate";
 
+  const paymentLabel = billingSettings.payment_method_preference === "ach"
+    ? `ACH${billingSettings.ach_bank_name ? ` · ${billingSettings.ach_bank_name}` : ""}${billingSettings.ach_account_last4 ? ` ···${billingSettings.ach_account_last4}` : ""}`
+    : "Credit / Debit Card";
+
+  const overdueCount = (invoices as { status: string }[]).filter((i) => i.status === "overdue").length;
+
   return (
     <>
-      <Header title="Billing" subtitle="Subscription & usage-based pricing" userEmail={user?.email} />
+      <Header title="Billing" subtitle={`${dealerName} · ${paymentLabel}`} userEmail={user?.email} />
 
       <main className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-5 max-w-[1400px]">
 
-        {/* ── Credit compliance — current tier banner ──────────────── */}
+        {/* ── Overdue invoice alert ──────────────────────────────── */}
+        {overdueCount > 0 && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+            <p className="text-sm text-red-800 font-medium">
+              {overdueCount} overdue invoice{overdueCount > 1 ? "s" : ""}. Direct mail campaigns may be blocked until settled. See Invoices below.
+            </p>
+          </div>
+        )}
+
+        {/* ── Current tier banner ────────────────────────────────── */}
         <div
           className="rounded-[var(--radius)] overflow-hidden relative"
           style={{ background: "linear-gradient(135deg, #0B1526 0%, #1E3048 100%)" }}
@@ -183,15 +214,13 @@ export default async function BillingPage() {
                 </p>
                 <p className="text-sm text-white/60 mt-0.5">
                   {planBaseCents > 0
-                    ? `Base fee $${(planBaseCents / 100).toFixed(0)}/mo + usage overage`
+                    ? `Base fee $${(planBaseCents / 100).toFixed(0)}/mo + usage overage · ${paymentLabel}`
                     : "No base fee during trial. Upgrade to unlock full features."}
                 </p>
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <div className="text-right hidden sm:block">
-                  <p className="text-2xl font-bold text-white tabular-nums">
-                    ${(usage.totalCostCents / 100).toFixed(2)}
-                  </p>
+                  <p className="text-2xl font-bold text-white tabular-nums">${(usage.totalCostCents / 100).toFixed(2)}</p>
                   <p className="text-xs text-white/50">variable this month</p>
                 </div>
                 {planTier === "trial" || planTier === "starter" ? (
@@ -207,24 +236,21 @@ export default async function BillingPage() {
               </div>
             </div>
 
-            {/* Spend intelligence strip */}
+            {/* Spend intelligence */}
             <div className={`mt-4 rounded-lg px-4 py-3 flex items-start gap-2.5 ${
               insight.type === "positive" ? "bg-emerald-500/10 border border-emerald-500/20"
-              : insight.type === "info" ? "bg-indigo-500/10 border border-indigo-500/20"
+              : insight.type === "info"   ? "bg-indigo-500/10 border border-indigo-500/20"
               : "bg-white/5 border border-white/10"
             }`}>
-              {insight.type === "positive"
-                ? <TrendingDown className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                : insight.type === "info"
-                ? <AlertCircle className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                : <Sparkles className="w-4 h-4 text-white/40 shrink-0 mt-0.5" />
-              }
+              {insight.type === "positive" ? <TrendingDown className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+               : insight.type === "info"   ? <AlertCircle  className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+               : <Sparkles className="w-4 h-4 text-white/40 shrink-0 mt-0.5" />}
               <p className="text-xs text-white/70 leading-relaxed">{insight.message}</p>
             </div>
           </div>
         </div>
 
-        {/* ── Plans ────────────────────────────────────────────── */}
+        {/* ── Plans ─────────────────────────────────────────────── */}
         <div>
           <h2 className="text-[13px] font-semibold text-slate-700 mb-3 uppercase tracking-wide">Plans</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -234,11 +260,9 @@ export default async function BillingPage() {
                 <div
                   key={plan.name}
                   className={`feature-card ${plan.featureCard} relative bg-white rounded-[var(--radius)] border shadow-card flex flex-col ${
-                    isCurrent
-                      ? "border-emerald-300 ring-1 ring-emerald-200"
-                      : plan.highlight
-                      ? "border-indigo-300 ring-1 ring-indigo-200"
-                      : "border-slate-200"
+                    isCurrent ? "border-emerald-300 ring-1 ring-emerald-200"
+                    : plan.highlight ? "border-indigo-300 ring-1 ring-indigo-200"
+                    : "border-slate-200"
                   }`}
                 >
                   {isCurrent && (
@@ -260,7 +284,7 @@ export default async function BillingPage() {
                     <p className="text-xs text-slate-400 mt-1">{plan.description}</p>
                   </div>
                   <div className="border-t border-slate-100 mx-5" />
-                  <div className="px-5 py-4 flex-1 space-y-2.5">
+                  <div className="px-5 py-4 flex-1">
                     <ul className="space-y-2">
                       {plan.features.map((f) => (
                         <li key={f} className="flex items-center gap-2 text-[13px] text-slate-600">
@@ -271,12 +295,7 @@ export default async function BillingPage() {
                     </ul>
                   </div>
                   <div className="px-5 pb-5">
-                    <Button
-                      className="w-full"
-                      variant={isCurrent ? "outline" : plan.highlight ? "default" : "outline"}
-                      size="sm"
-                      disabled={isCurrent}
-                    >
+                    <Button className="w-full" variant={isCurrent ? "outline" : plan.highlight ? "default" : "outline"} size="sm" disabled={isCurrent}>
                       {isCurrent ? "Current Plan" : plan.name === "Enterprise" ? "Contact Sales" : `Switch to ${plan.name}`}
                     </Button>
                   </div>
@@ -286,7 +305,7 @@ export default async function BillingPage() {
           </div>
         </div>
 
-        {/* ── Usage this month ─────────────────────────────────── */}
+        {/* ── Usage this month ──────────────────────────────────── */}
         <div className="inst-panel">
           <div className="inst-panel-header">
             <div>
@@ -297,7 +316,7 @@ export default async function BillingPage() {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-[17px] font-bold text-slate-900 tabular-nums">${(usage.totalCostCents / 100).toFixed(2)}</span>
-              <span className="text-xs text-slate-400 font-medium">variable charges</span>
+              <span className="text-xs text-slate-400 font-medium">variable</span>
             </div>
           </div>
           <div className="divide-y divide-slate-50">
@@ -321,29 +340,15 @@ export default async function BillingPage() {
           </div>
         </div>
 
-        {/* ── Payment method ───────────────────────────────────── */}
-        <div className="inst-panel">
-          <div className="inst-panel-header">
-            <div className="inst-panel-title">Payment Method</div>
-          </div>
-          <div className="p-5">
-            <div className="flex items-center gap-4 p-4 border border-slate-200 rounded-[var(--radius)] bg-slate-50/50">
-              <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-card shrink-0">
-                <CreditCard className="w-5 h-5 text-slate-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-semibold text-slate-800">No payment method on file</p>
-                <p className="text-xs text-slate-400 mt-0.5">Add a card to activate your subscription after the trial.</p>
-              </div>
-              <Button variant="outline" size="sm" className="text-xs h-8 shrink-0">
-                <Zap className="w-3 h-3 mr-1.5" /> Add Card
-              </Button>
-            </div>
-            <p className="text-xs text-slate-400 mt-3">
-              Payments processed securely via Stripe. Usage metering via Orb (Phase 2).
-            </p>
-          </div>
-        </div>
+        {/* ── Interactive: invoices + payment + invoice settings ── */}
+        {dealershipId && (
+          <BillingSettingsPanel
+            initial={billingSettings}
+            canEdit={canEdit}
+            invoices={invoices}
+            dealershipId={dealershipId}
+          />
+        )}
 
       </main>
     </>
