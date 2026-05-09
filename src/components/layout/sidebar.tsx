@@ -59,9 +59,10 @@ interface SidebarProps {
   allDealerships?: DealershipMembership[];
   activeDealershipId?: string;
   demoMode?: boolean;
+  isSuperAdmin?: boolean;
 }
 
-export function Sidebar({ dealership, allDealerships = [], activeDealershipId, demoMode = false }: SidebarProps) {
+export function Sidebar({ dealership, allDealerships = [], activeDealershipId, demoMode = false, isSuperAdmin = false }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -212,6 +213,20 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId, d
           </div>
         ))}
       </nav>
+
+      {/* Super-admin section */}
+      {isSuperAdmin && (
+        <div className="shrink-0 border-t border-white/8 px-2.5 py-2">
+          <span className="nav-group-label" style={{ marginTop: 4 }}>AutoCDP Team</span>
+          <Link
+            href="/dashboard/admin"
+            className={cn("nav-link", isActive("/dashboard/admin") && "active")}
+          >
+            <Shield className="nav-icon w-[15px] h-[15px]" />
+            <span>Admin Panel</span>
+          </Link>
+        </div>
+      )}
 
       {/* User footer */}
       <div className="shrink-0 border-t border-white/8 p-2.5 pb-safe-sm space-y-0.5">

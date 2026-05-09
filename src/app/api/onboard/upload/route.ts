@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { parseDriveCentricName, DC_NULL_VALUES } from "@/lib/csv";
+import { isSuperAdmin } from "@/lib/admin";
 
 /**
  * POST /api/onboard/upload
@@ -28,21 +29,30 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error: authErr } = await supabase.auth.getUser();
     if (authErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const body = await req.json();
+    const { type, rows, targetDealershipId } = body as {
+      type: "customers" | "visits";
+      rows: Record<string, string>[];
+      targetDealershipId?: string;
+    };
+
     const { data: ud } = await supabase
       .from("user_dealerships")
       .select("dealership_id")
       .eq("user_id", user.id)
       .single() as { data: { dealership_id: string } | null };
 
-    if (!ud?.dealership_id) {
+    // Super-admin can upload to any dealership via targetDealershipId
+    const resolvedId =
+      targetDealershipId && isSuperAdmin(user.email)
+        ? targetDealershipId
+        : ud?.dealership_id;
+
+    if (!resolvedId) {
       return NextResponse.json({ error: "No dealership found" }, { status: 400 });
     }
 
-    const body = await req.json();
-    const { type, rows } = body as {
-      type: "customers" | "visits";
-      rows: Record<string, string>[];
-    };
+    const resolvedUd = { dealership_id: resolvedId };
 
     if (!type || !Array.isArray(rows) || rows.length === 0) {
       return NextResponse.json({ error: "type and rows are required" }, { status: 400 });
@@ -222,13 +232,13 @@ export async function POST(req: NextRequest) {
           batchEmails.length > 0
             ? svc.from("customers")
                 .select("id, email, phone")
-                .eq("dealership_id", ud.dealership_id)
+                .eq("dealership_id", resolvedUd.dealership_id)
                 .in("email", [...new Set(batchEmails)])
             : Promise.resolve({ data: [] as ExistingRow[] }),
           batchPhones.length > 0
             ? svc.from("customers")
                 .select("id, email, phone")
-                .eq("dealership_id", ud.dealership_id)
+                .eq("dealership_id", resolvedUd.dealership_id)
                 .in("phone", [...new Set(batchPhones)])
             : Promise.resolve({ data: [] as ExistingRow[] }),
         ]);
@@ -357,7 +367,7 @@ export async function POST(req: NextRequest) {
           const dmsId  = custNo ? `braman_dms:${custNo}` : null;
 
           const custRow: CustRow = {
-            dealership_id:   ud.dealership_id,
+            dealership_id:   resolvedUd.dealership_id,
             dms_external_id: dmsId,
             first_name:      firstName || "Unknown",
             last_name:       lastName  || "",
@@ -389,7 +399,7 @@ export async function POST(req: NextRequest) {
             if (soldDate) {
               const st = col(row, "sold_type").toUpperCase();
               visits.push({
-                dealership_id:   ud.dealership_id,
+                dealership_id:   resolvedUd.dealership_id,
                 dms_external_id: `braman_dms:sale:${custNo}:${soldDate}`,
                 vin: vVin || null, make: vMake || null, model: vModel || null,
                 year: vYear, mileage: parseMileage(col(row, "del_miles")),
@@ -403,7 +413,7 @@ export async function POST(req: NextRequest) {
             }
             if (svcDate && svcDate !== soldDate) {
               visits.push({
-                dealership_id:   ud.dealership_id,
+                dealership_id:   resolvedUd.dealership_id,
                 dms_external_id: `braman_dms:svc:${custNo}:${svcDate}`,
                 vin: vVin || null, make: vMake || null, model: vModel || null,
                 year: vYear, mileage: vMileage,
@@ -482,7 +492,7 @@ export async function POST(req: NextRequest) {
         const { data: existing } = await svc
           .from("customers")
           .select("email, phone, first_name, last_name, address")
-          .eq("dealership_id", ud.dealership_id) as {
+          .eq("dealership_id", resolvedUd.dealership_id) as {
             data: {
               email: string | null; phone: string | null;
               first_name: string; last_name: string;
@@ -582,7 +592,7 @@ export async function POST(req: NextRequest) {
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const { error: insertErr } = await svc.from("customers").insert({
-              dealership_id:   ud.dealership_id,
+              dealership_id:   resolvedUd.dealership_id,
               first_name:      firstName || "Unknown",
               last_name:       lastName  || "",
               email:           email  ?? null,
@@ -619,7 +629,7 @@ export async function POST(req: NextRequest) {
       const { data: existingCustomers } = await svc
         .from("customers")
         .select("id, email, phone")
-        .eq("dealership_id", ud.dealership_id) as {
+        .eq("dealership_id", resolvedUd.dealership_id) as {
           data: { id: string; email: string | null; phone: string | null }[] | null;
         };
 
@@ -634,7 +644,7 @@ export async function POST(req: NextRequest) {
       const { data: existingVisits } = await svc
         .from("visits")
         .select("customer_id, visit_date, ro_number")
-        .eq("dealership_id", ud.dealership_id) as {
+        .eq("dealership_id", resolvedUd.dealership_id) as {
           data: { customer_id: string; visit_date: string | null; ro_number: string | null }[] | null;
         };
 
@@ -696,7 +706,7 @@ export async function POST(req: NextRequest) {
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { error: insertErr } = await svc.from("visits").insert({
-            dealership_id: ud.dealership_id,
+            dealership_id: resolvedUd.dealership_id,
             customer_id:   customerId,
             vin:           col(row, "vin") || null,
             make:          col(row, "make") || null,

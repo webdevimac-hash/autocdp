@@ -5,6 +5,7 @@ import { UsageBanner } from "@/components/layout/usage-banner";
 import { DemoBanner } from "@/components/layout/demo-banner";
 import { getAllUserDealerships, getActiveDealershipId } from "@/lib/dealership";
 import { isDemoMode } from "@/lib/demo";
+import { isSuperAdmin } from "@/lib/admin";
 import type { Dealership } from "@/types";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -38,6 +39,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         allDealerships={allDealerships}
         activeDealershipId={activeDealershipId}
         demoMode={demoMode}
+        isSuperAdmin={isSuperAdmin(user.email)}
       />
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
         {demoMode && <DemoBanner />}
