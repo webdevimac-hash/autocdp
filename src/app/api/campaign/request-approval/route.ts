@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getActiveDealershipId } from "@/lib/dealership";
-import { generateApprovalToken, hashToken } from "@/lib/campaign-approval";
+import { generateApprovalToken, hashToken, generateConfirmationCode, hashCode } from "@/lib/campaign-approval";
 import type { CampaignSnapshot } from "@/lib/campaign-approval";
 import { buildApprovalEmail } from "@/lib/email-templates/approval-email";
 import { sendEmail } from "@/lib/resend-client";
@@ -75,6 +75,8 @@ export async function POST(req: NextRequest) {
 
   const token = generateApprovalToken();
   const tokenHash = hashToken(token);
+  const confirmationCode = generateConfirmationCode();
+  const confirmationCodeHash = hashCode(confirmationCode);
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
   const service = createServiceClient();
@@ -89,6 +91,7 @@ export async function POST(req: NextRequest) {
       campaign_snapshot: snapshot as never,
       status: "pending",
       token_hash: tokenHash,
+      confirmation_code_hash: confirmationCodeHash,
       expires_at: expiresAt,
     })
     .select("id")
@@ -102,7 +105,7 @@ export async function POST(req: NextRequest) {
     ?? (req.headers.get("origin") ?? "https://autocdp.io");
   const approvalUrl = `${baseUrl}/campaign/approve/${token}`;
 
-  const { subject, html } = buildApprovalEmail({ approvalUrl, snapshot, expiresAt });
+  const { subject, html } = buildApprovalEmail({ approvalUrl, snapshot, expiresAt, confirmationCode });
   const emailResult = await sendEmail({
     to: gmEmail.trim(),
     subject,

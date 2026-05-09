@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/header";
 import {
   Send, Bot, Upload, Settings, Shield,
   CheckCircle2, XCircle, Clock, Sparkles, Lock, BookOpen,
+  KeyRound, ShieldCheck, Monitor,
 } from "lucide-react";
 import { formatRelativeDate } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ function actionLabel(action: string): string {
     "campaign.approval.requested":          "GM approval requested",
     "campaign.approval.approved":           "Campaign approved by GM",
     "campaign.approval.rejected":           "Campaign rejected by GM",
+    "campaign.approval.code_verified":      "Confirmation code verified",
     "campaign.governance.memories_applied": "Governance: guidance applied to run",
     "agent.run.started":                    "Agent run started",
     "agent.run.completed":                  "Agent run completed",
@@ -220,17 +222,50 @@ export default async function AuditPage() {
 
                       {/* Approval events */}
                       {isApproval && (
-                        <div className="text-xs text-slate-400 mt-0.5 space-x-2">
-                          {gmEmail && <span>GM: {gmEmail}</span>}
-                          {approverNotes && <span>· Notes: {approverNotes}</span>}
-                          {entry.details.recipient_count && (
-                            <span>· {String(entry.details.recipient_count)} recipients</span>
+                        <div className="mt-1 space-y-1">
+                          <div className="text-xs text-slate-400 space-x-2">
+                            {gmEmail && <span>GM: {gmEmail}</span>}
+                            {entry.details.recipient_count && (
+                              <span>· {String(entry.details.recipient_count)} recipients</span>
+                            )}
+                            {entry.details.channel && (
+                              <span>· {String(entry.details.channel).replace(/_/g, " ")}</span>
+                            )}
+                            {approverNotes && <span>· Notes: {approverNotes}</span>}
+                          </div>
+
+                          {/* Non-repudiation evidence — shown only for approved events */}
+                          {entry.action === "campaign.approval.approved" && (
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              {entry.details.code_verified && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200">
+                                  <KeyRound className="w-2.5 h-2.5" /> Code verified
+                                </span>
+                              )}
+                              {entry.details.explicit_consent && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
+                                  <ShieldCheck className="w-2.5 h-2.5" /> Consent confirmed
+                                </span>
+                              )}
+                              {entry.details.approver_ip && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                                  IP: {String(entry.details.approver_ip)}
+                                </span>
+                              )}
+                              {entry.details.approver_user_agent && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 max-w-[240px] truncate">
+                                  <Monitor className="w-2.5 h-2.5 shrink-0" />
+                                  {String(entry.details.approver_user_agent).slice(0, 60)}
+                                </span>
+                              )}
+                            </div>
                           )}
+
                           {entry.details.memories_count && (
-                            <span>
-                              · {String(entry.details.memories_count)} guidance rule{Number(entry.details.memories_count) !== 1 ? "s" : ""}
+                            <p className="text-xs text-slate-400">
+                              {String(entry.details.memories_count)} governance rule{Number(entry.details.memories_count) !== 1 ? "s" : ""}
                               {entry.details.hard_constraints ? ` (${String(entry.details.hard_constraints)} hard)` : ""}
-                            </span>
+                            </p>
                           )}
                         </div>
                       )}

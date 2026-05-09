@@ -13,6 +13,16 @@ export function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+/** 6-digit numeric code displayed in the GM's approval email. */
+export function generateConfirmationCode(): string {
+  return String(crypto.randomInt(100000, 1000000));
+}
+
+/** Hash a confirmation code the same way as tokens. */
+export function hashCode(code: string): string {
+  return crypto.createHash("sha256").update(code.trim()).digest("hex");
+}
+
 export type ApprovalChannel = "direct_mail" | "sms" | "email" | "multi_channel";
 
 export interface CampaignSnapshot {

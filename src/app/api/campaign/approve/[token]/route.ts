@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { hashToken } from "@/lib/campaign-approval";
+import { hashToken, hashCode } from "@/lib/campaign-approval";
 import type { CampaignSnapshot } from "@/lib/campaign-approval";
 import { runDirectMailOrchestrator, runOmnichannelOrchestrator } from "@/lib/anthropic/agents/orchestrator";
 import type { OmnichannelChannel } from "@/lib/anthropic/agents/orchestrator";
@@ -16,6 +16,7 @@ export async function GET(
   const service = createServiceClient();
   const tokenHash = hashToken(token);
 
+  // Exclude the code hash from what we return — it must never leave the server
   const { data, error } = await service
     .from("campaign_approvals")
     .select("id, status, expires_at, campaign_snapshot, requested_by_email, gm_name, created_at")
@@ -53,9 +54,9 @@ export async function POST(
     ?? req.headers.get("x-real-ip")
     ?? null;
 
-  const { action, notes } = await req.json().catch(() => ({
-    action: undefined, notes: undefined,
-  })) as { action?: "approve" | "reject"; notes?: string };
+  const { action, notes, confirmationCode, userAgent } = await req.json().catch(() => ({
+    action: undefined, notes: undefined, confirmationCode: undefined, userAgent: undefined,
+  })) as { action?: "approve" | "reject"; notes?: string; confirmationCode?: string; userAgent?: string };
 
   if (action !== "approve" && action !== "reject") {
     return NextResponse.json({ error: "action must be 'approve' or 'reject'" }, { status: 400 });
@@ -76,6 +77,7 @@ export async function POST(
       campaign_snapshot: CampaignSnapshot;
       status: string;
       expires_at: string;
+      confirmation_code_hash: string | null;
     } | null; error: unknown };
 
   if (error || !approval) {
@@ -90,6 +92,19 @@ export async function POST(
   }
 
   const now = new Date().toISOString();
+
+  // ── Verify confirmation code (approve only) ───────────────────
+  if (action === "approve") {
+    if (!confirmationCode?.trim()) {
+      return NextResponse.json({ error: "Confirmation code required to approve." }, { status: 400 });
+    }
+    if (approval.confirmation_code_hash) {
+      const submittedHash = hashCode(confirmationCode.trim());
+      if (submittedHash !== approval.confirmation_code_hash) {
+        return NextResponse.json({ error: "Incorrect confirmation code. Please check your approval email." }, { status: 400 });
+      }
+    }
+  }
 
   // ── REJECT ────────────────────────────────────────────────────
   if (action === "reject") {
@@ -124,6 +139,8 @@ export async function POST(
     approved_at: now,
     approver_ip: approverIp,
     approver_notes: notes?.trim() ?? null,
+    approver_user_agent: userAgent?.slice(0, 512) ?? null,
+    approver_confirmed: true,
     updated_at: now,
   }).eq("id", approval.id);
 
@@ -137,6 +154,9 @@ export async function POST(
       gm_email: approval.gm_email,
       gm_name: approval.gm_name,
       approver_ip: approverIp,
+      approver_user_agent: userAgent?.slice(0, 512) ?? null,
+      code_verified: true,
+      explicit_consent: true,
       requested_by_email: approval.requested_by_email,
       recipient_count: approval.campaign_snapshot.recipientCount,
       channel: approval.campaign_snapshot.channel,

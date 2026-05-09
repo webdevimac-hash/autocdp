@@ -4,9 +4,10 @@ interface ApprovalEmailOptions {
   approvalUrl: string;
   snapshot: CampaignSnapshot;
   expiresAt: string;
+  confirmationCode: string;
 }
 
-export function buildApprovalEmail({ approvalUrl, snapshot, expiresAt }: ApprovalEmailOptions): {
+export function buildApprovalEmail({ approvalUrl, snapshot, expiresAt, confirmationCode }: ApprovalEmailOptions): {
   subject: string;
   html: string;
 } {
@@ -70,7 +71,7 @@ export function buildApprovalEmail({ approvalUrl, snapshot, expiresAt }: Approva
         </table>
 
         <!-- Primary CTA -->
-        <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:16px;">
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:20px;">
           <tr>
             <td align="center">
               <a href="${approvalUrl}"
@@ -82,9 +83,23 @@ export function buildApprovalEmail({ approvalUrl, snapshot, expiresAt }: Approva
           </tr>
         </table>
 
-        <p style="margin:0 0 24px;text-align:center;color:#94A3B8;font-size:12px;">
-          This link lets you review the full campaign details, then approve or reject.
-        </p>
+        <!-- Confirmation code box -->
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:24px;">
+          <tr>
+            <td style="background:#EEF2FF;border:2px solid #6366F1;border-radius:10px;padding:20px 24px;text-align:center;">
+              <p style="margin:0 0 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#6366F1;">
+                Your Confirmation Code
+              </p>
+              <p style="margin:0;font-size:36px;font-weight:800;color:#1E293B;letter-spacing:10px;font-family:'Courier New',Courier,monospace;">
+                ${confirmationCode}
+              </p>
+              <p style="margin:10px 0 0;font-size:12px;color:#64748B;line-height:1.5;">
+                You will need to enter this code on the approval page to authorize sending.<br/>
+                Do not share this code — it authorizes a campaign on behalf of ${snapshot.dealershipName}.
+              </p>
+            </td>
+          </tr>
+        </table>
 
         <!-- Security note -->
         <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
