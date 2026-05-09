@@ -58,6 +58,47 @@ export default async function IntegrationsPage({
     }
   }
 
+  // vAuto inventory insights (only computed when connection exists)
+  const hasVAuto = (connections ?? []).some((c) => c.provider === "vauto" && c.status === "active");
+  let inventoryInsights: {
+    totalVehicles: number; agedCount: number; avgDaysOnLot: number;
+    agingBuckets: Record<string, number>; conditionBreakdown: Record<string, number>;
+    avgPriceToMarket: number | null; totalInventoryValue: number;
+  } | null = null;
+
+  if (hasVAuto) {
+    const { data: inv } = await svc
+      .from("inventory")
+      .select("condition, price, days_on_lot, metadata")
+      .eq("dealership_id", dealership.id)
+      .eq("status", "available");
+
+    if (inv && inv.length > 0) {
+      let totalDays = 0, totalValue = 0, ptmSum = 0, ptmCount = 0;
+      const buckets: Record<string, number> = { "<30": 0, "30-60": 0, "60-90": 0, "90+": 0 };
+      const conds: Record<string, number> = {};
+      for (const v of inv) {
+        const d = v.days_on_lot ?? 0;
+        const p = Number(v.price ?? 0);
+        const m = v.metadata as Record<string, unknown> | null;
+        totalDays += d; totalValue += p;
+        if (d < 30) buckets["<30"]++; else if (d < 60) buckets["30-60"]++; else if (d < 90) buckets["60-90"]++; else buckets["90+"]++;
+        const c = v.condition ?? "used"; conds[c] = (conds[c] ?? 0) + 1;
+        const ptm = m?.price_to_market as number | null;
+        if (ptm != null) { ptmSum += ptm; ptmCount++; }
+      }
+      inventoryInsights = {
+        totalVehicles: inv.length,
+        agedCount: buckets["60-90"] + buckets["90+"],
+        avgDaysOnLot: Math.round(totalDays / inv.length),
+        agingBuckets: buckets,
+        conditionBreakdown: conds,
+        avgPriceToMarket: ptmCount > 0 ? Math.round(ptmSum / ptmCount * 10) / 10 : null,
+        totalInventoryValue: Math.round(totalValue),
+      };
+    }
+  }
+
   // DealerFunnel stats
   const [{ count: dfTotal }, { count: dfOptedOut }] = await Promise.all([
     svc
@@ -92,6 +133,7 @@ export default async function IntegrationsPage({
         secretConfigured,
       }}
       xtimeUrl={xtimeUrl}
+      inventoryInsights={inventoryInsights}
     />
   );
 }

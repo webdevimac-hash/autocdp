@@ -778,7 +778,18 @@ async function syncVAutoFull(ctx: SyncContext, jobId: string): Promise<SyncCount
       mileage: v.mileage ?? null,
       color: v.color ?? null,
       days_on_lot: v.daysOnLot ?? null,
-      metadata: { dms_source: { provider, id: v.stockNumber }, appraisal_value: v.appraisalValue ?? null },
+      metadata: {
+        dms_source:            { provider, id: v.stockNumber },
+        appraisal_value:       v.appraisalValue       ?? null,
+        market_price:          v.marketPrice          ?? null,
+        price_to_market:       v.priceToMarket        ?? null,
+        market_days_supply:    v.marketDaysSupply     ?? null,
+        retail_rating:         v.retailRating         ?? null,
+        suggested_retail:      v.suggestedRetailPrice ?? null,
+        turnover_days:         v.turnoverDays         ?? null,
+        demand_index:          v.demandIndex          ?? null,
+        similar_sold_30d:      v.similarSoldCount30d  ?? null,
+      },
     }));
     const { error } = await supabase
       .from("inventory")

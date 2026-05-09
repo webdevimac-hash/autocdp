@@ -14,6 +14,7 @@ import {
   DEMO_COMMS, DEMO_AGENT_RUNS,
 } from "@/lib/demo-data";
 import { DmsRoiPanel } from "@/components/dashboard/dms-roi-panel";
+import { CadencePanel } from "@/components/dashboard/cadence-panel";
 
 export const metadata = { title: "Dashboard" };
 
@@ -213,6 +214,9 @@ export default async function DashboardPage() {
           emailSent={emailSentCount}
           campaignCount={campaigns.length}
         />
+
+        {/* ── Contact Cadence ──────────────────────────────────── */}
+        {!demoMode && dealershipId && <CadencePanel dealershipId={dealershipId} />}
 
         {/* ── Main grid ───────────────────────────────────────── */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">

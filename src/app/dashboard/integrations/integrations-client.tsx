@@ -17,6 +17,16 @@ interface DmsConnection {
   metadata: Record<string, unknown> | null;
 }
 
+interface InventoryInsights {
+  totalVehicles: number;
+  agedCount: number;
+  avgDaysOnLot: number;
+  agingBuckets: Record<string, number>;
+  conditionBreakdown: Record<string, number>;
+  avgPriceToMarket: number | null;
+  totalInventoryValue: number;
+}
+
 interface Props {
   connections: DmsConnection[];
   latestCounts: Record<string, { customers: number; visits: number; inventory: number }>;
@@ -24,6 +34,7 @@ interface Props {
   errorParam?: string;
   dealerFunnelStats?: { total: number; optedOut: number; webhookUrl: string; secretConfigured: boolean };
   xtimeUrl?: string | null;
+  inventoryInsights?: InventoryInsights | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -474,7 +485,7 @@ function XTimeCard({ currentUrl, onSave }: { currentUrl?: string | null; onSave:
   );
 }
 
-export function IntegrationsClient({ connections, latestCounts, successParam, errorParam, dealerFunnelStats, xtimeUrl }: Props) {
+export function IntegrationsClient({ connections, latestCounts, successParam, errorParam, dealerFunnelStats, xtimeUrl, inventoryInsights }: Props) {
   const router = useRouter();
   const [openModal, setOpenModal] = useState<DmsProvider | "csv_upload" | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -781,7 +792,7 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
           <ConnectionCard
             provider="vauto"
             name="vAuto"
-            description="API Key + Dealer ID • Vehicle Inventory — VIN, pricing, days on lot, condition"
+            description="API Key + Dealer ID • Vehicle Inventory — VIN, pricing, market data, days on lot, turnover"
             logo={<div className="w-8 h-8 flex items-center justify-center"><Car className="w-5 h-5 text-indigo-600" /></div>}
             status={getStatus("vauto")}
             lastSyncAt={vautoConn?.last_sync_at}
@@ -792,6 +803,74 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
             onDisconnect={() => handleDisconnect("vauto")}
             connectLabel="Connect vAuto"
           />
+
+          {/* vAuto inventory analytics — shown when connected + data available */}
+          {inventoryInsights && inventoryInsights.totalVehicles > 0 && (
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[13px] font-bold text-indigo-900">Inventory Analytics</p>
+                <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">
+                  {inventoryInsights.totalVehicles} vehicles · ${(inventoryInsights.totalInventoryValue / 1_000_000).toFixed(1)}M
+                </span>
+              </div>
+
+              {/* Aging buckets */}
+              <div>
+                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Days on Lot</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {([["<30", "emerald"], ["30-60", "amber"], ["60-90", "orange"], ["90+", "red"]] as const).map(([bucket, color]) => {
+                    const count = inventoryInsights.agingBuckets[bucket] ?? 0;
+                    const pct = inventoryInsights.totalVehicles > 0 ? Math.round((count / inventoryInsights.totalVehicles) * 100) : 0;
+                    const colorMap: Record<string, string> = { emerald: "bg-emerald-50 border-emerald-200 text-emerald-700", amber: "bg-amber-50 border-amber-200 text-amber-700", orange: "bg-orange-50 border-orange-200 text-orange-700", red: "bg-red-50 border-red-200 text-red-700" };
+                    return (
+                      <div key={bucket} className={`rounded-lg border p-2.5 text-center ${colorMap[color]}`}>
+                        <p className="text-[18px] font-bold leading-none tabular-nums">{count}</p>
+                        <p className="text-[10px] font-semibold mt-1">{bucket} days</p>
+                        <p className="text-[10px] opacity-70">{pct}%</p>
+                      </div>
+                    );
+                  })}
+                </div>
+                {inventoryInsights.agedCount > 0 && (
+                  <p className="text-[11px] text-orange-600 font-medium mt-2 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block" />
+                    {inventoryInsights.agedCount} vehicle{inventoryInsights.agedCount !== 1 ? "s" : ""} aged 60+ days — consider an aged inventory campaign
+                  </p>
+                )}
+              </div>
+
+              {/* Condition + price to market */}
+              <div className="flex flex-wrap gap-4">
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Condition Mix</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {Object.entries(inventoryInsights.conditionBreakdown).map(([cond, cnt]) => (
+                      <span key={cond} className="text-[11px] bg-slate-100 text-slate-700 font-semibold px-2 py-1 rounded-lg capitalize">
+                        {cond}: {cnt}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                {inventoryInsights.avgPriceToMarket != null && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Avg Price to Market</p>
+                    <span className={`text-[13px] font-bold px-2.5 py-1 rounded-lg ${inventoryInsights.avgPriceToMarket > 102 ? "bg-red-50 text-red-700" : inventoryInsights.avgPriceToMarket < 98 ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
+                      {inventoryInsights.avgPriceToMarket}%
+                    </span>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      {inventoryInsights.avgPriceToMarket > 102 ? "Priced above market" : inventoryInsights.avgPriceToMarket < 98 ? "Priced below market" : "At market"}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Avg Days on Lot</p>
+                  <span className={`text-[13px] font-bold px-2.5 py-1 rounded-lg ${inventoryInsights.avgDaysOnLot > 60 ? "bg-orange-50 text-orange-700" : "bg-slate-100 text-slate-700"}`}>
+                    {inventoryInsights.avgDaysOnLot}d
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           <ConnectionCard
             provider="seven_hundred_credit"

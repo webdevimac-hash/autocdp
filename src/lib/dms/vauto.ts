@@ -63,6 +63,15 @@ export interface VAutoVehicle {
   daysOnLot?: number;
   appraisalValue?: number;
   lastModifiedDate?: string;
+  // Market intelligence (vAuto Provision / Market data)
+  marketPrice?: number;         // vAuto estimated market price
+  priceToMarket?: number;       // listPrice / marketPrice as integer pct (e.g. 103 = 3% above)
+  marketDaysSupply?: number;    // days of supply for this type in local market
+  retailRating?: number;        // vAuto retail score 1–100
+  suggestedRetailPrice?: number;
+  turnoverDays?: number;        // avg days-to-turn for this make/model/trim in market
+  demandIndex?: number;         // 0–100 demand score from vAuto Provision
+  similarSoldCount30d?: number; // comparable units sold in region in last 30 days
 }
 
 export interface VAutoVehiclePage {

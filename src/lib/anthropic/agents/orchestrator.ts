@@ -31,6 +31,7 @@ import {
 } from "../tools/send-email";
 import { createServiceClient } from "@/lib/supabase/server";
 import { filterAndRankCustomers, SCORE_THRESHOLD } from "@/lib/scoring";
+import { getCadenceStatus, applyCadenceFilter } from "@/lib/cadence";
 import { matchCustomersToVehicles, formatAssignedVehicleForPrompt } from "@/lib/aged-inventory";
 import { loadBaselineExamples } from "@/lib/anthropic/baseline";
 import { loadDealershipMemories, formatMemoriesForPrompt, buildMemoryAuditContext } from "@/lib/memories";
@@ -245,6 +246,7 @@ export interface DirectMailOrchestratorInput {
   campaignType?: CampaignType;
   includeBookNow?: boolean;
   designStyle?: DesignStyle;
+  applyCadenceFilter?: boolean;
 }
 
 export interface DirectMailResult {
@@ -332,18 +334,35 @@ export async function runDirectMailOrchestrator(
     if (preFiltered > 0) {
       console.info(`[direct-mail-orchestrator] Pre-filter removed ${preFiltered} low-score customers`);
     }
-    if (!filteredCustomers.length) {
+
+    // Cadence filter: skip customers contacted within the last 60 days
+    let cadenceSuppressed = 0;
+    let cadenceFiltered = filteredCustomers;
+    if (input.applyCadenceFilter && filteredCustomers.length > 0) {
+      const cadenceMap = await getCadenceStatus(
+        input.context.dealershipId,
+        filteredCustomers.map((c) => c.id)
+      );
+      const cadenceResult = applyCadenceFilter(filteredCustomers, cadenceMap);
+      cadenceFiltered = cadenceResult.customers as Customer[];
+      cadenceSuppressed = cadenceResult.suppressed;
+      if (cadenceSuppressed > 0) {
+        console.info(`[direct-mail-orchestrator] Cadence filter suppressed ${cadenceSuppressed} recently-contacted customers`);
+      }
+    }
+
+    if (!cadenceFiltered.length) {
       throw new Error(
         input.includeProspects
           ? "No valid customers found"
-          : "All selected customers scored below threshold — use includeProspects:true for lead campaigns"
+          : "All selected customers scored below threshold or in cadence cooldown"
       );
     }
 
     const { data: visits } = await supabase
       .from("visits")
       .select("*")
-      .in("customer_id", filteredCustomers.map((c) => c.id))
+      .in("customer_id", cadenceFiltered.map((c) => c.id))
       .eq("dealership_id", input.context.dealershipId)
       .order("visit_date", { ascending: false });
 
@@ -368,7 +387,7 @@ export async function runDirectMailOrchestrator(
 
       if (agedVehicles?.length) {
         vehicleAssignments = matchCustomersToVehicles(
-          filteredCustomers,
+          cadenceFiltered,
           (visits ?? []) as Visit[],
           agedVehicles
         );
@@ -396,7 +415,7 @@ export async function runDirectMailOrchestrator(
     const results: DirectMailResult[] = [];
 
     // Process each customer — each gets its own tool-use conversation
-    for (const customer of filteredCustomers) {
+    for (const customer of cadenceFiltered) {
       const lastVisit = visitsByCustomer.get(customer.id);
       const visitContext = lastVisit
         ? `Last visit: ${lastVisit.visit_date?.slice(0, 10)} | Vehicle: ${[lastVisit.year, lastVisit.make, lastVisit.model].filter(Boolean).join(" ")} | Mileage: ${lastVisit.mileage?.toLocaleString() ?? "unknown"} | Service: ${lastVisit.service_type ?? "general"} | Notes: ${lastVisit.service_notes ?? "none"}`
@@ -718,6 +737,7 @@ export interface OmnichannelOrchestratorInput {
   includeProspects?: boolean;
   campaignType?: CampaignType;
   includeBookNow?: boolean;
+  applyCadenceFilter?: boolean;
 }
 
 export interface OmnichannelResult {
@@ -800,23 +820,38 @@ export async function runOmnichannelOrchestrator(
       : "";
 
     // Deterministic pre-filter: skip low-signal customers before agent calls
-    const { customers: filteredCustomers, filtered: preFiltered } =
+    const { customers: omniFilteredCustomers, filtered: omniPreFiltered } =
       filterAndRankCustomers(customers as Customer[], SCORE_THRESHOLD, !input.includeProspects);
-    if (preFiltered > 0) {
-      console.info(`[omnichannel-orchestrator] Pre-filter removed ${preFiltered} low-score customers`);
+    if (omniPreFiltered > 0) {
+      console.info(`[omnichannel-orchestrator] Pre-filter removed ${omniPreFiltered} low-score customers`);
     }
-    if (!filteredCustomers.length) {
+
+    // Cadence filter: skip customers contacted within the last 60 days
+    let omniCadenceFiltered = omniFilteredCustomers;
+    if (input.applyCadenceFilter && omniFilteredCustomers.length > 0) {
+      const omniCadenceMap = await getCadenceStatus(
+        input.context.dealershipId,
+        omniFilteredCustomers.map((c) => c.id)
+      );
+      const cr = applyCadenceFilter(omniFilteredCustomers, omniCadenceMap);
+      omniCadenceFiltered = cr.customers as Customer[];
+      if (cr.suppressed > 0) {
+        console.info(`[omnichannel-orchestrator] Cadence filter suppressed ${cr.suppressed} recently-contacted customers`);
+      }
+    }
+
+    if (!omniCadenceFiltered.length) {
       throw new Error(
         input.includeProspects
           ? "No valid customers found"
-          : "All selected customers scored below threshold — use includeProspects:true for lead campaigns"
+          : "All selected customers scored below threshold or in cadence cooldown"
       );
     }
 
     const { data: visits } = await supabase
       .from("visits")
       .select("*")
-      .in("customer_id", filteredCustomers.map((c) => c.id))
+      .in("customer_id", omniCadenceFiltered.map((c) => c.id))
       .eq("dealership_id", input.context.dealershipId)
       .order("visit_date", { ascending: false });
 
@@ -841,7 +876,7 @@ export async function runOmnichannelOrchestrator(
 
       if (agedVehicles?.length) {
         omnichannelVehicleAssignments = matchCustomersToVehicles(
-          filteredCustomers,
+          omniCadenceFiltered,
           (visits ?? []) as Visit[],
           agedVehicles
         );
@@ -880,7 +915,7 @@ export async function runOmnichannelOrchestrator(
 
     const results: OmnichannelResult[] = [];
 
-    for (const customer of filteredCustomers) {
+    for (const customer of omniCadenceFiltered) {
       const lastVisit = visitsByCustomer.get(customer.id);
       const visitContext = lastVisit
         ? `Last visit: ${lastVisit.visit_date?.slice(0, 10)} | Vehicle: ${[lastVisit.year, lastVisit.make, lastVisit.model].filter(Boolean).join(" ")} | Service: ${lastVisit.service_type ?? "general"}`
