@@ -13,6 +13,7 @@ import {
   DEMO_CUSTOMERS_DATA, DEMO_CUSTOMERS_COUNT, DEMO_CAMPAIGNS,
   DEMO_COMMS, DEMO_AGENT_RUNS,
 } from "@/lib/demo-data";
+import { DmsRoiPanel } from "@/components/dashboard/dms-roi-panel";
 
 export const metadata = { title: "Dashboard" };
 
@@ -61,6 +62,11 @@ export default async function DashboardPage() {
   const totalRevenue = customers.reduce((s, c) => s + (Number(c.total_spend) || 0), 0);
   const activeCampaigns = campaigns.filter((c) => c.status === "active").length;
   const sentThisMonth = comms.filter((c) => c.status === "sent" || c.status === "delivered").length;
+
+  const isSent = (c: { status: string }) => c.status === "sent" || c.status === "delivered";
+  const directMailSentCount = comms.filter((c) => c.channel === "direct_mail" && isSent(c)).length;
+  const smsSentCount        = comms.filter((c) => c.channel === "sms"          && isSent(c)).length;
+  const emailSentCount      = comms.filter((c) => c.channel === "email"        && isSent(c)).length;
 
   const stats = [
     {
@@ -199,6 +205,14 @@ export default async function DashboardPage() {
             </Link>
           ))}
         </div>
+
+        {/* ── DMS ROI Dashboard ───────────────────────────────── */}
+        <DmsRoiPanel
+          directMailSent={directMailSentCount}
+          smsSent={smsSentCount}
+          emailSent={emailSentCount}
+          campaignCount={campaigns.length}
+        />
 
         {/* ── Main grid ───────────────────────────────────────── */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
