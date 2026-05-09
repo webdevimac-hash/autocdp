@@ -4,34 +4,40 @@ import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import {
   Send, Bot, Upload, Settings, Shield,
-  CheckCircle2, XCircle, Clock, Sparkles,
+  CheckCircle2, XCircle, Clock, Sparkles, Lock, BookOpen,
 } from "lucide-react";
 import { formatRelativeDate } from "@/lib/utils";
 
 export const metadata = { title: "Audit Log" };
 
 function actionIcon(action: string) {
-  if (action.startsWith("campaign.")) return Send;
-  if (action.startsWith("agent.")) return Bot;
-  if (action.startsWith("customer.")) return Upload;
-  if (action.startsWith("settings.")) return Settings;
+  if (action.startsWith("campaign.approval.")) return Lock;
+  if (action.startsWith("campaign.governance.")) return BookOpen;
+  if (action.startsWith("campaign."))  return Send;
+  if (action.startsWith("agent."))     return Bot;
+  if (action.startsWith("customer."))  return Upload;
+  if (action.startsWith("settings."))  return Settings;
   if (action.startsWith("demo_mode.")) return Sparkles;
   return Shield;
 }
 
 function actionLabel(action: string): string {
   const map: Record<string, string> = {
-    "campaign.sent":         "Campaign sent",
-    "campaign.dry_run":      "Campaign dry run",
-    "campaign.created":      "Campaign created",
-    "agent.run.started":     "Agent run started",
-    "agent.run.completed":   "Agent run completed",
-    "agent.run.failed":      "Agent run failed",
-    "customer.imported":     "Customers imported",
-    "data.exported":         "Data exported",
-    "settings.updated":      "Settings updated",
-    "demo_mode.enabled":     "Demo mode enabled",
-    "demo_mode.disabled":    "Demo mode disabled",
+    "campaign.sent":                        "Campaign sent",
+    "campaign.dry_run":                     "Campaign dry run",
+    "campaign.created":                     "Campaign created",
+    "campaign.approval.requested":          "GM approval requested",
+    "campaign.approval.approved":           "Campaign approved by GM",
+    "campaign.approval.rejected":           "Campaign rejected by GM",
+    "campaign.governance.memories_applied": "Governance: guidance applied to run",
+    "agent.run.started":                    "Agent run started",
+    "agent.run.completed":                  "Agent run completed",
+    "agent.run.failed":                     "Agent run failed",
+    "customer.imported":                    "Customers imported",
+    "data.exported":                        "Data exported",
+    "settings.updated":                     "Settings updated",
+    "demo_mode.enabled":                    "Demo mode enabled",
+    "demo_mode.disabled":                   "Demo mode disabled",
   };
   return map[action] ?? action.replace(/[._]/g, " ");
 }
@@ -41,6 +47,8 @@ function statusIcon(status: string) {
   if (status === "failed")    return <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />;
   return <Clock className="w-3.5 h-3.5 text-indigo-400 animate-pulse shrink-0" />;
 }
+
+interface MemoryRef { id: string; title: string; category: string; strength: string }
 
 interface AuditEntry {
   id: string;
@@ -131,19 +139,41 @@ export default async function AuditPage() {
                   ? `${entry.agent_type} agent — ${entry.status}`
                   : actionLabel(entry.action);
 
+                const isGovernance = entry.action === "campaign.governance.memories_applied";
+                const isApproval   = entry.action.startsWith("campaign.approval.");
+
+                const memoriesUsed = entry.details.memories_used as MemoryRef[] | undefined;
+                const hardCount    = entry.details.hard_constraints as number | undefined;
+                const softCount    = entry.details.soft_guidance as number | undefined;
+                const totalMem     = entry.details.memories_count as number | undefined;
+
+                const approverNotes = entry.details.notes as string | undefined;
+                const gmEmail       = entry.details.gm_email as string | undefined;
+
                 return (
                   <div key={`${entry._source}-${entry.id}`} className="flex items-start gap-3 px-5 py-3.5 hover:bg-slate-50/60 transition-colors">
 
-                    <div className="mt-0.5 w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                      <Icon className="w-3.5 h-3.5 text-slate-500" />
+                    <div className={`mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      isGovernance ? "bg-indigo-50" : isApproval ? "bg-amber-50" : "bg-slate-100"
+                    }`}>
+                      <Icon className={`w-3.5 h-3.5 ${
+                        isGovernance ? "text-indigo-500" : isApproval ? "text-amber-600" : "text-slate-500"
+                      }`} />
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[13px] font-medium text-slate-900 capitalize">{label}</span>
                         {entry._source === "agent" && entry.status && statusIcon(entry.status)}
+                        {isGovernance && (
+                          <span className="chip chip-indigo text-[10px]">governance</span>
+                        )}
+                        {isApproval && (
+                          <span className="chip chip-amber text-[10px]">approval</span>
+                        )}
                       </div>
 
+                      {/* Agent run summary */}
                       {entry._source === "agent" && entry.output_summary && (
                         <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{entry.output_summary}</p>
                       )}
@@ -151,10 +181,65 @@ export default async function AuditPage() {
                         <p className="text-xs text-red-500 mt-0.5 line-clamp-1">{entry.error}</p>
                       )}
 
-                      {entry._source === "audit" && Object.keys(entry.details).length > 0 && (
+                      {/* Governance — memories used */}
+                      {isGovernance && typeof totalMem === "number" && totalMem > 0 && (
+                        <div className="mt-1.5 space-y-1">
+                          <p className="text-xs text-slate-500">
+                            <span className="font-semibold text-slate-700">{totalMem} guidance rule{totalMem !== 1 ? "s" : ""}</span>
+                            {" "}active during this run
+                            {hardCount ? (
+                              <> — <span className="text-indigo-600 font-semibold">{hardCount} hard constraint{hardCount !== 1 ? "s" : ""}</span></>
+                            ) : null}
+                            {softCount ? (
+                              <>, {softCount} soft suggestion{softCount !== 1 ? "s" : ""}</>
+                            ) : null}
+                          </p>
+                          {memoriesUsed && memoriesUsed.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {memoriesUsed.slice(0, 6).map((m) => (
+                                <span
+                                  key={m.id}
+                                  className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md ${
+                                    m.strength === "hard"
+                                      ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
+                                      : "bg-slate-100 text-slate-600"
+                                  }`}
+                                >
+                                  {m.strength === "hard" && <Lock className="w-2.5 h-2.5" />}
+                                  {m.title}
+                                  <span className="text-slate-400">· {m.category}</span>
+                                </span>
+                              ))}
+                              {memoriesUsed.length > 6 && (
+                                <span className="text-[10px] text-slate-400 self-center">+{memoriesUsed.length - 6} more</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Approval events */}
+                      {isApproval && (
+                        <div className="text-xs text-slate-400 mt-0.5 space-x-2">
+                          {gmEmail && <span>GM: {gmEmail}</span>}
+                          {approverNotes && <span>· Notes: {approverNotes}</span>}
+                          {entry.details.recipient_count && (
+                            <span>· {String(entry.details.recipient_count)} recipients</span>
+                          )}
+                          {entry.details.memories_count && (
+                            <span>
+                              · {String(entry.details.memories_count)} guidance rule{Number(entry.details.memories_count) !== 1 ? "s" : ""}
+                              {entry.details.hard_constraints ? ` (${String(entry.details.hard_constraints)} hard)` : ""}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Generic audit details (non-governance, non-approval) */}
+                      {entry._source === "audit" && !isGovernance && !isApproval && Object.keys(entry.details).length > 0 && (
                         <p className="text-xs text-slate-400 mt-0.5">
                           {Object.entries(entry.details)
-                            .filter(([, v]) => v != null)
+                            .filter(([k, v]) => v != null && !["memories_used"].includes(k))
                             .slice(0, 3)
                             .map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`)
                             .join(" · ")}
@@ -162,7 +247,7 @@ export default async function AuditPage() {
                       )}
 
                       <div className="flex items-center gap-3 mt-1">
-                        {entry.entity_type && (
+                        {entry.entity_type && !isGovernance && !isApproval && (
                           <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">{entry.entity_type}</span>
                         )}
                         {entry._source === "agent" && entry.agent_type && (

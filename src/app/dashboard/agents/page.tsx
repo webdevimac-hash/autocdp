@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Database, Target, Pencil, TrendingUp, Cpu,
   Play, Loader2, CheckCircle, AlertCircle, Zap, Sparkles,
-  Network, Bot,
+  Network, Bot, Lightbulb,
 } from "lucide-react";
 import { HandwritingPreview } from "@/components/direct-mail/handwriting-preview";
 import { cn } from "@/lib/utils";
@@ -100,6 +100,7 @@ interface TestResult {
   channel: string;
   subject?: string;
   content: string;
+  reasoning?: string;
   confidence: number;
 }
 
@@ -558,14 +559,23 @@ export default function AgentsPage() {
                               </span>
                             </div>
                           </div>
-                          <div className="p-5">
+                          <div className="p-5 space-y-3">
                             {msg.subject && (
-                              <p className="text-xs text-slate-400 mb-2">
+                              <p className="text-xs text-slate-400">
                                 Subject:{" "}
                                 <span className="text-slate-600 font-medium">{msg.subject}</span>
                               </p>
                             )}
                             <p className="text-sm text-slate-700 leading-relaxed">{msg.content}</p>
+                            {msg.reasoning && (
+                              <div className="flex items-start gap-2 pt-2 border-t border-slate-100">
+                                <Lightbulb className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+                                <p className="text-[11px] text-slate-500 leading-relaxed">
+                                  <span className="font-semibold text-slate-600">Why this approach: </span>
+                                  {msg.reasoning}
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}

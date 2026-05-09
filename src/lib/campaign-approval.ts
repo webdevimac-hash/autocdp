@@ -33,6 +33,11 @@ export interface CampaignSnapshot {
   recipientCount: number;
   estimatedCost: string;
   channelLabel: string;
+
+  // Governance context — attached at request time so GM sees what guided the swarm
+  memoriesCount?: number;
+  hardConstraintsCount?: number;
+  memoriesSummary?: string;   // e.g. "3 active memories: 2 tone, 1 compliance (1 hard)"
 }
 
 export interface ApprovalRecord {

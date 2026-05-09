@@ -33,7 +33,8 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { filterAndRankCustomers, SCORE_THRESHOLD } from "@/lib/scoring";
 import { matchCustomersToVehicles, formatAssignedVehicleForPrompt } from "@/lib/aged-inventory";
 import { loadBaselineExamples } from "@/lib/anthropic/baseline";
-import { loadDealershipMemories, formatMemoriesForPrompt } from "@/lib/memories";
+import { loadDealershipMemories, formatMemoriesForPrompt, buildMemoryAuditContext } from "@/lib/memories";
+import { logAudit } from "@/lib/audit";
 import { loadDealershipInsights, formatInsightsForPrompt } from "@/lib/insights";
 import type {
   AgentContext, Customer, Visit, CampaignChannel, CampaignType,
@@ -169,6 +170,7 @@ Output JSON: {"plan": "summary", "priority_segments": ["segment1"], "risk_flags"
         channel: creative.channel,
         subject: creative.subject,
         content: creative.content,
+        reasoning: creative.reasoning,
         confidence: creative.confidence,
       });
     }
@@ -609,6 +611,25 @@ export async function runDirectMailOrchestrator(
     const successCount = results.filter((r) => r.result.success).length;
     const failedCount = results.length - successCount;
 
+    // ── Governance audit — log which memories guided this run ─
+    if (dealerMemories.length > 0 && runRecord) {
+      const memCtx = buildMemoryAuditContext(dealerMemories);
+      void logAudit({
+        dealershipId: input.context.dealershipId,
+        action:       "campaign.governance.memories_applied",
+        resourceType: "agent_run",
+        resourceId:   runRecord.id,
+        metadata: {
+          memories_count:   memCtx.total,
+          hard_constraints: memCtx.hardCount,
+          soft_guidance:    memCtx.softCount,
+          memories_used:    memCtx.memories,
+          campaign_goal:    input.campaignGoal,
+          dry_run:          input.dryRun ?? false,
+        },
+      });
+    }
+
     // ── Fire-and-forget Optimization Agent ───────────────────
     // Runs after sends complete without blocking the response.
     // Skipped on dry runs — no real data to learn from.
@@ -742,7 +763,7 @@ export async function runOmnichannelOrchestrator(
     .single();
 
   try {
-    const [{ data: customers }, { data: omnichannelDealershipProfile }, omniBaselineExamples, omniInsightsRaw] = await Promise.all([
+    const [{ data: customers }, { data: omnichannelDealershipProfile }, omniBaselineExamples, omniInsightsRaw, omniDealerMemories] = await Promise.all([
       supabase
         .from("customers")
         .select("*")
@@ -755,8 +776,10 @@ export async function runOmnichannelOrchestrator(
         .single() as Promise<{ data: { phone?: string | null; address?: Record<string, string> | null; hours?: Record<string, string> | null; website_url?: string | null; settings?: Record<string, unknown> | null } | null }>,
       loadBaselineExamples(input.context.dealershipId),
       loadDealershipInsights(input.context.dealershipId),
+      loadDealershipMemories(input.context.dealershipId),
     ]);
     const omniInsightsContext = formatInsightsForPrompt(omniInsightsRaw);
+    const omniMemoriesSection  = formatMemoriesForPrompt(omniDealerMemories);
 
     const omnichannelXtimeUrl = (omnichannelDealershipProfile?.settings?.xtime_url as string | undefined) ?? null;
 
@@ -900,6 +923,7 @@ export async function runOmnichannelOrchestrator(
           : "") +
         omnichannelContactSection +
         omniBaselineSection +
+        omniMemoriesSection +
         omniInsightsContext +
         omnichannelBookNowNote +
         omnichannelDisclaimerNote +
@@ -1043,6 +1067,26 @@ export async function runOmnichannelOrchestrator(
 
     const successCount = results.filter((r) => r.success).length;
     const failedCount = results.length - successCount;
+
+    // ── Governance audit — log which memories guided this run ─
+    if (omniDealerMemories.length > 0 && runRecord) {
+      const memCtx = buildMemoryAuditContext(omniDealerMemories);
+      void logAudit({
+        dealershipId: input.context.dealershipId,
+        action:       "campaign.governance.memories_applied",
+        resourceType: "agent_run",
+        resourceId:   runRecord.id,
+        metadata: {
+          memories_count:   memCtx.total,
+          hard_constraints: memCtx.hardCount,
+          soft_guidance:    memCtx.softCount,
+          memories_used:    memCtx.memories,
+          campaign_goal:    input.campaignGoal,
+          channels:         input.channels.join(","),
+          dry_run:          input.dryRun ?? false,
+        },
+      });
+    }
 
     await supabase.from("billing_events").insert({
       dealership_id: input.context.dealershipId,
