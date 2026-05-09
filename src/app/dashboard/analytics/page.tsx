@@ -33,7 +33,7 @@ export default async function AnalyticsPage() {
   ] = await Promise.all([
     supabase.from("mail_pieces").select("id, status, scanned_count, cost_cents, created_at, is_test").eq("dealership_id", dealershipId).gte("created_at", ninetyDaysAgo),
     supabase.from("mail_scans").select("id, scanned_at").eq("dealership_id", dealershipId).gte("scanned_at", thirtyDaysAgo),
-    supabase.from("communications").select("id, channel, status, created_at").eq("dealership_id", dealershipId).gte("created_at", ninetyDaysAgo),
+    supabase.from("communications").select("id, channel, status, created_at, opened_at, clicked_at").eq("dealership_id", dealershipId).gte("created_at", ninetyDaysAgo),
     supabase.from("agent_runs").select("id, agent_type, status, duration_ms, created_at").eq("dealership_id", dealershipId).gte("created_at", thirtyDaysAgo),
     supabase.from("global_learnings").select("pattern_type, description, confidence, sample_size").order("confidence", { ascending: false }).limit(6),
     supabase.from("learning_outcomes").select("outcome_type, result, created_at").eq("dealership_id", dealershipId).order("created_at", { ascending: false }).limit(10),
@@ -54,8 +54,12 @@ export default async function AnalyticsPage() {
   const mailScanRate    = liveMail.length > 0 ? (scannedMail.length / liveMail.length) * 100 : 0;
   const mailDeliveryRate = liveMail.length > 0 ? (deliveredMail.length / liveMail.length) * 100 : 0;
 
-  const smsSent   = comms.filter((c) => c.channel === "sms"   && c.status === "sent");
-  const emailSent = comms.filter((c) => c.channel === "email" && c.status === "sent");
+  const smsSent    = comms.filter((c) => c.channel === "sms"   && c.status === "sent");
+  const emailSent  = comms.filter((c) => c.channel === "email" && c.status === "sent");
+  const smsClicked  = smsSent.filter((c)   => (c as { clicked_at?: string | null }).clicked_at);
+  const emailOpened = emailSent.filter((c) => (c as { opened_at?: string | null }).opened_at);
+  const smsClickRate   = smsSent.length   > 0 ? (smsClicked.length   / smsSent.length)   * 100 : 0;
+  const emailOpenRate  = emailSent.length > 0 ? (emailOpened.length  / emailSent.length)  * 100 : 0;
 
   const totalMailSpend  = liveMail.reduce((s, m) => s + (m.cost_cents ?? 0), 0);
   const totalAiSpend    = billingEvents.filter((e) => e.event_type === "agent_run").reduce((s, e) => s + (e.unit_cost_cents ?? 0) * (e.quantity ?? 1), 0);
@@ -95,7 +99,9 @@ export default async function AnalyticsPage() {
     {
       label: "SMS Sent",
       value: smsSent.length,
-      sub: `${emailSent.length} emails`,
+      sub: emailSent.length > 0
+        ? `${emailSent.length} emails · ${emailOpened.length} opens`
+        : `${emailSent.length} emails`,
       icon: MessageSquare,
       iconBg: "bg-violet-50",
       iconColor: "text-violet-600",
@@ -127,16 +133,16 @@ export default async function AnalyticsPage() {
       channel: "SMS",
       sent: smsSent.length,
       barGradient: "linear-gradient(90deg, #8B5CF6, #a78bfa)",
-      rate: smsSent.length > 0 ? 98 : 0,
-      rateLabel: "open rate (est.)",
+      rate: smsClickRate,
+      rateLabel: smsClicked.length > 0 ? "link click rate" : "no clicks yet",
       rateColor: "text-violet-600",
     },
     {
       channel: "Email",
       sent: emailSent.length,
       barGradient: "linear-gradient(90deg, #0EA5E9, #38bdf8)",
-      rate: emailSent.length > 0 ? 22 : 0,
-      rateLabel: "open rate (est.)",
+      rate: emailOpenRate,
+      rateLabel: emailOpened.length > 0 ? "open rate" : "no opens yet",
       rateColor: "text-sky-600",
     },
   ];

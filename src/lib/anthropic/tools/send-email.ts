@@ -7,6 +7,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { sendEmail, isResendConfigured } from "@/lib/resend-client";
 import { recordBillingEvent } from "@/lib/billing/metering";
+import { injectEmailTracking } from "@/lib/tracking";
 import type { Customer, Dealership } from "@/types";
 
 // ── Tool definition for Anthropic SDK ────────────────────────
@@ -145,10 +146,12 @@ export async function executeSendEmailTool(
       };
     }
 
+    const trackedHtml = injectEmailTracking(input.body_html, comm.id);
+
     const emailResult = await sendEmail({
       to: email,
       subject: input.subject,
-      html: input.body_html,
+      html: trackedHtml,
       fromName: dealershipName,
     });
 

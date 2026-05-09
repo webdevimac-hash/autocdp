@@ -7,6 +7,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { sendSms, isTwilioConfigured } from "@/lib/twilio";
 import { recordBillingEvent } from "@/lib/billing/metering";
+import { buildSmsTrackingUrl } from "@/lib/tracking";
 import type { Customer } from "@/types";
 
 // ── Tool definition for Anthropic SDK ────────────────────────
@@ -138,7 +139,10 @@ export async function executeSendSmsTool(
       };
     }
 
-    const smsResult = await sendSms(phone, input.message);
+    const trackingUrl = buildSmsTrackingUrl(comm.id);
+    const messageWithLink = `${input.message}\n${trackingUrl}`;
+
+    const smsResult = await sendSms(phone, messageWithLink);
 
     await supabase.from("communications").update({
       status: smsResult.success ? "sent" : "failed",
