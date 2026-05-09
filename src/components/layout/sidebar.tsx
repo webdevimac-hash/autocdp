@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Megaphone, Bot, BarChart3,
   CreditCard, Settings, Car, LogOut, Mail,
   Upload, Package, Phone, Target, Plug,
-  Activity, Building2, X, ChevronDown, Shield, Sparkles,
+  Activity, Building2, X, ChevronDown, Shield, Sparkles, Newspaper,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -29,6 +29,7 @@ const NAV_GROUPS = [
     label: "Channels",
     items: [
       { label: "Direct Mail", href: "/dashboard/direct-mail", icon: Mail },
+      { label: "Newsletter",  href: "/dashboard/newsletter",  icon: Newspaper },
       { label: "Analytics",   href: "/dashboard/analytics",   icon: BarChart3 },
       { label: "Conquest",    href: "/dashboard/conquest",     icon: Target },
       { label: "Voice",       href: "/dashboard/voice",        icon: Phone },
