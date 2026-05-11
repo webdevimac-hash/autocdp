@@ -7,6 +7,7 @@ import {
   CreditCard, Settings, Car, LogOut, Mail,
   Upload, Package, Phone, Target, Plug,
   Activity, Building2, X, ChevronDown, Shield, Sparkles, Newspaper, FileText, Inbox,
+  ChevronsRight, ListTodo, Send, Calendar, Zap, Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -20,30 +21,36 @@ const NAV_GROUPS = [
   {
     label: "Core",
     items: [
-      { label: "Dashboard",  href: "/dashboard",           icon: LayoutDashboard, exact: true },
-      { label: "Customers",  href: "/dashboard/customers",  icon: Users },
-      { label: "Campaigns",  href: "/dashboard/campaigns",  icon: Megaphone },
+      { label: "Dashboard",  href: "/dashboard",             icon: LayoutDashboard, exact: true },
+      { label: "Sales Hub",  href: "/dashboard/pipeline",    icon: ChevronsRight },
+      { label: "Workplan",   href: "/dashboard/workplan",    icon: ListTodo },
+      { label: "Customers",  href: "/dashboard/customers",   icon: Users },
+      { label: "Campaigns",  href: "/dashboard/campaigns",   icon: Megaphone },
     ],
   },
   {
     label: "Channels",
     items: [
       { label: "Direct Mail",    href: "/dashboard/direct-mail",    icon: Mail },
+      { label: "Email Blast",    href: "/dashboard/email-blast",    icon: Send },
       { label: "Communications", href: "/dashboard/communications", icon: Inbox },
       { label: "Newsletter",     href: "/dashboard/newsletter",     icon: Newspaper },
-      { label: "Templates",   href: "/dashboard/templates",   icon: FileText },
-      { label: "Analytics",   href: "/dashboard/analytics",   icon: BarChart3 },
-      { label: "Conquest",    href: "/dashboard/conquest",     icon: Target },
-      { label: "Voice",       href: "/dashboard/voice",        icon: Phone },
+      { label: "Templates",      href: "/dashboard/templates",      icon: FileText },
+      { label: "Analytics",      href: "/dashboard/analytics",      icon: BarChart3 },
+      { label: "Conquest",       href: "/dashboard/conquest",       icon: Target },
+      { label: "Voice",          href: "/dashboard/voice",          icon: Phone },
     ],
   },
   {
     label: "Platform",
     items: [
-      { label: "AI Agents",    href: "/dashboard/agents",       icon: Bot },
-      { label: "Inventory",    href: "/dashboard/inventory",    icon: Package },
-      { label: "Integrations", href: "/dashboard/integrations", icon: Plug },
-      { label: "Import",       href: "/dashboard/onboard",      icon: Upload },
+      { label: "AI Agents",    href: "/dashboard/agents",        icon: Bot },
+      { label: "Inventory",    href: "/dashboard/inventory",     icon: Package },
+      { label: "Appointments", href: "/dashboard/appointments",  icon: Calendar },
+      { label: "Mining",       href: "/dashboard/mining",        icon: Zap },
+      { label: "Reputation",   href: "/dashboard/reputation",    icon: Star },
+      { label: "Integrations", href: "/dashboard/integrations",  icon: Plug },
+      { label: "Import",       href: "/dashboard/onboard",       icon: Upload },
     ],
   },
   {
