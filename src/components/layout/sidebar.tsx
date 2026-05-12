@@ -7,7 +7,7 @@ import {
   CreditCard, Settings, Car, LogOut, Mail,
   Upload, Package, Phone, Target, Plug,
   Activity, Building2, X, ChevronDown, Shield, Sparkles, Newspaper, FileText, Inbox,
-  ChevronsRight, ListTodo, Send, Calendar, Zap, Star,
+  ChevronsRight, ListTodo, Send, Calendar, Zap, Star, ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -21,11 +21,13 @@ const NAV_GROUPS = [
   {
     label: "Core",
     items: [
-      { label: "Dashboard",  href: "/dashboard",             icon: LayoutDashboard, exact: true },
-      { label: "Sales Hub",  href: "/dashboard/pipeline",    icon: ChevronsRight },
-      { label: "Workplan",   href: "/dashboard/workplan",    icon: ListTodo },
-      { label: "Customers",  href: "/dashboard/customers",   icon: Users },
-      { label: "Campaigns",  href: "/dashboard/campaigns",   icon: Megaphone },
+      { label: "Dashboard",       href: "/dashboard",                 icon: LayoutDashboard, exact: true },
+      { label: "Live Dashboard",  href: "/dashboard/live-dashboard",  icon: Activity },
+      { label: "Desk Log",        href: "/dashboard/desk-log",        icon: ClipboardList },
+      { label: "Sales Hub",       href: "/dashboard/pipeline",        icon: ChevronsRight },
+      { label: "Workplan",        href: "/dashboard/workplan",        icon: ListTodo },
+      { label: "Customers",       href: "/dashboard/customers",       icon: Users },
+      { label: "Campaigns",       href: "/dashboard/campaigns",       icon: Megaphone },
     ],
   },
   {
