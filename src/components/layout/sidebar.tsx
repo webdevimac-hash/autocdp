@@ -7,7 +7,7 @@ import {
   CreditCard, Settings, Car, LogOut, Mail,
   Upload, Package, Phone, Target, Plug,
   Activity, Building2, X, ChevronDown, Shield, Sparkles, Newspaper, FileText, Inbox,
-  ChevronsRight, ListTodo, Send, Calendar, Zap, Star, ClipboardList,
+  ChevronsRight, ListTodo, Send, Calendar, Zap, Star, ClipboardList, HeartPulse, Sparkle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -21,9 +21,11 @@ const NAV_GROUPS = [
   {
     label: "Core",
     items: [
-      { label: "Dashboard",       href: "/dashboard",                 icon: LayoutDashboard, exact: true },
-      { label: "Live Dashboard",  href: "/dashboard/live-dashboard",  icon: Activity },
-      { label: "Desk Log",        href: "/dashboard/desk-log",        icon: ClipboardList },
+      { label: "Dashboard",       href: "/dashboard",                  icon: LayoutDashboard, exact: true },
+      { label: "Live Dashboard",  href: "/dashboard/live-dashboard",   icon: Activity },
+      { label: "Health Dashboard", href: "/dashboard/health-dashboard", icon: HeartPulse },
+      { label: "Desk Log",        href: "/dashboard/desk-log",         icon: ClipboardList },
+      { label: "Data Hygiene",    href: "/dashboard/data-hygiene",     icon: Sparkle },
       { label: "Sales Hub",       href: "/dashboard/pipeline",        icon: ChevronsRight },
       { label: "Workplan",        href: "/dashboard/workplan",        icon: ListTodo },
       { label: "Customers",       href: "/dashboard/customers",       icon: Users },
