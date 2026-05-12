@@ -674,7 +674,7 @@ export default function LandingPage() {
             </div>
           </OnVisible>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {PRODUCTS.map((p, i) => (
               <OnVisible key={p.title} delay={i * 60}>
                 <ProductCard p={p} />
@@ -1127,40 +1127,114 @@ function ProductCard({ p }: { p: (typeof PRODUCTS)[number] }) {
   const Icon = p.icon;
   return (
     <div
-      className="relative h-full rounded-2xl p-6 transition-all hover:-translate-y-0.5"
+      className="group relative h-full rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1"
       style={{
-        background: "linear-gradient(180deg, rgba(11,21,38,0.7) 0%, rgba(6,13,24,0.9) 100%)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "0 20px 60px -25px rgba(0,0,0,0.6)",
+        background:
+          "linear-gradient(180deg, rgba(15,26,46,0.78) 0%, rgba(6,13,24,0.96) 100%)",
+        border: "1px solid rgba(255,255,255,0.07)",
+        boxShadow:
+          "0 1px 0 0 rgba(255,255,255,0.04) inset, 0 30px 80px -30px rgba(0,0,0,0.65), 0 1px 3px rgba(0,0,0,0.4)",
       }}
     >
-      {/* Top accent */}
+      {/* Top hairline accent — brightens on hover */}
       <div
-        className="absolute top-0 left-6 right-6 h-px"
-        style={{ background: `linear-gradient(90deg, transparent, ${p.tone}88, transparent)` }}
+        className="absolute inset-x-7 top-0 h-px transition-opacity duration-500 group-hover:opacity-100"
+        style={{
+          background: `linear-gradient(90deg, transparent, ${p.tone}, transparent)`,
+          opacity: 0.45,
+        }}
       />
-      <div className="flex items-center justify-between mb-5">
+
+      {/* Decorative dotted grid behind the icon */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-6 -left-6 h-32 w-32 rounded-2xl opacity-[0.35] transition-opacity duration-500 group-hover:opacity-60"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.18) 1px, transparent 0)",
+          backgroundSize: "12px 12px",
+          maskImage:
+            "radial-gradient(ellipse at 30% 30%, rgba(0,0,0,1), transparent 70%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse at 30% 30%, rgba(0,0,0,1), transparent 70%)",
+        }}
+      />
+
+      {/* Soft corner glow on hover */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-20 -right-20 h-48 w-48 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100"
+        style={{ background: `${p.tone}22` }}
+      />
+
+      {/* Header row: layered icon tile + eyebrow chip */}
+      <div className="relative flex items-start justify-between mb-7">
         <div
-          className="w-11 h-11 rounded-xl flex items-center justify-center"
-          style={{ background: `${p.tone}18`, border: `1px solid ${p.tone}40` }}
+          className="relative flex h-14 w-14 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-[1.04]"
+          style={{
+            background: `linear-gradient(155deg, ${p.tone}26 0%, ${p.tone}08 60%, transparent 100%)`,
+            border: `1px solid ${p.tone}40`,
+            boxShadow: `0 0 0 1px rgba(255,255,255,0.04) inset, 0 8px 24px -8px ${p.tone}55, 0 1px 0 0 rgba(255,255,255,0.06) inset`,
+          }}
         >
-          <Icon className="w-5 h-5" style={{ color: p.tone }} />
+          {/* Inner gloss */}
+          <span
+            aria-hidden
+            className="absolute inset-px rounded-[14px] opacity-60"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 50%)",
+            }}
+          />
+          <Icon
+            className="relative h-6 w-6"
+            style={{ color: p.tone, strokeWidth: 1.75 }}
+          />
         </div>
+
         <span
-          className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full"
-          style={{ background: `${p.tone}14`, color: p.tone, border: `1px solid ${p.tone}33` }}
+          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
+          style={{
+            background: `${p.tone}12`,
+            color: p.tone,
+            border: `1px solid ${p.tone}38`,
+          }}
         >
+          <span
+            className="h-1 w-1 rounded-full"
+            style={{ background: p.tone, boxShadow: `0 0 6px ${p.tone}` }}
+          />
           {p.eyebrow}
         </span>
       </div>
-      <h3 className="text-[19px] font-bold tracking-tight text-white mb-2">{p.title}</h3>
-      <p className="text-[13.5px] text-white/55 leading-relaxed mb-5 min-h-[64px]">{p.desc}</p>
-      <div className="flex items-baseline gap-2 pt-4 border-t border-white/8">
-        <span className="text-[22px] font-black tabular-nums" style={{ color: p.tone }}>
-          {p.stat}
-        </span>
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-white/45">
-          {p.statLabel}
+
+      {/* Title + description */}
+      <h3 className="relative text-[20px] font-bold tracking-tight text-white mb-2.5 leading-tight">
+        {p.title}
+      </h3>
+      <p className="relative text-[13.5px] text-white/55 leading-[1.65] mb-6 min-h-[80px]">
+        {p.desc}
+      </p>
+
+      {/* Stat divider + learn-more arrow */}
+      <div
+        className="relative flex items-end justify-between pt-5"
+        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+      >
+        <div className="flex flex-col">
+          <span
+            className="text-[26px] font-black tabular-nums tracking-tight leading-none"
+            style={{ color: p.tone }}
+          >
+            {p.stat}
+          </span>
+          <span className="mt-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/50">
+            {p.statLabel}
+          </span>
+        </div>
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white/35 transition-all duration-300 group-hover:gap-2 group-hover:text-white/75">
+          Learn more
+          <ArrowRight className="h-3 w-3" />
         </span>
       </div>
     </div>
