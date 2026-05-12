@@ -1440,3 +1440,12 @@ button, a, [role="button"], input, select, textarea {
 .announcement-bar-glow {
   animation: announcement-glow 4s ease-in-out infinite;
 }
+
+/* ── Generic fade-in (used by the dark landing announcement) ─ */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out both;
+}
