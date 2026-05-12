@@ -1245,50 +1245,159 @@ function PlanCard({ plan }: { plan: (typeof PLANS)[number] }) {
   const featured = plan.featured;
   return (
     <div
-      className="relative h-full rounded-2xl p-7 flex flex-col"
+      className="group relative h-full rounded-2xl p-8 flex flex-col transition-all duration-300 hover:-translate-y-1"
       style={{
         background: featured
-          ? "linear-gradient(180deg, rgba(16,185,129,0.10) 0%, rgba(6,13,24,0.95) 100%)"
-          : "linear-gradient(180deg, rgba(11,21,38,0.7) 0%, rgba(6,13,24,0.9) 100%)",
-        border: `1px solid ${featured ? "rgba(16,185,129,0.40)" : "rgba(255,255,255,0.08)"}`,
-        boxShadow: featured ? "0 30px 80px -25px rgba(16,185,129,0.45)" : "0 20px 60px -25px rgba(0,0,0,0.5)",
+          ? "linear-gradient(180deg, rgba(16,185,129,0.13) 0%, rgba(11,21,38,0.85) 60%, rgba(6,13,24,0.98) 100%)"
+          : "linear-gradient(180deg, rgba(15,26,46,0.78) 0%, rgba(6,13,24,0.96) 100%)",
+        border: `1px solid ${featured ? "rgba(16,185,129,0.42)" : "rgba(255,255,255,0.07)"}`,
+        boxShadow: featured
+          ? "0 1px 0 0 rgba(255,255,255,0.06) inset, 0 40px 100px -28px rgba(16,185,129,0.45), 0 1px 3px rgba(0,0,0,0.4)"
+          : "0 1px 0 0 rgba(255,255,255,0.04) inset, 0 30px 80px -30px rgba(0,0,0,0.65), 0 1px 3px rgba(0,0,0,0.4)",
       }}
     >
+      {/* Featured "Most popular" pill */}
       {featured && (
         <span
-          className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-white"
-          style={{ background: `linear-gradient(135deg, ${EMERALD}, #059669)`, boxShadow: "0 6px 18px -4px rgba(16,185,129,0.6)" }}
+          className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.16em] text-white"
+          style={{
+            background: `linear-gradient(135deg, ${EMERALD}, #059669)`,
+            boxShadow: "0 8px 22px -6px rgba(16,185,129,0.7), inset 0 1px 0 rgba(255,255,255,0.18)",
+          }}
         >
+          <span className="h-1 w-1 rounded-full bg-white/90" />
           Most popular
         </span>
       )}
-      <h3 className="text-[17px] font-bold text-white">{plan.name}</h3>
-      <p className="text-[13px] text-white/50 mt-1">{plan.desc}</p>
-      <div className="flex items-baseline gap-1 mt-5 mb-6">
-        <span className="text-[42px] font-black tracking-tight text-white tabular-nums">{plan.price}</span>
-        <span className="text-[13px] text-white/45 font-semibold">{plan.period}</span>
+
+      {/* Top hairline accent — brightens on hover */}
+      <div
+        className="absolute inset-x-8 top-0 h-px transition-opacity duration-500 group-hover:opacity-100"
+        style={{
+          background: `linear-gradient(90deg, transparent, ${featured ? EMERALD : "rgba(255,255,255,0.4)"}, transparent)`,
+          opacity: featured ? 0.7 : 0.35,
+        }}
+      />
+
+      {/* Decorative dotted grid backdrop */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-8 -right-8 h-40 w-40 rounded-2xl opacity-[0.30] transition-opacity duration-500 group-hover:opacity-50"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.18) 1px, transparent 0)",
+          backgroundSize: "12px 12px",
+          maskImage:
+            "radial-gradient(ellipse at 70% 30%, rgba(0,0,0,1), transparent 70%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse at 70% 30%, rgba(0,0,0,1), transparent 70%)",
+        }}
+      />
+
+      {/* Soft glow on hover — emerald for featured, neutral otherwise */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-24 -left-24 h-56 w-56 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100"
+        style={{
+          background: featured
+            ? "rgba(16,185,129,0.28)"
+            : "rgba(99,102,241,0.18)",
+        }}
+      />
+
+      {/* Eyebrow */}
+      <div className="relative mb-1">
+        <span
+          className="inline-block text-[10px] font-bold uppercase tracking-[0.18em]"
+          style={{ color: featured ? EMERALD_BRIGHT : "rgba(255,255,255,0.45)" }}
+        >
+          {plan.name}
+        </span>
       </div>
-      <ul className="space-y-2.5 mb-7 flex-1">
+
+      {/* Plan description */}
+      <p className="relative text-[14px] text-white/60 mt-1 leading-snug">
+        {plan.desc}
+      </p>
+
+      {/* Price */}
+      <div className="relative flex items-baseline gap-1 mt-6 mb-1">
+        <span
+          className="text-[48px] font-black tracking-[-0.03em] tabular-nums leading-none"
+          style={{
+            backgroundImage: featured
+              ? `linear-gradient(135deg, #ECFDF5 0%, #34D399 100%)`
+              : "linear-gradient(135deg, #FFFFFF 0%, rgba(255,255,255,0.75) 100%)",
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            color: "transparent",
+          }}
+        >
+          {plan.price}
+        </span>
+        {plan.period && (
+          <span className="text-[14px] text-white/40 font-semibold">{plan.period}</span>
+        )}
+      </div>
+      <p className="relative text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/40 mb-7">
+        per rooftop / month
+      </p>
+
+      {/* Divider */}
+      <div
+        className="relative h-px mb-6"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent)",
+        }}
+      />
+
+      {/* Features */}
+      <ul className="relative space-y-3 mb-8 flex-1">
         {plan.features.map((f) => (
-          <li key={f} className="flex items-start gap-2.5 text-[13.5px] text-white/70">
-            <CheckCircle className="w-4 h-4 mt-0.5 text-emerald-400 shrink-0" />
+          <li
+            key={f}
+            className="flex items-start gap-3 text-[13.5px] text-white/75 leading-snug"
+          >
+            <span
+              className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
+              style={{
+                background: featured
+                  ? "rgba(16,185,129,0.20)"
+                  : "rgba(255,255,255,0.06)",
+                border: `1px solid ${featured ? "rgba(16,185,129,0.45)" : "rgba(255,255,255,0.12)"}`,
+              }}
+            >
+              <CheckCircle
+                className="h-2.5 w-2.5"
+                style={{ color: featured ? EMERALD_BRIGHT : "rgba(255,255,255,0.7)", strokeWidth: 3 }}
+              />
+            </span>
             {f}
           </li>
         ))}
       </ul>
+
+      {/* CTA */}
       <Link
         href={plan.href}
-        className="inline-flex items-center justify-center gap-1.5 px-5 py-3 rounded-xl font-semibold text-[14px] text-white transition-all"
+        className="relative inline-flex items-center justify-center gap-1.5 px-5 py-3.5 rounded-xl font-bold text-[14px] text-white transition-all group/cta"
         style={
           featured
             ? {
                 background: `linear-gradient(135deg, ${EMERALD} 0%, #059669 100%)`,
-                boxShadow: "0 8px 24px -6px rgba(16,185,129,0.45), inset 0 1px 0 rgba(255,255,255,0.18)",
+                boxShadow:
+                  "0 12px 28px -8px rgba(16,185,129,0.55), inset 0 1px 0 rgba(255,255,255,0.20)",
               }
-            : { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)" }
+            : {
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.14)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+              }
         }
       >
-        {plan.cta} <ArrowRight className="w-4 h-4" />
+        {plan.cta}
+        <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover/cta:translate-x-0.5" />
       </Link>
     </div>
   );
@@ -1297,50 +1406,125 @@ function PlanCard({ plan }: { plan: (typeof PLANS)[number] }) {
 function TestimonialCard({ t }: { t: (typeof TESTIMONIALS)[number] }) {
   return (
     <div
-      className="relative h-full rounded-2xl p-6 flex flex-col"
+      className="group relative h-full rounded-2xl p-7 flex flex-col transition-all duration-300 hover:-translate-y-1"
       style={{
-        background: "linear-gradient(180deg, rgba(11,21,38,0.78) 0%, rgba(6,13,24,0.95) 100%)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "0 20px 60px -25px rgba(0,0,0,0.6)",
+        background:
+          "linear-gradient(180deg, rgba(15,26,46,0.80) 0%, rgba(6,13,24,0.96) 100%)",
+        border: "1px solid rgba(255,255,255,0.07)",
+        boxShadow:
+          "0 1px 0 0 rgba(255,255,255,0.04) inset, 0 30px 80px -30px rgba(0,0,0,0.65), 0 1px 3px rgba(0,0,0,0.4)",
       }}
     >
-      {/* Top tinted border */}
-      <div className="absolute top-0 left-6 right-6 h-px" style={{ background: `linear-gradient(90deg, transparent, ${t.accent}88, transparent)` }} />
+      {/* Top hairline accent — brightens on hover */}
+      <div
+        className="absolute inset-x-7 top-0 h-px transition-opacity duration-500 group-hover:opacity-100"
+        style={{
+          background: `linear-gradient(90deg, transparent, ${t.accent}, transparent)`,
+          opacity: 0.45,
+        }}
+      />
 
-      <div className="flex gap-0.5 mb-4">
+      {/* Decorative dotted grid backdrop */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-6 -right-6 h-32 w-32 rounded-2xl opacity-[0.30] transition-opacity duration-500 group-hover:opacity-55"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.18) 1px, transparent 0)",
+          backgroundSize: "12px 12px",
+          maskImage:
+            "radial-gradient(ellipse at 70% 30%, rgba(0,0,0,1), transparent 70%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse at 70% 30%, rgba(0,0,0,1), transparent 70%)",
+        }}
+      />
+
+      {/* Soft accent-tinted glow on hover */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-20 -right-20 h-48 w-48 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100"
+        style={{ background: `${t.accent}22` }}
+      />
+
+      {/* Large opening quote glyph */}
+      <span
+        aria-hidden
+        className="relative -mt-2 mb-3 font-serif text-[64px] leading-none select-none"
+        style={{ color: `${t.accent}66`, fontFamily: "ui-serif, Georgia, serif" }}
+      >
+        “
+      </span>
+
+      {/* Star row */}
+      <div className="relative flex gap-0.5 mb-4">
         {[...Array(5)].map((_, i) => (
           <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
         ))}
       </div>
 
-      <p className="text-[15px] leading-[1.55] text-white/85 mb-5 flex-1">“{t.quote}”</p>
+      {/* Quote */}
+      <p className="relative text-[15.5px] leading-[1.6] text-white/85 mb-6 flex-1">
+        {t.quote}
+      </p>
 
-      <div className="flex flex-wrap gap-1.5 mb-5">
+      {/* Channel chips */}
+      <div className="relative flex flex-wrap gap-1.5 mb-6">
         {t.channels.map((c) => (
           <span
             key={c}
-            className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.65)" }}
+            className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] px-2.5 py-1 rounded-full"
+            style={{
+              background: `${t.accent}10`,
+              border: `1px solid ${t.accent}33`,
+              color: t.accent,
+            }}
           >
+            <span
+              className="h-1 w-1 rounded-full"
+              style={{ background: t.accent }}
+            />
             {c}
           </span>
         ))}
       </div>
 
-      <div className="flex items-center gap-3 pt-5 border-t border-white/8">
+      {/* Footer: avatar + name + signature stat */}
+      <div
+        className="relative flex items-center gap-3 pt-5"
+        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+      >
         <div
-          className="w-11 h-11 rounded-full flex items-center justify-center text-[12px] font-bold text-white shrink-0"
-          style={{ background: `linear-gradient(135deg, ${t.accent} 0%, ${NAVY} 100%)`, boxShadow: `0 0 0 2px ${t.accent}33` }}
+          className="relative w-12 h-12 rounded-full flex items-center justify-center text-[12.5px] font-bold text-white shrink-0"
+          style={{
+            background: `linear-gradient(135deg, ${t.accent} 0%, ${NAVY} 100%)`,
+            boxShadow: `0 0 0 1px rgba(255,255,255,0.06) inset, 0 0 0 2px ${t.accent}33, 0 6px 18px -6px ${t.accent}66`,
+          }}
         >
-          {t.initials}
+          {/* Inner gloss */}
+          <span
+            aria-hidden
+            className="absolute inset-px rounded-full opacity-50"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, transparent 50%)",
+            }}
+          />
+          <span className="relative">{t.initials}</span>
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[13.5px] font-bold text-white truncate">{t.name}</p>
-          <p className="text-[11.5px] text-white/45 truncate">{t.title}</p>
+          <p className="text-[11px] text-white/45 truncate">{t.title}</p>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-[20px] font-black tabular-nums" style={{ color: t.accent }}>{t.stat}</p>
-          <p className="text-[9.5px] font-semibold uppercase tracking-wider text-white/45">{t.statLabel}</p>
+          <p
+            className="text-[22px] font-black tabular-nums tracking-tight leading-none"
+            style={{ color: t.accent }}
+          >
+            {t.stat}
+          </p>
+          <p className="mt-1 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-white/45">
+            {t.statLabel}
+          </p>
         </div>
       </div>
     </div>
