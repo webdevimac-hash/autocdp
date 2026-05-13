@@ -172,7 +172,8 @@ export type DesignStyle =
   | "standard"            // existing handwritten note (default)
   | "multi-panel"         // hero image block + message panel, front/back distinct
   | "premium-fluorescent" // bold graphic design + fluorescent neon accents
-  | "complex-fold";       // tri-fold with 3 distinct content panels
+  | "complex-fold"        // tri-fold with 3 distinct content panels
+  | "conquest";           // clean minimalist new-customer acquisition
 
 export interface ColorScheme {
   primary: string;   // hex — main brand color

@@ -101,6 +101,78 @@ const MAIL_TEMPLATES: Array<{
   },
 ];
 
+// ── Unified template configs (templateType + designStyle) ─────
+
+type TemplateConfig = {
+  templateType: MailTemplateType;
+  designStyle: DesignStyle;
+  label: string;
+  description: string;
+  cost: string;
+  bestFor: string;
+  bestStages: string[];
+  badge: string | null;
+  accentDefault: AccentColor;
+};
+
+const TEMPLATE_CONFIGS: TemplateConfig[] = [
+  {
+    templateType: "postcard_6x9",
+    designStyle: "standard",
+    label: "Classic Postcard",
+    description: "Vehicle photo, handwritten note, QR + detachable coupon strip.",
+    cost: "~$1.20",
+    bestFor: "Reactivation, service reminders",
+    bestStages: ["lapsed", "active", "at_risk"],
+    badge: null,
+    accentDefault: "indigo",
+  },
+  {
+    templateType: "letter_8.5x11",
+    designStyle: "standard",
+    label: "Premium Letter",
+    description: "Branded letterhead, full personalized body with handwritten signature — arrives in envelope.",
+    cost: "~$1.60",
+    bestFor: "VIP appreciation, recalls, formal",
+    bestStages: ["vip", "active"],
+    badge: "Formal",
+    accentDefault: "indigo",
+  },
+  {
+    templateType: "postcard_6x9",
+    designStyle: "complex-fold",
+    label: "Folded Self-Mailer",
+    description: "Tri-fold with cover story, inner personalized message + offer, and mailing panel.",
+    cost: "~$1.80",
+    bestFor: "Lapsed win-back campaigns",
+    bestStages: ["lapsed"],
+    badge: "Tri-Fold",
+    accentDefault: "indigo",
+  },
+  {
+    templateType: "postcard_6x9",
+    designStyle: "premium-fluorescent",
+    label: "Fluorescent Offer Card",
+    description: "Bold dark design with neon ink accents. High-impact — grabs attention immediately.",
+    cost: "~$1.40",
+    bestFor: "VIP events, urgent promotions",
+    bestStages: ["vip", "at_risk"],
+    badge: "Neon",
+    accentDefault: "yellow",
+  },
+  {
+    templateType: "postcard_6x9",
+    designStyle: "conquest",
+    label: "Conquest Postcard",
+    description: "Clean, modern design for new customer acquisition. Bold headline, minimal copy, strong CTA.",
+    cost: "~$1.20",
+    bestFor: "New customer conquest lists",
+    bestStages: ["prospect"],
+    badge: "New",
+    accentDefault: "green",
+  },
+];
+
 // ── Lifecycle chip colors ─────────────────────────────────────
 
 const STAGE_CHIP: Record<string, string> = {
@@ -713,6 +785,32 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
 
   const needsMailTemplate = channel === "direct_mail" || channel === "multi_channel";
 
+  const suggestedConfig = useMemo((): TemplateConfig | null => {
+    if (selectedCount === 0) return null;
+    const g = campaignGoal.toLowerCase();
+    const selectedCustomers = customers.filter((c) => selectedIds.has(c.id));
+    const stages = new Set(selectedCustomers.map((c) => c.lifecycle_stage));
+
+    // Conquest: primarily prospect audience
+    if (stages.has("prospect") && !stages.has("vip") && !stages.has("lapsed")) {
+      return TEMPLATE_CONFIGS.find((c) => c.designStyle === "conquest") ?? null;
+    }
+    // Formal / legal: 8.5×11 letter
+    if (g.includes("recall") || g.includes("warrant") || g.includes("legal") || g.includes("compli")) {
+      return TEMPLATE_CONFIGS.find((c) => c.templateType === "letter_8.5x11") ?? null;
+    }
+    // VIP appreciation or urgent events: fluorescent
+    if (stages.has("vip") || g.includes("appreciat") || g.includes("event") || g.includes("vip")) {
+      return TEMPLATE_CONFIGS.find((c) => c.designStyle === "premium-fluorescent") ?? null;
+    }
+    // Lapsed win-back (only lapsed): tri-fold
+    if (stages.has("lapsed") && !stages.has("vip") && !stages.has("active")) {
+      return TEMPLATE_CONFIGS.find((c) => c.designStyle === "complex-fold") ?? null;
+    }
+    // Default: classic postcard
+    return TEMPLATE_CONFIGS.find((c) => c.designStyle === "standard" && c.templateType === "postcard_6x9") ?? null;
+  }, [campaignGoal, selectedIds, customers, selectedCount]);
+
   return (
     <div className="space-y-5">
 
@@ -1160,25 +1258,57 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               </div>
             )}
 
-            {/* Mail template selector */}
+            {/* Unified template selector */}
             {needsMailTemplate && (
               <div className="space-y-2">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mail Template</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {MAIL_TEMPLATES.map((tmpl) => (
-                    <button key={tmpl.type} onClick={() => setTemplateType(tmpl.type)}
-                      className={cn("text-left p-4 border-2 rounded-[var(--radius)] transition-all hover:shadow-sm",
-                        templateType === tmpl.type ? "border-indigo-400 bg-indigo-50/60" : "bg-white border-slate-200 hover:border-indigo-300")}>
-                      <div className="flex items-start justify-between mb-1.5">
-                        <FileText className={cn("w-4 h-4", templateType === tmpl.type ? "text-indigo-600" : "text-slate-400")} />
-                        <span className="text-[10px] font-bold text-emerald-700">{tmpl.cost}</span>
-                      </div>
-                      <p className="text-[13px] font-semibold text-slate-900">{tmpl.label}</p>
-                      <p className="text-xs text-slate-400 mt-0.5 leading-snug">{tmpl.description}</p>
-                      <p className="text-[10px] text-indigo-600 font-medium mt-1">Best for: {tmpl.best}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3" /> Template Style
+                  </p>
+                  {suggestedConfig && designStyle !== suggestedConfig.designStyle && (
+                    <button
+                      onClick={() => { setTemplateType(suggestedConfig.templateType); setDesignStyle(suggestedConfig.designStyle); setAccentColor(suggestedConfig.accentDefault); }}
+                      className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1 hover:bg-emerald-100 transition-colors flex items-center gap-1"
+                    >
+                      <Sparkles className="w-2.5 h-2.5" /> Apply AI suggestion: {suggestedConfig.label}
                     </button>
-                  ))}
+                  )}
                 </div>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {TEMPLATE_CONFIGS.map((cfg) => {
+                    const isSelected = templateType === cfg.templateType && designStyle === cfg.designStyle;
+                    const isSuggested = suggestedConfig?.designStyle === cfg.designStyle && suggestedConfig?.templateType === cfg.templateType;
+                    return (
+                      <button
+                        key={`${cfg.templateType}-${cfg.designStyle}`}
+                        onClick={() => { setTemplateType(cfg.templateType); setDesignStyle(cfg.designStyle); if (cfg.accentDefault !== "indigo" || !isSelected) setAccentColor(cfg.accentDefault); }}
+                        className={cn(
+                          "text-left p-3 border-2 rounded-[var(--radius)] transition-all hover:shadow-sm relative overflow-hidden",
+                          isSelected ? "border-indigo-400 bg-indigo-50/60" : "bg-white border-slate-200 hover:border-indigo-300"
+                        )}
+                      >
+                        {isSelected && <div className="absolute top-0 left-0 right-0 h-[3px] bg-indigo-500" />}
+                        <div className="flex items-start justify-between gap-1 mb-1">
+                          <p className="text-[12px] font-semibold text-slate-900 leading-tight">{cfg.label}</p>
+                          {isSuggested ? (
+                            <span className="shrink-0 text-[7px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 whitespace-nowrap">AI ✦</span>
+                          ) : cfg.badge ? (
+                            <span className="shrink-0 text-[7px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 whitespace-nowrap">{cfg.badge}</span>
+                          ) : null}
+                        </div>
+                        <p className="text-[10px] text-slate-400 leading-snug line-clamp-2">{cfg.description}</p>
+                        <div className="flex items-center justify-between mt-1.5">
+                          <span className="text-[10px] font-bold text-emerald-700">{cfg.cost}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {designStyle !== "standard" && (
+                  <p className="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100 rounded px-2.5 py-1.5">
+                    AI will output a structured layout spec with panels, colors, and print-house notes in addition to personalized copy.
+                  </p>
+                )}
               </div>
             )}
 
@@ -1225,44 +1355,6 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               </div>
             )}
 
-            {/* Design Style selector — only for direct mail */}
-            {needsMailTemplate && (
-              <div className="space-y-2">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <Sparkles className="w-3 h-3" /> Design Style
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {([
-                    { style: "standard" as DesignStyle, label: "Standard", desc: "Handwritten note — warm, personal", badge: null },
-                    { style: "multi-panel" as DesignStyle, label: "Multi-Panel", desc: "Hero image + personalized message", badge: "Graphic" },
-                    { style: "premium-fluorescent" as DesignStyle, label: "Premium Fluorescent", desc: "Bold design with neon ink accents", badge: "Neon" },
-                    { style: "complex-fold" as DesignStyle, label: "Tri-Fold", desc: "3-panel story + offer layout", badge: "Premium" },
-                  ]).map(({ style, label, desc, badge }) => (
-                    <button
-                      key={style}
-                      onClick={() => setDesignStyle(style)}
-                      className={cn(
-                        "text-left p-3 border-2 rounded-[var(--radius)] transition-all hover:shadow-sm relative",
-                        designStyle === style ? "border-indigo-400 bg-indigo-50/60" : "bg-white border-slate-200 hover:border-indigo-300"
-                      )}
-                    >
-                      {badge && (
-                        <span className="absolute top-2 right-2 text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
-                          {badge}
-                        </span>
-                      )}
-                      <p className="text-[12px] font-semibold text-slate-900 pr-8">{label}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{desc}</p>
-                    </button>
-                  ))}
-                </div>
-                {designStyle !== "standard" && (
-                  <p className="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100 rounded px-2.5 py-1.5">
-                    AI will output a structured layout spec with panels, colors, and print-house notes in addition to personalized copy.
-                  </p>
-                )}
-              </div>
-            )}
 
             {/* Book Now / X-Time toggle */}
             <div className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50">

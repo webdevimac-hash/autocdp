@@ -1201,6 +1201,7 @@ function MultiPanelPreview({
   vehiclePhotoUrl?: string | null;
 }) {
   const [showBack, setShowBack] = useState(false);
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("design");
   const front = layoutSpec?.panels?.find((p) => p.role === "front") ?? layoutSpec?.panels?.[0];
   const cs = layoutSpec?.colorScheme;
   const heroBg = cs?.primary ?? accent.header;
@@ -1209,6 +1210,9 @@ function MultiPanelPreview({
 
   return (
     <div className="space-y-3">
+      <div className="flex justify-center">
+        <ModeToggle mode={previewMode} onChange={setPreviewMode} />
+      </div>
       <div className="flex items-center justify-center gap-1.5">
         {["Front", "Back (Mailing Side)"].map((label, i) => (
           <button key={label} onClick={() => setShowBack(i === 1)}
@@ -1217,41 +1221,90 @@ function MultiPanelPreview({
             }`}>{label}</button>
         ))}
       </div>
-      <div className="flex justify-center">
-        {!showBack ? (
-          <div className="w-full rounded-xl border border-slate-200 shadow-xl overflow-hidden" style={{ maxWidth: "420px", background: "#fff" }}>
-            <div style={{ position: "relative" }}>
-              <VehiclePhotoZone heroBg={heroBg} height="155px" showLabel imageUrl={vehiclePhotoUrl} dealershipName={dealershipName} />
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "28px 16px 12px", background: `linear-gradient(to top, ${heroBg}ee 0%, transparent 100%)` }}>
-                {logoUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logoUrl} alt={dealershipName}
-                    style={{ position: "absolute", top: "-44px", left: "14px", height: "18px", width: "auto", maxWidth: "65px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                  />
-                )}
-                <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "16px", color: "#fff", lineHeight: 1.15, letterSpacing: "-0.01em" }}>{headline}</div>
+      {previewMode === "design" ? (
+        <div className="flex justify-center">
+          {!showBack ? (
+            <div className="w-full rounded-xl border border-slate-200 shadow-xl overflow-hidden" style={{ maxWidth: "420px", background: "#fff" }}>
+              <div style={{ position: "relative" }}>
+                <VehiclePhotoZone heroBg={heroBg} height="155px" showLabel imageUrl={vehiclePhotoUrl} dealershipName={dealershipName} />
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "28px 16px 12px", background: `linear-gradient(to top, ${heroBg}ee 0%, transparent 100%)` }}>
+                  {logoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={logoUrl} alt={dealershipName}
+                      style={{ position: "absolute", top: "-44px", left: "14px", height: "18px", width: "auto", maxWidth: "65px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                    />
+                  )}
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "16px", color: "#fff", lineHeight: 1.15, letterSpacing: "-0.01em" }}>{headline}</div>
+                </div>
+              </div>
+              <div style={{ padding: "14px 18px 16px" }}>
+                <HandwrittenContent text={content} fontSize={15} lineHeight={1.82} />
+                {offer && <CouponStrip offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} />}
+                <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div style={{ background: accentHex, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "10px", padding: "7px 16px", borderRadius: "3px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                    {front?.cta ?? "Schedule Now"}
+                  </div>
+                  <div style={{ background: "white", border: `2px solid ${accentHex}`, borderRadius: "6px", padding: "3px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={qrPreviewUrl} alt="QR" width={46} height={46} style={{ borderRadius: "3px" }} />
+                  </div>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 700, color: accentHex, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO<br />BOOK</div>
+                </div>
               </div>
             </div>
-            <div style={{ padding: "14px 18px 16px" }}>
-              <HandwrittenContent text={content} fontSize={15} lineHeight={1.82} />
-              {offer && <CouponStrip offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} />}
-              <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "12px" }}>
-                <div style={{ background: accentHex, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "10px", padding: "7px 16px", borderRadius: "3px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-                  {front?.cta ?? "Schedule Now"}
+          ) : (
+            <PostcardBack dealershipName={dealershipName} customerName={customerName} accent={accent} logoUrl={logoUrl} />
+          )}
+        </div>
+      ) : (
+        <div style={{ background: "linear-gradient(145deg, #EAE5DE 0%, #E0D9D0 100%)", padding: "14px 8px 18px", borderRadius: 14 }}>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <div style={{ width: "100%", maxWidth: 560 }}>
+              <PrintReadyFrame width={520}>
+                <div style={{ transform: "rotate(-0.4deg)", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.22))" }}>
+                  {!showBack ? (
+                    <div className="w-full rounded-xl border border-slate-200 shadow-xl overflow-hidden" style={{ maxWidth: "520px", background: "#fff" }}>
+                      <div style={{ position: "relative" }}>
+                        <VehiclePhotoZone heroBg={heroBg} height="155px" showLabel imageUrl={vehiclePhotoUrl} dealershipName={dealershipName} />
+                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "28px 16px 12px", background: `linear-gradient(to top, ${heroBg}ee 0%, transparent 100%)` }}>
+                          {logoUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={logoUrl} alt={dealershipName}
+                              style={{ position: "absolute", top: "-44px", left: "14px", height: "18px", width: "auto", maxWidth: "65px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                            />
+                          )}
+                          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "16px", color: "#fff", lineHeight: 1.15, letterSpacing: "-0.01em" }}>{headline}</div>
+                        </div>
+                      </div>
+                      <div style={{ padding: "14px 18px 16px" }}>
+                        <HandwrittenContent text={content} fontSize={15} lineHeight={1.82} />
+                        {offer && <CouponStrip offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} />}
+                        <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "12px" }}>
+                          <div style={{ background: accentHex, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "10px", padding: "7px 16px", borderRadius: "3px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                            {front?.cta ?? "Schedule Now"}
+                          </div>
+                          <div style={{ background: "white", border: `2px solid ${accentHex}`, borderRadius: "6px", padding: "3px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={qrPreviewUrl} alt="QR" width={46} height={46} style={{ borderRadius: "3px" }} />
+                          </div>
+                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 700, color: accentHex, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO<br />BOOK</div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <RealPostcardBack
+                      dealershipName={dealershipName} customerName={customerName} logoUrl={logoUrl}
+                      accent={accent} content={content}
+                    />
+                  )}
                 </div>
-                <div style={{ background: "white", border: `2px solid ${accentHex}`, borderRadius: "6px", padding: "3px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={qrPreviewUrl} alt="QR" width={46} height={46} style={{ borderRadius: "3px" }} />
-                </div>
-                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 700, color: accentHex, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO<br />BOOK</div>
-              </div>
+              </PrintReadyFrame>
             </div>
           </div>
-        ) : (
-          <PostcardBack dealershipName={dealershipName} customerName={customerName} accent={accent} logoUrl={logoUrl} />
-        )}
-      </div>
+        </div>
+      )}
       <div className="text-center">
         <span className="chip chip-slate text-[10px]">Multi-Panel · Vehicle hero + personalized message + coupon</span>
       </div>
@@ -1268,6 +1321,7 @@ function PremiumFluorescentPreview({
   qrPreviewUrl: string; logoUrl?: string | null; layoutSpec?: LayoutSpec; vehiclePhotoUrl?: string | null;
 }) {
   const [showBack, setShowBack] = useState(false);
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("design");
   const front = layoutSpec?.panels?.find((p) => p.role === "front") ?? layoutSpec?.panels?.[0];
   const cs = layoutSpec?.colorScheme;
   const bg = cs?.background ?? "#0F172A";
@@ -1284,6 +1338,9 @@ function PremiumFluorescentPreview({
 
   return (
     <div className="space-y-3">
+      <div className="flex justify-center">
+        <ModeToggle mode={previewMode} onChange={setPreviewMode} />
+      </div>
       <div className="flex items-center justify-center gap-1.5">
         {["Front", "Back (Mailing Side)"].map((label, i) => (
           <button key={label} onClick={() => setShowBack(i === 1)}
@@ -1292,55 +1349,118 @@ function PremiumFluorescentPreview({
             }`}>{label}</button>
         ))}
       </div>
-      <div className="flex justify-center">
-        {!showBack ? (
-          <div className="w-full rounded-xl shadow-xl overflow-hidden" style={{ maxWidth: "420px", background: bg, position: "relative" }}>
-            <div style={{ position: "relative" }}>
-              <VehiclePhotoZone heroBg={bg} height="120px" showLabel={false} imageUrl={vehiclePhotoUrl} />
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "4px", background: accentCol }} />
-              <div style={{ position: "absolute", top: "10px", left: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-                {logoUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logoUrl} alt={dealershipName}
-                    style={{ height: "14px", width: "auto", maxWidth: "50px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                  />
-                )}
-                <span style={{ fontSize: "7.5px", fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", color: accentCol, fontFamily: "'Inter', sans-serif" }}>{dealershipName}</span>
-              </div>
-            </div>
-            <div style={{ padding: "14px 20px 20px" }}>
-              <div style={{ fontSize: "21px", fontWeight: 900, color: textCol, lineHeight: 1.1, marginBottom: subheadline ? "5px" : "12px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.01em" }}>{headline}</div>
-              {subheadline && <div style={{ fontSize: "11px", color: `${textCol}99`, marginBottom: "12px", fontFamily: "'Inter', sans-serif", lineHeight: 1.4 }}>{subheadline}</div>}
-              <div style={{ width: "28px", height: "3px", background: accentCol, borderRadius: "2px", marginBottom: "12px" }} />
-              <div style={{ marginBottom: "12px" }}>
-                <HandwrittenContent text={content} fontSize={14} lineHeight={1.75} />
-              </div>
-              {offer && (
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", background: `${accentCol}18`, border: `1.5px solid ${accentCol}55`, borderRadius: "4px", padding: "7px 10px", marginBottom: "14px" }}>
-                  <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, padding: "3px 8px", borderRadius: "2px", letterSpacing: "0.04em", textTransform: "uppercase", flexShrink: 0 }}>OFFER</div>
-                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 600, color: textCol }}>{offer}</span>
+      {previewMode === "design" ? (
+        <div className="flex justify-center">
+          {!showBack ? (
+            <div className="w-full rounded-xl shadow-xl overflow-hidden" style={{ maxWidth: "420px", background: bg, position: "relative" }}>
+              <div style={{ position: "relative" }}>
+                <VehiclePhotoZone heroBg={bg} height="120px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "4px", background: accentCol }} />
+                <div style={{ position: "absolute", top: "10px", left: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  {logoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={logoUrl} alt={dealershipName}
+                      style={{ height: "14px", width: "auto", maxWidth: "50px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                    />
+                  )}
+                  <span style={{ fontSize: "7.5px", fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", color: accentCol, fontFamily: "'Inter', sans-serif" }}>{dealershipName}</span>
                 </div>
-              )}
-              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "9px 18px", borderRadius: "3px", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-                  {front?.cta ?? "Book Your Appointment"}
+              </div>
+              <div style={{ padding: "14px 20px 20px" }}>
+                <div style={{ fontSize: "21px", fontWeight: 900, color: textCol, lineHeight: 1.1, marginBottom: subheadline ? "5px" : "12px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.01em" }}>{headline}</div>
+                {subheadline && <div style={{ fontSize: "11px", color: `${textCol}99`, marginBottom: "12px", fontFamily: "'Inter', sans-serif", lineHeight: 1.4 }}>{subheadline}</div>}
+                <div style={{ width: "28px", height: "3px", background: accentCol, borderRadius: "2px", marginBottom: "12px" }} />
+                <div style={{ marginBottom: "12px" }}>
+                  <HandwrittenContent text={content} fontSize={14} lineHeight={1.75} />
                 </div>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ background: "rgba(255,255,255,0.08)", border: `2px solid ${accentCol}88`, borderRadius: "6px", padding: "3px" }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={qrPreviewUrl} alt="QR" width={50} height={50} style={{ borderRadius: "3px", display: "block" }} />
+                {offer && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", background: `${accentCol}18`, border: `1.5px solid ${accentCol}55`, borderRadius: "4px", padding: "7px 10px", marginBottom: "14px" }}>
+                    <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, padding: "3px 8px", borderRadius: "2px", letterSpacing: "0.04em", textTransform: "uppercase", flexShrink: 0 }}>OFFER</div>
+                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 600, color: textCol }}>{offer}</span>
                   </div>
-                  <div style={{ fontSize: "5.5px", color: accentCol, marginTop: "3px", fontFamily: "'Inter', sans-serif", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO BOOK</div>
+                )}
+                <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                  <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "9px 18px", borderRadius: "3px", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                    {front?.cta ?? "Book Your Appointment"}
+                  </div>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ background: "rgba(255,255,255,0.08)", border: `2px solid ${accentCol}88`, borderRadius: "6px", padding: "3px" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={qrPreviewUrl} alt="QR" width={50} height={50} style={{ borderRadius: "3px", display: "block" }} />
+                    </div>
+                    <div style={{ fontSize: "5.5px", color: accentCol, marginTop: "3px", fontFamily: "'Inter', sans-serif", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO BOOK</div>
+                  </div>
                 </div>
               </div>
+              <div style={{ height: "4px", background: accentCol }} />
             </div>
-            <div style={{ height: "4px", background: accentCol }} />
+          ) : (
+            <PostcardBack dealershipName={dealershipName} customerName={customerName} accent={backAccent} logoUrl={logoUrl} />
+          )}
+        </div>
+      ) : (
+        <div style={{ background: "linear-gradient(145deg, #EAE5DE 0%, #E0D9D0 100%)", padding: "14px 8px 18px", borderRadius: 14 }}>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <div style={{ width: "100%", maxWidth: 560 }}>
+              <PrintReadyFrame width={520}>
+                <div style={{ transform: "rotate(-0.4deg)", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.22))" }}>
+                  {!showBack ? (
+                    <div className="w-full rounded-xl shadow-xl overflow-hidden" style={{ maxWidth: "520px", background: bg, position: "relative" }}>
+                      <div style={{ position: "relative" }}>
+                        <VehiclePhotoZone heroBg={bg} height="120px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "4px", background: accentCol }} />
+                        <div style={{ position: "absolute", top: "10px", left: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+                          {logoUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={logoUrl} alt={dealershipName}
+                              style={{ height: "14px", width: "auto", maxWidth: "50px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                            />
+                          )}
+                          <span style={{ fontSize: "7.5px", fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", color: accentCol, fontFamily: "'Inter', sans-serif" }}>{dealershipName}</span>
+                        </div>
+                      </div>
+                      <div style={{ padding: "14px 20px 20px" }}>
+                        <div style={{ fontSize: "21px", fontWeight: 900, color: textCol, lineHeight: 1.1, marginBottom: subheadline ? "5px" : "12px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.01em" }}>{headline}</div>
+                        {subheadline && <div style={{ fontSize: "11px", color: `${textCol}99`, marginBottom: "12px", fontFamily: "'Inter', sans-serif", lineHeight: 1.4 }}>{subheadline}</div>}
+                        <div style={{ width: "28px", height: "3px", background: accentCol, borderRadius: "2px", marginBottom: "12px" }} />
+                        <div style={{ marginBottom: "12px" }}>
+                          <HandwrittenContent text={content} fontSize={14} lineHeight={1.75} />
+                        </div>
+                        {offer && (
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", background: `${accentCol}18`, border: `1.5px solid ${accentCol}55`, borderRadius: "4px", padding: "7px 10px", marginBottom: "14px" }}>
+                            <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, padding: "3px 8px", borderRadius: "2px", letterSpacing: "0.04em", textTransform: "uppercase", flexShrink: 0 }}>OFFER</div>
+                            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 600, color: textCol }}>{offer}</span>
+                          </div>
+                        )}
+                        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                          <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "9px 18px", borderRadius: "3px", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                            {front?.cta ?? "Book Your Appointment"}
+                          </div>
+                          <div style={{ textAlign: "center" }}>
+                            <div style={{ background: "rgba(255,255,255,0.08)", border: `2px solid ${accentCol}88`, borderRadius: "6px", padding: "3px" }}>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={qrPreviewUrl} alt="QR" width={50} height={50} style={{ borderRadius: "3px", display: "block" }} />
+                            </div>
+                            <div style={{ fontSize: "5.5px", color: accentCol, marginTop: "3px", fontFamily: "'Inter', sans-serif", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO BOOK</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ height: "4px", background: accentCol }} />
+                    </div>
+                  ) : (
+                    <RealPostcardBack
+                      dealershipName={dealershipName} customerName={customerName} logoUrl={logoUrl}
+                      accent={backAccent} content={content}
+                    />
+                  )}
+                </div>
+              </PrintReadyFrame>
+            </div>
           </div>
-        ) : (
-          <PostcardBack dealershipName={dealershipName} customerName={customerName} accent={backAccent} logoUrl={logoUrl} />
-        )}
-      </div>
+        </div>
+      )}
       <div className="text-center">
         <span className="chip chip-slate text-[10px]">Premium Fluorescent · {isNeon ? "Neon ink accents" : "Bold graphic design"} · {accentCol}</span>
       </div>
@@ -1449,6 +1569,238 @@ function ComplexFoldPreview({
   );
 }
 
+// ── Conquest Front (design mode) ─────────────────────────────
+
+function ConquestFront({
+  content, dealershipName, offer, qrPreviewUrl, logoUrl, accent,
+  dealershipAddress, dealershipPhone, vehiclePhotoUrl, layoutSpec,
+}: {
+  content: string; dealershipName: string; offer?: string | null;
+  qrPreviewUrl: string; logoUrl?: string | null; accent: AccentConfig;
+  dealershipAddress?: AddressRecord | null; dealershipPhone?: string | null;
+  vehiclePhotoUrl?: string | null; layoutSpec?: LayoutSpec;
+}) {
+  const front = layoutSpec?.panels?.find((p) => p.role === "front") ?? layoutSpec?.panels?.[0];
+  const headline = front?.headline ?? "An exclusive offer, just for you.";
+  const cta = front?.cta ?? "Reserve Your Spot";
+  const addrLines = addrToLines(dealershipAddress);
+
+  return (
+    <div style={{
+      width: "100%", background: "#FFFFFF",
+      backgroundImage: [PAPER_TEXTURE, "repeating-linear-gradient(transparent, transparent 30px, #EDE8D8 30px, #EDE8D8 31px)"].join(", "),
+      backgroundPositionY: "80px",
+      borderRadius: "12px", overflow: "hidden",
+      boxShadow: "0 4px 6px -1px rgba(0,0,0,0.08), 0 10px 24px -4px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9)",
+    }}>
+      <div style={{ height: "6px", background: `linear-gradient(90deg, ${accent.header} 0%, ${adjustBrightness(accent.header, 20)} 100%)` }} />
+      <VehiclePhotoZone heroBg={accent.header} height="122px" imageUrl={vehiclePhotoUrl} showLabel dealershipName={dealershipName} />
+      <div style={{ padding: "11px 16px 14px" }}>
+        <div style={{ display: "flex", alignItems: "center", marginBottom: "7px" }}>
+          <div style={{ background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", padding: "2px 8px", borderRadius: "2px" }}>
+            EXCLUSIVE OFFER
+          </div>
+          {dealershipPhone && <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", color: "#6B7280", marginLeft: "auto" }}>{dealershipPhone}</span>}
+        </div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 900, color: "#0F172A", lineHeight: 1.2, marginBottom: "10px", letterSpacing: "-0.01em" }}>
+          {headline}
+        </div>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <HandwrittenContent text={content} fontSize={14} lineHeight={1.78} />
+            {offer && <CouponStrip offer={offer} accent={accent} />}
+          </div>
+          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", paddingTop: "2px" }}>
+            <div style={{ background: "white", border: `2px solid ${accent.header}`, borderRadius: "7px", padding: "4px", boxShadow: "0 2px 8px rgba(0,0,0,0.10)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={qrPreviewUrl} alt="QR" width={64} height={64} style={{ display: "block", borderRadius: "3px", border: "1px solid #D1C9B0" }} />
+            </div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>
+              SCAN TO<br />VIEW OFFER
+            </div>
+          </div>
+        </div>
+        <div style={{ marginTop: "10px", background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", padding: "7px 14px", borderRadius: "3px", display: "inline-block" }}>
+          {cta}
+        </div>
+      </div>
+      {(addrLines.line1 || addrLines.line2) && (
+        <div style={{ padding: "5px 16px", borderTop: "1px solid #EDE8D8", background: "rgba(254,252,243,0.97)", display: "flex", alignItems: "center", gap: "6px" }}>
+          {logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt={dealershipName} style={{ height: "12px", width: "auto", maxWidth: "40px", objectFit: "contain", flexShrink: 0 }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+          )}
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", color: "#6B7280" }}>
+            <strong>{dealershipName}</strong>{addrLines.line1 ? ` · ${addrLines.line1}${addrLines.line2 ? `, ${addrLines.line2}` : ""}` : ""}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Realistic Conquest Front (print-ready) ────────────────────
+
+function RealConquestFront({
+  content, dealershipName, offer, qrPreviewUrl, logoUrl, accent,
+  dealershipAddress, dealershipPhone, vehiclePhotoUrl, layoutSpec,
+}: {
+  content: string; dealershipName: string; offer?: string | null;
+  qrPreviewUrl: string; logoUrl?: string | null; accent: AccentConfig;
+  dealershipAddress?: AddressRecord | null; dealershipPhone?: string | null;
+  vehiclePhotoUrl?: string | null; layoutSpec?: LayoutSpec;
+}) {
+  const front = layoutSpec?.panels?.find((p) => p.role === "front") ?? layoutSpec?.panels?.[0];
+  const headline = front?.headline ?? "An exclusive offer, just for you.";
+  const cta = front?.cta ?? "Reserve Your Spot";
+  const addrLines = addrToLines(dealershipAddress);
+
+  return (
+    <div style={{
+      maxWidth: "520px", background: "#FFFFFF",
+      backgroundImage: [
+        PAPER_TEXTURE,
+        "repeating-linear-gradient(89.4deg, transparent, transparent 4px, rgba(155,135,100,0.012) 4px, rgba(155,135,100,0.012) 5px)",
+        "repeating-linear-gradient(90.6deg, transparent, transparent 7px, rgba(155,135,100,0.008) 7px, rgba(155,135,100,0.008) 8px)",
+      ].join(", "),
+      borderRadius: "6px", overflow: "hidden",
+      boxShadow: "0 2px 4px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.20), 0 0 0 1px rgba(0,0,0,0.05)",
+      width: "100%", display: "flex", flexDirection: "column",
+    }}>
+      <div style={{ height: "8px", background: `linear-gradient(90deg, ${accent.header} 0%, ${adjustBrightness(accent.header, 20)} 100%)` }} />
+      <VehiclePhotoZone heroBg={accent.header} height="150px" imageUrl={vehiclePhotoUrl} showLabel={false} />
+      <div style={{ background: accent.header, padding: "7px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginTop: "-1px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+          {logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt={dealershipName} style={{ height: "14px", width: "auto", maxWidth: "50px", objectFit: "contain", filter: "brightness(0) invert(1)" }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+          )}
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8.5px", fontWeight: 900, color: "white", letterSpacing: "0.05em", textTransform: "uppercase" }}>{dealershipName}</span>
+        </div>
+        {dealershipPhone && <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 700, color: "rgba(255,255,255,0.88)", flexShrink: 0 }}>{dealershipPhone}</span>}
+      </div>
+      <div style={{ padding: "12px 14px 14px", flex: 1, display: "flex", flexDirection: "column" }}>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: accent.header, marginBottom: "6px" }}>EXCLUSIVE OFFER</div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "16px", fontWeight: 900, color: "#0F172A", lineHeight: 1.15, letterSpacing: "-0.01em", marginBottom: "10px" }}>{headline}</div>
+        <div style={{ display: "flex", gap: "12px", flex: 1 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <HandwrittenContent text={content} fontSize={13} lineHeight={1.80} />
+            {offer && <CouponStrip offer={offer} accent={accent} />}
+          </div>
+          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "5px", paddingTop: "2px" }}>
+            <div style={{ background: "white", border: `2px solid ${accent.header}`, borderRadius: "7px", padding: "5px", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={qrPreviewUrl} alt="Scan to view offer" width={68} height={68} style={{ display: "block", borderRadius: "4px" }} />
+            </div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 900, color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>SCAN TO<br />VIEW OFFER</div>
+          </div>
+        </div>
+        <div style={{ marginTop: "12px" }}>
+          <div style={{ background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", padding: "7px 14px", borderRadius: "2px", display: "inline-block" }}>{cta}</div>
+        </div>
+      </div>
+      {(addrLines.line1 || addrLines.line2) && (
+        <div style={{ padding: "5px 14px", borderTop: "1px solid #EDE8D8", background: "rgba(254,252,243,0.97)", display: "flex", alignItems: "center", gap: "6px" }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke={accent.header} strokeWidth="2" style={{ width: "12px", height: "12px", flexShrink: 0 }}>
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+            <circle cx="12" cy="9" r="2.5" />
+          </svg>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", color: "#6B7280", lineHeight: 1.4 }}>
+            {addrLines.line1}{addrLines.line2 ? ` · ${addrLines.line2}` : ""}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Conquest Postcard Preview ─────────────────────────────────
+
+function ConquestPostcardPreview({
+  content, dealershipName, customerName, offer, qrPreviewUrl, logoUrl, accent,
+  customerAddress, dealershipAddress, dealershipPhone, vehiclePhotoUrl, layoutSpec,
+}: {
+  content: string; dealershipName: string; customerName?: string; offer?: string | null;
+  qrPreviewUrl: string; logoUrl?: string | null; accent: AccentConfig;
+  customerAddress?: AddressRecord | null; dealershipAddress?: AddressRecord | null;
+  dealershipPhone?: string | null; vehiclePhotoUrl?: string | null; layoutSpec?: LayoutSpec;
+}) {
+  const [showBack, setShowBack] = useState(false);
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("design");
+
+  return (
+    <div className="space-y-2.5">
+      <div className="flex justify-center">
+        <ModeToggle mode={previewMode} onChange={setPreviewMode} />
+      </div>
+      <div className="flex items-center justify-center gap-1.5">
+        {(["Front", "Back (Mailing Side)"] as const).map((label, i) => (
+          <button key={label} onClick={() => setShowBack(i === 1)}
+            className={`px-4 py-1.5 rounded-full text-[11px] font-semibold transition-all border ${
+              showBack === (i === 1) ? "bg-slate-900 text-white border-slate-900" : "text-slate-500 border-slate-200 hover:border-slate-300"
+            }`}>{label}</button>
+        ))}
+      </div>
+      {previewMode === "design" ? (
+        <div className="relative flex justify-center">
+          <div className="absolute -bottom-1.5 rounded-b-xl blur-sm -z-10" style={{ left: "16px", right: "16px", height: "14px", background: "rgba(15,23,42,0.10)" }} />
+          {!showBack ? (
+            <div style={{ width: "100%", maxWidth: "420px" }}>
+              <ConquestFront
+                content={content} dealershipName={dealershipName} offer={offer}
+                qrPreviewUrl={qrPreviewUrl} logoUrl={logoUrl} accent={accent}
+                dealershipAddress={dealershipAddress} dealershipPhone={dealershipPhone}
+                vehiclePhotoUrl={vehiclePhotoUrl} layoutSpec={layoutSpec}
+              />
+            </div>
+          ) : (
+            <PostcardBack dealershipName={dealershipName} customerName={customerName} accent={accent} logoUrl={logoUrl} customerAddress={customerAddress} dealershipAddress={dealershipAddress} />
+          )}
+        </div>
+      ) : (
+        <div style={{ background: "linear-gradient(145deg, #EAE5DE 0%, #E0D9D0 100%)", padding: "14px 8px 18px", borderRadius: 14 }}>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <div style={{ width: "100%", maxWidth: 560 }}>
+              <PrintReadyFrame width={520}>
+                <div style={{ transform: "rotate(-0.4deg)", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.22))" }}>
+                  {!showBack ? (
+                    <RealConquestFront
+                      content={content} dealershipName={dealershipName} offer={offer}
+                      qrPreviewUrl={qrPreviewUrl} logoUrl={logoUrl} accent={accent}
+                      dealershipAddress={dealershipAddress} dealershipPhone={dealershipPhone}
+                      vehiclePhotoUrl={vehiclePhotoUrl} layoutSpec={layoutSpec}
+                    />
+                  ) : (
+                    <RealPostcardBack
+                      dealershipName={dealershipName} customerName={customerName} logoUrl={logoUrl}
+                      accent={accent} dealershipAddress={dealershipAddress}
+                      dealershipPhone={dealershipPhone} customerAddress={customerAddress}
+                      content={content}
+                    />
+                  )}
+                </div>
+              </PrintReadyFrame>
+            </div>
+          </div>
+          {customerName && (
+            <p className="text-center mt-2" style={{ fontSize: 9, color: "#9B8E83", fontFamily: "'Inter', sans-serif" }}>
+              Will be mailed to: <strong style={{ color: "#6B5E54" }}>{customerName}</strong>
+              {customerAddress?.street ? ` · ${customerAddress.street}, ${[customerAddress.city, customerAddress.state].filter(Boolean).join(", ")}` : ""}
+            </p>
+          )}
+        </div>
+      )}
+      <div className="text-center">
+        <span className="chip chip-slate text-[10px]">
+          {previewMode === "realistic"
+            ? (showBack ? "✦ Mailing side · USPS First Class · PostGrid" : "✦ Conquest Front · Clean minimalist · Printed by PostGrid")
+            : (showBack ? "↑ Mailing side · Address + USPS indicia" : "↑ Conquest · Clean design for new customer acquisition")}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ── Main export ───────────────────────────────────────────────
 
 interface TemplatePreviewProps {
@@ -1541,6 +1893,22 @@ export function TemplatePreview({
             dealershipName={dealershipName} customerName={customerName} offer={offer}
             qrPreviewUrl={qrUrl} logoUrl={logoUrl} layoutSpec={layoutSpec}
             vehiclePhotoUrl={vehiclePhotoUrl}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (designStyle === "conquest") {
+    return (
+      <div className="flex justify-center">
+        <div className="w-full" style={{ maxWidth: "420px" }}>
+          <ConquestPostcardPreview
+            content={content} dealershipName={dealershipName} customerName={customerName}
+            offer={offer} qrPreviewUrl={qrUrl} logoUrl={logoUrl} accent={accent}
+            customerAddress={customerAddress} dealershipAddress={dealershipAddress}
+            dealershipPhone={dealershipPhone} vehiclePhotoUrl={vehiclePhotoUrl}
+            layoutSpec={layoutSpec}
           />
         </div>
       </div>
