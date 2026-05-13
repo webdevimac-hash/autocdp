@@ -5,8 +5,13 @@ import type { ReactNode, CSSProperties } from "react";
 import { buildPreviewQRImageUrl } from "@/lib/qrcode-gen";
 import type { MailTemplateType, DesignStyle, LayoutSpec } from "@/types";
 
-// SVG feTurbulence paper-fiber texture — embedded as data URI, ~3.8% opacity
-const PAPER_TEXTURE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='pf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23pf)' opacity='0.038'/%3E%3C/svg%3E")`;
+// Two-layer paper fiber texture — anisotropic coarse fiber + fine grain
+// Layer 1: directional (baseFrequency x≠y) simulates paper pulp grain direction
+// Layer 2: fine high-frequency noise simulates individual surface fibers
+const PAPER_TEXTURE = [
+  `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='pf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.62%200.88' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23pf)' opacity='0.052'/%3E%3C/svg%3E")`,
+  `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='pg'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23pg)' opacity='0.024'/%3E%3C/svg%3E")`,
+].join(", ");
 
 // ── Accent color system ───────────────────────────────────────
 
@@ -109,10 +114,11 @@ const C_ROT  = [-3.2,-2.4,-1.7,-1.0,-0.5,-0.2,0.1,0.5,0.9,1.6,2.3,3.0,-2.8,-1.8,
 const C_TY   = [-2.3,-1.7,-1.0,-0.5,-0.15,0.2,0.6,1.0,1.5,2.1,-1.9,-1.3,-0.6,0.0,0.5,1.0,1.4,-1.5,-0.8,0.3,-0.4,1.2,-0.9] as const;
 const C_SX   = [0.93,0.95,0.97,0.985,0.993,1.0,1.007,1.015,1.025,0.96,0.975,0.99,1.01,0.968,0.982,1.005,0.963,1.02,0.978,0.995,1.012,0.972,0.988] as const;
 const C_SY   = [0.94,0.96,0.975,0.985,0.993,1.0,1.01,1.022,0.975,0.99,1.005,0.97,0.985,1.0,1.015,0.963,0.995,0.98,1.025,0.972,1.008,0.955,1.018] as const;
-const C_OPQ  = [0.65,0.72,0.78,0.84,0.89,0.93,0.96,0.99,1.00,0.98,0.95,0.91,0.86,0.81,0.75,0.70,0.94,0.87,0.77,0.82,0.90,0.73,0.97] as const;
+// Wider opacity range (0.52–1.00) for more pronounced light/heavy stroke contrast
+const C_OPQ  = [0.52,0.60,0.68,0.76,0.83,0.89,0.93,0.97,1.00,0.98,0.94,0.89,0.83,0.76,0.69,0.63,0.92,0.85,0.74,0.80,0.88,0.67,0.96] as const;
 const C_SPC  = [-0.55,-0.35,-0.18,0.0,0.10,0.20,0.32,-0.45,0.15,-0.18,0.26,-0.26,0.06,-0.06,0.21,-0.11,0.0,0.16,-0.22,0.08,-0.08,0.28,-0.38] as const;
-// Ink pressure — affects shadow intensity and slight letter size
-const C_PRES = [0.58,0.66,0.74,0.81,0.87,0.91,0.95,0.98,1.00,0.99,0.96,0.92,0.87,0.82,0.76,0.72,0.94,0.87,0.79,0.83,0.89,0.71,0.96] as const;
+// Wider pressure range (0.44–1.00) — more dramatic feathering on lifted strokes
+const C_PRES = [0.44,0.54,0.63,0.73,0.82,0.88,0.93,0.97,1.00,0.99,0.95,0.90,0.84,0.77,0.70,0.64,0.92,0.85,0.75,0.80,0.88,0.67,0.96] as const;
 
 type LookupArr = readonly number[];
 function pick(arr: LookupArr, n: number): number {
@@ -122,25 +128,29 @@ function hseed(gci: number, code: number, li: number, pi: number, extra = 0): nu
   return (gci * 31 + code * 17 + li * 7 + pi * 3 + extra * 13) | 0;
 }
 
-// Multi-layer ink bleed — nonlinear pressure curve + per-character micro-jitter via seed
-// Low pressure → wide/soft bleed (lifted stroke); high pressure → dense/sharp layering
+// 6-layer ink shadow: nonlinear pressure + per-character jitter + pooling
+// Layers: [sharp core, soft bleed x2, vertical drip, wide ambient, ink pool]
 function inkShadow(pressure: number, seed = 0): string {
-  // Deterministic micro-jitter: unique per character, no visible period
-  const jx = (((seed * 7919 + 13) & 0xff) / 255 - 0.5) * 0.12;
-  const jy = (((seed * 6271 + 17) & 0xff) / 255 - 0.5) * 0.10;
+  // Per-character micro-jitter via three independent prime hashes
+  const jx = (((seed * 7919 + 13) & 0xff) / 255 - 0.5) * 0.18;   // ±0.18px horiz
+  const jy = (((seed * 6271 + 17) & 0xff) / 255 - 0.5) * 0.13;   // ±0.13px vert
+  const jp = ((seed * 5003 + 23) & 0xff) / 255;                    // 0–1 pooling factor
   const bleedRadius = (0.55 - 0.28 * pressure).toFixed(2);
   const sharpRadius = (0.18 + 0.22 * pressure).toFixed(2);
-  const a1 = (pressure * pressure * 0.26).toFixed(3);
+  const a1 = (pressure * pressure * 0.28).toFixed(3);
   const a2 = (pressure * 0.14 + (1 - pressure) * 0.09).toFixed(3);
-  const a3 = ((1 - pressure) * 0.12 + pressure * 0.06).toFixed(3);
+  const a3 = ((1 - pressure) * 0.13 + pressure * 0.06).toFixed(3);
   const a4 = (pressure * 0.09).toFixed(3);
-  const a5 = ((1 - pressure) * 0.08).toFixed(3);
+  const a5 = ((1 - pressure) * 0.09).toFixed(3);
+  // 6th layer: ink pooling — zero blur, only visible on high-pressure + high-pool chars
+  const a6 = (pressure * jp * 0.07).toFixed(3);
   return [
     ` ${(0.30 + jx).toFixed(2)}px  ${(0.22 + jy).toFixed(2)}px ${sharpRadius}px rgba(18,22,52,${a1})`,
     `${(-0.16 + jx * 0.5).toFixed(2)}px  ${(0.10 + jy * 0.5).toFixed(2)}px ${bleedRadius}px rgba(18,22,52,${a2})`,
     ` ${(0.10 + jx * 0.7).toFixed(2)}px ${(-0.16 + jy * 0.7).toFixed(2)}px ${bleedRadius}px rgba(18,22,52,${a3})`,
     ` ${jx.toFixed(2)}px     ${(0.38 + jy).toFixed(2)}px ${sharpRadius}px rgba(18,22,52,${a4})`,
     ` 0px     0px    ${(parseFloat(bleedRadius) * 1.6).toFixed(2)}px rgba(18,22,52,${a5})`,
+    ` ${(jx * 0.4).toFixed(2)}px  ${(jy * 0.4).toFixed(2)}px 0px rgba(18,22,52,${a6})`,
   ].join(",");
 }
 
@@ -163,13 +173,13 @@ function buildParaLayout(text: string): ParaInfo[] {
 
 // Word-level wrapper — applies gentle baseline drift and lean per word
 function HandwrittenWord({
-  text, wordIdx, lineIdx, paraIdx, startCharOffset,
+  text, wordIdx, lineIdx, paraIdx, startCharOffset, isSignature = false,
 }: {
-  text: string; wordIdx: number; lineIdx: number; paraIdx: number; startCharOffset: number;
+  text: string; wordIdx: number; lineIdx: number; paraIdx: number; startCharOffset: number; isSignature?: boolean;
 }) {
   const ws = (wordIdx * 7 + lineIdx * 11 + paraIdx * 3) | 0;
-  const wordDriftY = pick(W_DRIFT_Y, ws);
-  const wordLean   = pick(W_LEAN, ws + 5);
+  const wordDriftY = pick(W_DRIFT_Y, ws) * (isSignature ? 1.4 : 1.0);
+  const wordLean   = pick(W_LEAN, ws + 5) * (isSignature ? 1.7 : 1.0);
 
   return (
     <span style={{
@@ -202,10 +212,10 @@ function HandwrittenWord({
 }
 
 // Line-level renderer — wraps words and applies line-level drift
-function HandwrittenLine({ text, charOffset, lineIdx, paraIdx }: LineInfo) {
+function HandwrittenLine({ text, charOffset, lineIdx, paraIdx, isSignature = false }: LineInfo & { isSignature?: boolean }) {
   if (!text.trim()) return <span style={{ display: "block", minHeight: "1.4em" }}>&nbsp;</span>;
 
-  const lineDrift = pick(L_DRIFT, lineIdx * 13 + paraIdx * 7);
+  const lineDrift = pick(L_DRIFT, lineIdx * 13 + paraIdx * 7) * (isSignature ? 1.3 : 1.0);
 
   // Split into word/space segments, preserving all whitespace
   const segments: { text: string; isSpace: boolean; charStart: number }[] = [];
@@ -258,6 +268,7 @@ function HandwrittenLine({ text, charOffset, lineIdx, paraIdx }: LineInfo) {
             lineIdx={lineIdx}
             paraIdx={paraIdx}
             startCharOffset={seg.charStart}
+            isSignature={isSignature}
           />
         );
       })}
@@ -271,6 +282,11 @@ function HandwrittenContent({
   text: string; fontSize?: number; lineHeight?: number;
 }) {
   const paras = buildParaLayout(text);
+  // Last short paragraph (≤2 lines, text has ≥2 paragraphs) is treated as a
+  // closing / signature — receives extra pen lean to simulate the natural flourish
+  // of ending a handwritten note.
+  const lastParaIsSignature =
+    paras.length >= 2 && paras[paras.length - 1].lines.length <= 2;
   return (
     <div style={{
       fontSize: `${fontSize}px`,
@@ -278,15 +294,18 @@ function HandwrittenContent({
       color: "#1a1f36",
       fontFamily: "'Patrick Hand', 'Caveat', cursive",
     }}>
-      {paras.map((para, pi) => (
-        <div key={pi} style={{ marginBottom: pi < paras.length - 1 ? `${fontSize * 0.7}px` : 0 }}>
-          {para.lines.map((line, li) => (
-            <div key={li} style={{ display: "block" }}>
-              <HandwrittenLine {...line} />
-            </div>
-          ))}
-        </div>
-      ))}
+      {paras.map((para, pi) => {
+        const isSig = lastParaIsSignature && pi === paras.length - 1;
+        return (
+          <div key={pi} style={{ marginBottom: pi < paras.length - 1 ? `${fontSize * 0.7}px` : 0 }}>
+            {para.lines.map((line, li) => (
+              <div key={li} style={{ display: "block" }}>
+                <HandwrittenLine {...line} isSignature={isSig} />
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }

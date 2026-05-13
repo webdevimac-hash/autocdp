@@ -36,8 +36,11 @@ const SAMPLE_MESSAGES = [
   },
 ];
 
-// SVG feTurbulence paper-fiber texture — embedded as data URI, ~3.8% opacity
-const PAPER_TEXTURE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='pf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23pf)' opacity='0.038'/%3E%3C/svg%3E")`;
+// Two-layer paper fiber texture — anisotropic coarse fiber + fine grain
+const PAPER_TEXTURE = [
+  `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='pf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.62%200.88' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23pf)' opacity='0.052'/%3E%3C/svg%3E")`,
+  `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='pg'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23pg)' opacity='0.024'/%3E%3C/svg%3E")`,
+].join(", ");
 
 // ── Accent color system (local to preview demo) ───────────────
 
@@ -109,10 +112,12 @@ const W_LEAN    = [-0.55,-0.25,-0.1,0.0,0.1,0.25,0.48,-0.42,0.15,-0.15,0.35,-0.3
 // Character-level (23 elements)
 const C_ROT  = [-3.2,-2.4,-1.7,-1.0,-0.5,-0.2,0.1,0.5,0.9,1.6,2.3,3.0,-2.8,-1.8,-0.7,0.7,1.8,2.7,-1.1,-0.3,0.3,1.1,-2.0] as const;
 const C_TY   = [-2.3,-1.7,-1.0,-0.5,-0.15,0.2,0.6,1.0,1.5,2.1,-1.9,-1.3,-0.6,0.0,0.5,1.0,1.4,-1.5,-0.8,0.3,-0.4,1.2,-0.9] as const;
-const C_PRES = [0.58,0.66,0.74,0.81,0.87,0.91,0.95,0.98,1.00,0.99,0.96,0.92,0.87,0.82,0.76,0.72,0.94,0.87,0.79,0.83,0.89,0.71,0.96] as const;
+// Wider pressure range (0.44–1.00) — more dramatic feathering on lifted strokes
+const C_PRES = [0.44,0.54,0.63,0.73,0.82,0.88,0.93,0.97,1.00,0.99,0.95,0.90,0.84,0.77,0.70,0.64,0.92,0.85,0.75,0.80,0.88,0.67,0.96] as const;
 const C_SX   = [0.93,0.95,0.97,0.98,0.99,1.00,1.01,1.02,1.03,0.96,0.98,1.00,1.02,0.94,0.99,1.01,0.97,1.03,0.95,1.00,0.98,1.02,0.96] as const;
 const C_SY   = [0.95,0.97,0.98,0.99,1.00,1.01,1.02,0.96,0.98,1.01,0.97,0.99,1.01,0.95,1.00,0.98,1.02,0.97,0.99,1.00,0.96,1.03,0.98] as const;
-const C_OPQ  = [0.68,0.72,0.76,0.80,0.84,0.88,0.91,0.94,0.97,1.00,0.98,0.95,0.91,0.86,0.82,0.78,0.74,0.93,0.87,0.96,0.89,0.83,0.77] as const;
+// Wider opacity range (0.52–1.00) for more pronounced light/heavy stroke contrast
+const C_OPQ  = [0.52,0.60,0.68,0.76,0.83,0.89,0.93,0.97,1.00,0.98,0.94,0.89,0.83,0.76,0.69,0.63,0.92,0.85,0.74,0.80,0.88,0.67,0.96] as const;
 const C_SPC  = [-0.5,-0.3,-0.2,-0.1,0.0,0.1,0.2,0.3,-0.4,0.15,-0.15,0.25,-0.25,0.05,-0.05,0.2,-0.1,0.0,0.15,-0.2,0.3,-0.35,0.08] as const;
 
 type LookupArr = readonly number[];
@@ -124,24 +129,26 @@ function hseed(charOff: number, code: number, li: number, pi: number): number {
   return (charOff * 31 + code * 17 + li * 7 + pi * 3) | 0;
 }
 
-// 5-layer text-shadow — nonlinear pressure curve + per-character micro-jitter via seed
-// Low pressure → wide/soft bleed (lifted stroke); high pressure → dense/sharp layering
+// 6-layer ink shadow: nonlinear pressure + per-character jitter + pooling
 function inkShadow(pressure: number, seed = 0): string {
-  const jx = (((seed * 7919 + 13) & 0xff) / 255 - 0.5) * 0.12;
-  const jy = (((seed * 6271 + 17) & 0xff) / 255 - 0.5) * 0.10;
+  const jx = (((seed * 7919 + 13) & 0xff) / 255 - 0.5) * 0.18;
+  const jy = (((seed * 6271 + 17) & 0xff) / 255 - 0.5) * 0.13;
+  const jp = ((seed * 5003 + 23) & 0xff) / 255;
   const bleedRadius = (0.55 - 0.28 * pressure).toFixed(2);
   const sharpRadius = (0.18 + 0.22 * pressure).toFixed(2);
-  const a1 = (pressure * pressure * 0.26).toFixed(3);
+  const a1 = (pressure * pressure * 0.28).toFixed(3);
   const a2 = (pressure * 0.14 + (1 - pressure) * 0.09).toFixed(3);
-  const a3 = ((1 - pressure) * 0.12 + pressure * 0.06).toFixed(3);
+  const a3 = ((1 - pressure) * 0.13 + pressure * 0.06).toFixed(3);
   const a4 = (pressure * 0.09).toFixed(3);
-  const a5 = ((1 - pressure) * 0.08).toFixed(3);
+  const a5 = ((1 - pressure) * 0.09).toFixed(3);
+  const a6 = (pressure * jp * 0.07).toFixed(3);
   return [
     ` ${(0.30 + jx).toFixed(2)}px  ${(0.22 + jy).toFixed(2)}px ${sharpRadius}px rgba(18,22,52,${a1})`,
     `${(-0.16 + jx * 0.5).toFixed(2)}px  ${(0.10 + jy * 0.5).toFixed(2)}px ${bleedRadius}px rgba(18,22,52,${a2})`,
     ` ${(0.10 + jx * 0.7).toFixed(2)}px ${(-0.16 + jy * 0.7).toFixed(2)}px ${bleedRadius}px rgba(18,22,52,${a3})`,
     ` ${jx.toFixed(2)}px     ${(0.38 + jy).toFixed(2)}px ${sharpRadius}px rgba(18,22,52,${a4})`,
     ` 0px     0px    ${(parseFloat(bleedRadius) * 1.6).toFixed(2)}px rgba(18,22,52,${a5})`,
+    ` ${(jx * 0.4).toFixed(2)}px  ${(jy * 0.4).toFixed(2)}px 0px rgba(18,22,52,${a6})`,
   ].join(",");
 }
 
@@ -482,7 +489,7 @@ export function HandwritingPreview() {
                   PAPER_TEXTURE,
                   "repeating-linear-gradient(0deg, transparent, transparent 30px, rgba(180,155,110,0.11) 30px, rgba(180,155,110,0.11) 31px)",
                 ].join(", "),
-                backgroundSize: "200px 200px, 100% 31px",
+                backgroundSize: "300px 300px, 100px 100px, 100% 31px",
                 backgroundPositionY: "58px",
               }}
             >

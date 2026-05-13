@@ -269,6 +269,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
     previewQrUrl: string | null;
     vehicle: string | null;
     vehiclePhotoUrl: string | null;
+    customerName: string | null;
     channel: BuilderChannel;
     designStyle?: DesignStyle;
     layoutSpec?: import("@/types").LayoutSpec;
@@ -487,6 +488,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
         previewQrUrl: data.previewQrUrl ?? null,
         vehicle: data.vehicle ?? null,
         vehiclePhotoUrl: data.vehiclePhotoUrl ?? null,
+        customerName: data.customerName ?? null,
         channel,
         designStyle: data.designStyle ?? designStyle,
         layoutSpec: data.layoutSpec,
@@ -1562,6 +1564,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                 templateType={templateType}
                 content={previewResult.content}
                 dealershipName={dealershipName}
+                customerName={previewResult.customerName ?? undefined}
                 vehicle={previewResult.vehicle}
                 vehiclePhotoUrl={previewResult.vehiclePhotoUrl}
                 qrPreviewUrl={previewResult.previewQrUrl}
