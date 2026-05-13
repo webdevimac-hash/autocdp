@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { runCreativeAgent } from "@/lib/anthropic/agents/creative-agent";
 import { buildPreviewQRImageUrl } from "@/lib/qrcode-gen";
 import { loadDealershipMemories, formatMemoriesForPrompt } from "@/lib/memories";
+import { loadBaselineExamples } from "@/lib/anthropic/baseline";
 import type { Customer, Visit, CommunicationChannel, MailTemplateType } from "@/types";
 
 /**
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "ANTHROPIC_API_KEY not configured" }, { status: 503 });
     }
 
-    const [{ data: customer }, { data: visits }, dealerMemories] = await Promise.all([
+    const [{ data: customer }, { data: visits }, dealerMemories, baselineExamples] = await Promise.all([
       supabase
         .from("customers")
         .select("*")
@@ -67,6 +68,7 @@ export async function POST(req: NextRequest) {
         .order("visit_date", { ascending: false })
         .limit(1),
       loadDealershipMemories(ud.dealership_id),
+      loadBaselineExamples(ud.dealership_id),
     ]);
 
     if (!customer) {
@@ -75,13 +77,10 @@ export async function POST(req: NextRequest) {
 
     const resolvedChannel = (channel as CommunicationChannel) || "direct_mail";
 
-    // Channel-specific template hint
+    // Channel-specific template hint (direct_mail intentionally omitted — the creative agent's
+    // channel guide already enforces the correct structure and word count per template type)
     let templateHint: string | undefined;
-    if (resolvedChannel === "direct_mail") {
-      templateHint = templateType === "postcard_6x9"
-        ? "Write a short, warm postcard message (50–100 words). Very personal, handwritten feel."
-        : "Write a business letter (150–250 words). Formal but warm, include offer details.";
-    } else if (resolvedChannel === "sms") {
+    if (resolvedChannel === "sms") {
       templateHint = "Write an SMS message. Max 160 characters. Include the customer's first name and a clear call-to-action with the dealership phone number or reply STOP to opt out.";
     } else if (resolvedChannel === "email") {
       templateHint = "Write a full HTML email. Subject line + personalized body (2–3 paragraphs). Include a clear CTA button linking to 'tel:{{phone}}'. Keep it warm and specific. Return subject and body_html as separate fields.";
@@ -100,6 +99,8 @@ export async function POST(req: NextRequest) {
       template: templateHint,
       designStyle: resolvedChannel === "direct_mail" ? designStyle : undefined,
       dealerMemories: dealerMemories.length ? formatMemoriesForPrompt(dealerMemories) : undefined,
+      baselineExamples: baselineExamples.length ? baselineExamples : undefined,
+      includeDisclaimer: false,
       dealershipProfile: {
         phone: dealership?.phone as string | null,
         address: dealership?.address as { street?: string; city?: string; state?: string; zip?: string } | null,

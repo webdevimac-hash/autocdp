@@ -104,6 +104,50 @@ const VIOLATION_PATTERNS: {
     severity: "rewrite",
   },
 
+  // Artificial urgency / time-pressure tactics
+  {
+    pattern: /offer\s+(expires?|ends?)\s+(today|tonight|tomorrow|in\s+\d+\s*hours?)/gi,
+    label: "artificial urgency deadline",
+    severity: "rewrite",
+  },
+  {
+    pattern: /only\s+\d+\s*(days?|hours?)\s+(left|remaining|to\s+(act|claim|respond))/gi,
+    label: "false urgency pressure",
+    severity: "rewrite",
+  },
+
+  // Generic AI-speak that undermines authentic, handwritten tone
+  {
+    pattern: /i\s+hope\s+(this|the)\s+(message|note|letter|card|email|postcard)\s+finds\s+you/gi,
+    label: "AI-speak: generic opener",
+    severity: "rewrite",
+  },
+  {
+    pattern: /i\s+(wanted|am\s+writing|am\s+reaching\s+out)\s+to\s+(reach\s+out|let\s+you\s+know|inform\s+you|follow\s+up)/gi,
+    label: "AI-speak: generic opener",
+    severity: "rewrite",
+  },
+  {
+    pattern: /don'?t\s+hesitate\s+to\s+(contact|call|reach\s+out|get\s+in\s+touch)/gi,
+    label: "AI-speak: generic closer",
+    severity: "rewrite",
+  },
+  {
+    pattern: /as\s+(a\s+)?valued\s+(customer|client|guest)/gi,
+    label: "AI-speak: generic flattery",
+    severity: "rewrite",
+  },
+  {
+    pattern: /feel\s+free\s+to\s+(contact|call|reach\s+out|stop\s+by)/gi,
+    label: "AI-speak: generic closer",
+    severity: "rewrite",
+  },
+  {
+    pattern: /we\s+(wanted|would\s+like)\s+to\s+(let\s+you\s+know|inform\s+you|reach\s+out)/gi,
+    label: "AI-speak: corporate filler",
+    severity: "rewrite",
+  },
+
   // Outright deceptive prize / giveaway language
   {
     pattern: /\b(free\s+car|free\s+vehicle|win\s+a\s+car|you\s+won\b)/gi,
@@ -151,9 +195,17 @@ Rewrite rules:
 - Replace specific APR/rate claims → "competitive financing available — ask us for details"
 - Replace "guaranteed approval" / "no credit check" → "financing options available for most credit situations"
 - Replace guaranteed value / price-match claims → remove entirely or soften to "great value"
-- Replace false scarcity → soften to "while it lasts" or remove
-- Keep all personal details, vehicle references, service history references, and tone intact
-- Match the original length as closely as possible
+- Replace false scarcity → soften to "while it lasts" or remove the line entirely
+- Replace artificial urgency deadlines ("offer expires today/tomorrow") → soften to "available this month" or remove the date
+- Replace AI-speak openers ("I hope this finds you", "I wanted to reach out", "I'm reaching out today") →
+  rewrite the opening sentence with something specific to the customer's vehicle or service history instead
+- Replace AI-speak closers ("don't hesitate to contact us", "feel free to reach out") →
+  use natural language such as "give us a call" or "stop by anytime"
+- Replace "as a valued customer" → reference the actual relationship concretely (e.g., how long they've been a customer)
+- Replace corporate filler ("we wanted to let you know", "we are pleased to inform you") →
+  start the sentence directly with what you are actually saying
+- Keep all personal details, vehicle references, service history references, and advisor sign-off intact
+- Match the original length and paragraph structure as closely as possible
 
 Respond with JSON only:
 {

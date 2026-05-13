@@ -149,19 +149,24 @@ function formatInventorySection(ctx: InventoryContext): string {
   if (ctx.type === "none") return "";
 
   const headers: Record<Exclude<InventoryContext["type"], "none">, string> = {
-    upgrade: "UPGRADE OPPORTUNITY — same-make vehicles in stock (prioritize if customer may be ready for new):",
-    similar: "SIMILAR VEHICLES IN STOCK — same make as customer's service vehicle:",
-    aged:    "AGED INVENTORY — motivated to move (60+ days on lot):",
+    upgrade:
+      "UPGRADE OPPORTUNITY — same-make vehicles in stock. If the campaign goal supports it, weave in a natural mention " +
+      "of an available upgrade tied to their current vehicle. Don't force it if the goal is service-only.",
+    similar:
+      "SIMILAR VEHICLES IN STOCK — same make as customer's serviced vehicle. Reference only if it fits the message naturally.",
+    aged:
+      "AGED INVENTORY to mention. Reference the specific vehicle naturally. " +
+      "Do NOT reveal lot duration or use phrases like 'motivated to move' in customer-facing copy.",
   };
 
   const lines = (ctx as { vehicles: InventoryRow[] }).vehicles.map((v) => {
     const name = [v.year, v.make, v.model, v.trim].filter(Boolean).join(" ");
     const price = v.price ? `$${Number(v.price).toLocaleString()}` : "call for price";
-    const age = v.days_on_lot >= 60 ? ` — ${v.days_on_lot}d on lot, motivated to move` : "";
+    const age = v.days_on_lot >= 60 ? ` [internal: ${v.days_on_lot}d on lot]` : "";
     return `  • ${(v.condition ?? "used").toUpperCase()} ${name} — ${price}${age}`;
   });
 
-  return `\n${headers[ctx.type as Exclude<InventoryContext["type"], "none">]}\n${lines.join("\n")}\n`;
+  return `\nINVENTORY CONTEXT — ${headers[ctx.type as Exclude<InventoryContext["type"], "none">]}\n${lines.join("\n")}\n`;
 }
 
 // ── Copy post-processing ───────────────────────────────────────
@@ -184,7 +189,16 @@ function postProcessMailCopy(text: string, channel: string): string {
     .map((line) => line.trimEnd())
     .join("\n")
     // Ensure at least one blank line before the sign-off (Warmly / Best / Thanks)
-    .replace(/\n(Warmly|Best|Sincerely|Thanks|Cheers|With appreciation|Take care),/g, "\n\n$1,")
+    .replace(/\n(Warmly|Best|Sincerely|Thanks|Cheers|With appreciation|Take care|See you soon),/g, "\n\n$1,")
+    // Strip AI-speak phrases that escaped the system prompt rules
+    .replace(/I hope (this|the) (message|note|letter|card|postcard) finds you (well|great|in good health)[.,!]?\s*/gi, "")
+    .replace(/I (wanted|am writing|am reaching out) to (reach out|let you know|inform you|follow up)[^.!?]*[.!?]\s*/gi, "")
+    .replace(/Don'?t hesitate to (contact|call|reach out to) us[.,!]?\s*/gi, "Give us a call anytime. ")
+    .replace(/Feel free to (contact|call|reach out to|stop by)[^.!?]*[.!?]\s*/gi, "")
+    .replace(/As (a )?valued (customer|guest|client)[,.]?\s*/gi, "")
+    .replace(/We (wanted to|are pleased to|would like to) (let you know|inform you|reach out)[^.!?]*[.!?]\s*/gi, "")
+    // Fix any double-spaces introduced by the above replacements
+    .replace(/ {2,}/g, " ")
     .trim();
 }
 
@@ -283,28 +297,64 @@ export async function runCreativeAgent(
   }
 
   // ── 3. Build prompts ───────────────────────────────────────
-  const visitContext = input.recentVisit
-    ? `Last visit: ${input.recentVisit.visit_date?.slice(0, 10)} | ` +
-      `Service: ${input.recentVisit.service_type || "general"} | ` +
-      `Vehicle: ${[input.recentVisit.year, input.recentVisit.make, input.recentVisit.model].filter(Boolean).join(" ") || "unknown"} | ` +
-      `Mileage: ${input.recentVisit.mileage?.toLocaleString() || "unknown"} | ` +
-      `Notes: ${input.recentVisit.service_notes || "none"}`
-    : "No previous visit on record.";
+
+  // Compute days since last visit — critical context for the hook
+  const visitContext = (() => {
+    if (!input.recentVisit) return "No previous visit on record — treat as a new relationship, focus on a warm welcome.";
+    const visitDate = input.recentVisit.visit_date?.slice(0, 10) ?? "";
+    const daysSince = visitDate
+      ? Math.round((Date.now() - new Date(visitDate).getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+    const vehicle = [input.recentVisit.year, input.recentVisit.make, input.recentVisit.model]
+      .filter(Boolean).join(" ") || "unknown vehicle";
+    return [
+      `Last visit: ${visitDate}${daysSince !== null ? ` (${daysSince} days ago — use this as an opening hook when relevant)` : ""}`,
+      `Service performed: ${input.recentVisit.service_type || "general service"}`,
+      `Vehicle serviced: ${vehicle}`,
+      input.recentVisit.mileage ? `Mileage at last service: ${input.recentVisit.mileage.toLocaleString()} miles` : null,
+      input.recentVisit.service_notes ? `Service notes: ${input.recentVisit.service_notes}` : null,
+    ].filter(Boolean).join(" | ");
+  })();
 
   const channelGuide = {
-    sms:         "SMS (max 160 chars, no HTML, conversational, include opt-out hint)",
-    email:       "Email (can be multi-paragraph, include subject line, warm but direct)",
+    sms: [
+      "SMS message for an automotive dealership customer.",
+      "Max 160 characters. No HTML. Conversational, first-name basis.",
+      "Must include: customer first name, a specific reference (vehicle or service), dealership name or phone, and a clear action.",
+      "Do NOT start with generic 'Hi' or 'Hello' alone — lead with something specific.",
+    ].join("\n"),
+    email: [
+      "Personalized HTML email for an automotive dealership customer.",
+      "Structure: subject line (7–10 words, specific and personal) + 2–3 short paragraphs + single CTA.",
+      "Paragraph 1: Hook — reference their specific vehicle or visit history.",
+      "Paragraph 2: The offer or value proposition — concrete, not vague.",
+      "Paragraph 3: Soft CTA with dealership contact info.",
+      "Sign off with a human name. Total body: under 200 words.",
+    ].join("\n"),
     direct_mail: [
-      "Handwritten note for direct mail.",
-      "STRICT FORMAT RULES:",
-      "  • Write exactly 3-4 short paragraphs. Separate each paragraph with a BLANK LINE (\\n\\n).",
-      "  • Maximum 12 words per sentence. Short, natural phrasing only.",
-      "  • Open with just the first name and a comma on its own line.",
-      "  • End with a warm sign-off on its own line, then the advisor's first name below it.",
-      "  • Total word count: 55–80 words.",
-      "  • NO run-on sentences. NO concatenated words. Every sentence must end with punctuation.",
-      "EXAMPLE STRUCTURE (use \\n\\n between every paragraph/block):",
-      "  Sarah,\\n\\nYour 2019 Pilot is due for its 30k service soon.\\n\\nWe're offering a complimentary multi-point inspection this month — no strings attached.\\n\\nWould love to see you back in. Just call or book online.\\n\\nWarmly,\\nTom",
+      "You are writing a handwritten service note — personalized direct mail printed by a robotic pen.",
+      "",
+      "EXACT OUTPUT FORMAT (reproduce this structure precisely in the JSON 'content' field):",
+      "  [First name only],",
+      "  [blank line — \\n\\n]",
+      "  [Paragraph 1 — 1–2 sentences. Concrete hook: name their vehicle AND reference time since last visit or a service milestone.]",
+      "  [blank line — \\n\\n]",
+      "  [Paragraph 2 — 1–2 sentences. The specific offer or service reminder. Dollar amount or named service — never 'great deals'.]",
+      "  [blank line — \\n\\n]",
+      "  [Paragraph 3 — 1–2 sentences. Low-pressure CTA. Easy to act on.]",
+      "  [blank line — \\n\\n]",
+      "  [Sign-off word: 'Warmly,' or 'Best,' or 'See you soon,']",
+      "  [Advisor first name — a single human name only]",
+      "",
+      "RULES: Max 12 words per sentence. Body (not counting greeting/sign-off): 50–75 words.",
+      "Write in first person as the advisor. No 'the dealership' in third person.",
+      "Every sentence ends with punctuation. No run-on sentences. No lists.",
+      "",
+      "EXAMPLE A — 11 months since last visit, service reminder:",
+      "  James,\n\n  Your 2021 Tacoma is due for its 30k service. It's been almost a year — let's get you caught up.\n\n  I have a $30 coupon reserved for you this month, good any Tuesday or Wednesday.\n\n  Just give us a call or book online anytime.\n\n  Best,\n  Mike",
+      "",
+      "EXAMPLE B — VIP appreciation, multiple vehicles:",
+      "  Robert & Linda,\n\n  Thank you for being such loyal customers over the years. It genuinely means a lot to our whole team.\n\n  We're hosting a VIP event Saturday — free tire rotation and a first look at the new lineup.\n\n  We'd love to see you there.\n\n  Warmly,\n  Sarah",
     ].join("\n"),
   }[input.channel];
 
@@ -419,22 +469,68 @@ export async function runCreativeAgent(
     ? `\n${CREDIT_OFFER_GUIDANCE[input.customerCreditTier] ?? ""}\n`
     : "";
 
-  const systemPrompt =
-    `You are the Creative Agent for AutoCDP. You write hyper-personalized outreach ` +
-    `messages for auto dealership customers. Your copy feels human, warm, and specific — never generic.\n\n` +
-    `Tone: ${input.dealershipTone || "friendly and professional"}\n` +
-    `Dealership: ${input.context.dealershipName}\n` +
-    (profileSection ? `\nDEALERSHIP CONTACT INFO (use in CTAs when relevant):\n${profileSection}\n` : "") +
-    `${coopSection}${designStyleNote}${imagesNote}${baselineSection}${memoriesSection}${insightsSection}${creditSection}${learningsSection}${inventorySection}${bookNowSection}\n` +
-    `Rules:\n` +
-    `- Reference specific details from the customer's visit history when available\n` +
-    `- When network learnings apply to this customer's vehicle or segment, weave them in naturally\n` +
-    `- Never be pushy or sales-heavy in the opening\n` +
-    `- For direct mail: write as if hand-penned by a service advisor\n` +
-    `- Use the customer's first name\n` +
-    `- When including a CTA with a phone number, use the dealership phone above\n` +
-    `- End with a clear but soft call-to-action\n` +
-    `- Do NOT write any opt-out, unsubscribe, or legal disclaimer text — those are appended automatically`;
+  const HR = "─".repeat(55);
+
+  const systemPrompt = [
+    // Identity
+    `You are the Creative Agent for AutoCDP — you write hyper-personalized outreach for automotive dealership customers.`,
+    `Copy must feel hand-written and specific, like a note from a service advisor who knows the customer personally. Never like a marketing blast.`,
+    `\nDealership: ${input.context.dealershipName}`,
+    `Tone: ${input.dealershipTone || "warm, conversational, service-advisor voice"}`,
+    profileSection ? `\nDEALERSHIP CONTACT INFO (use in CTAs when relevant):\n${profileSection}` : null,
+
+    // Hard constraints FIRST — these override everything else
+    memoriesSection || null,
+
+    // Co-op compliance
+    coopSection || null,
+
+    // Channel format guide (and advanced design)
+    `\nCHANNEL FORMAT:\n${channelGuide}`,
+    designStyleNote || null,
+    imagesNote || null,
+
+    // Style reference
+    baselineSection || null,
+
+    // Context signals (soft — inform but don't override)
+    insightsSection || null,
+    creditSection || null,
+
+    // Data-driven patterns
+    learningsSection || null,
+
+    // Inventory
+    inventorySection || null,
+
+    // Booking CTA
+    bookNowSection || null,
+
+    // Critical writing rules — placed last for recency effect
+    `\n${HR}`,
+    `CRITICAL WRITING RULES`,
+    `${HR}`,
+    `BANNED PHRASES — never write any of these in any output:`,
+    `  ✗ "I hope this message/note/card finds you well"`,
+    `  ✗ "I wanted to reach out" / "I'm reaching out today"`,
+    `  ✗ "Don't hesitate to contact us" / "Feel free to reach out"`,
+    `  ✗ "As a valued customer" / "As one of our most loyal customers"`,
+    `  ✗ "We wanted to let you know" / "We are pleased to inform you"`,
+    `  ✗ "Exclusive deals" / "Special savings" / "Amazing offers" (all vague non-specifics)`,
+    `  ✗ "It's that time of year again"`,
+    `  ✗ Any passive-voice corporate filler ("Please be advised", "At your earliest convenience")`,
+    ``,
+    `REQUIRED in every message:`,
+    `  ✓ Open with something real and specific — vehicle name, mileage milestone, or time since last visit`,
+    `  ✓ Reference their actual service history: vehicle, service type, and mileage when known`,
+    `  ✓ Offer must be concrete — a dollar amount, a free named item, or a specific perk, never "great deals"`,
+    `  ✓ Sign off with a single human first name, not a company, department, or "the team"`,
+    `  ✓ CTA should be low-pressure ("call or book online anytime" — never "ACT NOW" or countdown language)`,
+    `  ✓ Weave in network learnings naturally — never quote them verbatim`,
+    `  ✓ Use the dealership phone number in CTAs when provided`,
+    `  ✗ Do NOT write opt-out, unsubscribe, or legal disclaimer text — those are appended automatically`,
+    `${HR}`,
+  ].filter((s): s is string => s !== null && s !== undefined && s !== "").join("\n");
 
   const layoutSpecSchema = isAdvancedDesign ? `
   "layoutSpec": {
@@ -493,7 +589,7 @@ export async function runCreativeAgent(
   // ── 4. Generate copy ───────────────────────────────────────
   const response = await client.messages.create({
     model: MODELS.standard,
-    max_tokens: input.channel === "direct_mail" ? 768 : 512,
+    max_tokens: isAdvancedDesign ? 1024 : (input.channel === "direct_mail" ? 800 : 512),
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
   });
