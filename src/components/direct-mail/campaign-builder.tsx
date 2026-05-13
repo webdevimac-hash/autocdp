@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, Fragment } from "react";
+import { useState, useCallback, useMemo, Fragment, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { TemplatePreview } from "./template-preview";
 import type { AccentColor } from "./template-preview";
@@ -109,6 +109,7 @@ type TemplateConfig = {
   label: string;
   description: string;
   cost: string;
+  costPerPiece: number;
   bestFor: string;
   bestStages: string[];
   badge: string | null;
@@ -122,6 +123,7 @@ const TEMPLATE_CONFIGS: TemplateConfig[] = [
     label: "Classic Postcard",
     description: "Vehicle photo, handwritten note, QR + detachable coupon strip.",
     cost: "~$1.20",
+    costPerPiece: 1.20,
     bestFor: "Reactivation, service reminders",
     bestStages: ["lapsed", "active", "at_risk"],
     badge: null,
@@ -133,6 +135,7 @@ const TEMPLATE_CONFIGS: TemplateConfig[] = [
     label: "Premium Letter",
     description: "Branded letterhead, full personalized body with handwritten signature — arrives in envelope.",
     cost: "~$1.60",
+    costPerPiece: 1.60,
     bestFor: "VIP appreciation, recalls, formal",
     bestStages: ["vip", "active"],
     badge: "Formal",
@@ -144,6 +147,7 @@ const TEMPLATE_CONFIGS: TemplateConfig[] = [
     label: "Folded Self-Mailer",
     description: "Tri-fold with cover story, inner personalized message + offer, and mailing panel.",
     cost: "~$1.80",
+    costPerPiece: 1.80,
     bestFor: "Lapsed win-back campaigns",
     bestStages: ["lapsed"],
     badge: "Tri-Fold",
@@ -155,6 +159,7 @@ const TEMPLATE_CONFIGS: TemplateConfig[] = [
     label: "Fluorescent Offer Card",
     description: "Bold dark design with neon ink accents. High-impact — grabs attention immediately.",
     cost: "~$1.40",
+    costPerPiece: 1.40,
     bestFor: "VIP events, urgent promotions",
     bestStages: ["vip", "at_risk"],
     badge: "Neon",
@@ -166,12 +171,145 @@ const TEMPLATE_CONFIGS: TemplateConfig[] = [
     label: "Conquest Postcard",
     description: "Clean, modern design for new customer acquisition. Bold headline, minimal copy, strong CTA.",
     cost: "~$1.20",
+    costPerPiece: 1.20,
     bestFor: "New customer conquest lists",
     bestStages: ["prospect"],
     badge: "New",
     accentDefault: "green",
   },
 ];
+
+// ── Template thumbnail SVGs ───────────────────────────────────
+// Small 80×56 previews rendered inside each selector card
+
+const TEMPLATE_THUMBS: Record<string, ReactNode> = {
+  "postcard_6x9-standard": (
+    <svg viewBox="0 0 80 56" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%", display: "block" }}>
+      <rect width="80" height="56" fill="#F8F6F1" />
+      <rect x="0" y="0" width="80" height="17" fill="#9CA3AF" />
+      <path d="M20 14 L25 9 Q29 7 34 7 L46 7 Q51 7 55 10 L61 14 L62 16 L19 16 Z" fill="white" opacity="0.28" />
+      <circle cx="29" cy="16" r="2.2" fill="white" opacity="0.35" />
+      <circle cx="52" cy="16" r="2.2" fill="white" opacity="0.35" />
+      <rect x="0" y="17" width="80" height="5" fill="#6366F1" />
+      <rect x="6" y="3" width="18" height="2" rx="0.5" fill="white" opacity="0.5" />
+      <rect x="60" y="3.5" width="14" height="1.5" rx="0.5" fill="white" opacity="0.4" />
+      <rect x="6" y="26" width="42" height="1.5" rx="0.6" fill="#C4C9D4" />
+      <rect x="6" y="29.5" width="36" height="1.5" rx="0.6" fill="#C4C9D4" />
+      <rect x="6" y="33" width="40" height="1.5" rx="0.6" fill="#C4C9D4" />
+      <rect x="6" y="36.5" width="28" height="1.5" rx="0.6" fill="#C4C9D4" />
+      <rect x="56" y="23" width="18" height="18" rx="2.5" fill="white" stroke="#6366F1" strokeWidth="1.5" />
+      <rect x="58" y="25" width="14" height="14" rx="1.5" fill="#EEF2FF" />
+      <rect x="59.5" y="26.5" width="4" height="4" fill="#6366F1" />
+      <rect x="66" y="26.5" width="4" height="4" fill="#6366F1" />
+      <rect x="59.5" y="33.5" width="4" height="3.5" fill="#6366F1" />
+      <rect x="63" y="29.5" width="2" height="2" fill="#6366F1" opacity="0.5" />
+      <rect x="66" y="32" width="4" height="2" fill="#6366F1" opacity="0.5" />
+      <rect x="4" y="44" width="72" height="9" rx="2" fill="white" stroke="#6366F1" strokeWidth="0.75" strokeDasharray="3 2" />
+      <rect x="4" y="44" width="16" height="9" fill="#6366F1" rx="2" />
+      <rect x="6" y="46" width="12" height="5" rx="1" fill="white" opacity="0.35" />
+    </svg>
+  ),
+  "letter_8.5x11-standard": (
+    <svg viewBox="0 0 80 56" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%", display: "block" }}>
+      <rect width="80" height="56" fill="#FFFFFF" />
+      <rect x="0" y="0" width="80" height="12" fill="#6366F1" />
+      <rect x="6" y="3.5" width="30" height="5" rx="1" fill="white" opacity="0.45" />
+      <rect x="54" y="5" width="20" height="2.5" rx="0.75" fill="white" opacity="0.3" />
+      <rect x="0" y="12" width="80" height="3.5" fill="#EEF2FF" />
+      <rect x="6" y="18.5" width="24" height="1.5" rx="0.6" fill="#94A3B8" />
+      <rect x="6" y="21.5" width="18" height="1.5" rx="0.6" fill="#CBD5E1" />
+      <rect x="6" y="27" width="68" height="1.5" rx="0.6" fill="#CBD5E1" />
+      <rect x="6" y="30.5" width="62" height="1.5" rx="0.6" fill="#CBD5E1" />
+      <rect x="6" y="34" width="68" height="1.5" rx="0.6" fill="#CBD5E1" />
+      <rect x="6" y="37.5" width="50" height="1.5" rx="0.6" fill="#CBD5E1" />
+      <rect x="6" y="41" width="34" height="1.5" rx="0.6" fill="#CBD5E1" />
+      <path d="M6 46.5 Q10 44.5 14 46.5 Q18 48.5 23 46" stroke="#6366F1" strokeWidth="1.3" strokeLinecap="round" fill="none" opacity="0.65" />
+      <path d="M6 49 Q9 48 13 49" stroke="#CBD5E1" strokeWidth="1" strokeLinecap="round" fill="none" />
+      <rect x="0" y="53" width="80" height="3" fill="#6366F1" />
+    </svg>
+  ),
+  "postcard_6x9-complex-fold": (
+    <svg viewBox="0 0 80 56" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%", display: "block" }}>
+      <rect width="80" height="56" fill="#F1F5F9" />
+      <line x1="27" y1="0" x2="27" y2="56" stroke="#CBD5E1" strokeWidth="0.75" strokeDasharray="2 2" />
+      <line x1="54" y1="0" x2="54" y2="56" stroke="#CBD5E1" strokeWidth="0.75" strokeDasharray="2 2" />
+      <rect x="0" y="0" width="27" height="56" fill="#0F172A" />
+      <rect x="1" y="1" width="25" height="20" fill="#1E293B" />
+      <path d="M3 18 L7 12 Q11 10 15 10 L21 10 Q24 10 26 13 L27 17 L26 19 L2 19 Z" fill="white" opacity="0.18" />
+      <rect x="3" y="23" width="8" height="2.5" rx="0.75" fill="#60A5FA" opacity="0.75" />
+      <rect x="3" y="27.5" width="19" height="1.5" rx="0.5" fill="white" opacity="0.3" />
+      <rect x="3" y="31" width="15" height="1.5" rx="0.5" fill="white" opacity="0.22" />
+      <rect x="3" y="34.5" width="17" height="1.5" rx="0.5" fill="white" opacity="0.22" />
+      <rect x="3" y="38" width="13" height="1.5" rx="0.5" fill="white" opacity="0.22" />
+      <rect x="24" y="0" width="3" height="56" fill="#2563EB" opacity="0.85" />
+      <rect x="27" y="0" width="27" height="56" fill="#FAFAFA" />
+      <rect x="30" y="7" width="14" height="1.5" rx="0.5" fill="#94A3B8" />
+      <rect x="29" y="12" width="20" height="1.5" rx="0.5" fill="#CBD5E1" />
+      <rect x="29" y="15.5" width="22" height="1.5" rx="0.5" fill="#CBD5E1" />
+      <rect x="29" y="19" width="18" height="1.5" rx="0.5" fill="#CBD5E1" />
+      <rect x="29" y="22.5" width="21" height="1.5" rx="0.5" fill="#CBD5E1" />
+      <rect x="29" y="26" width="16" height="1.5" rx="0.5" fill="#CBD5E1" />
+      <path d="M30 34 Q34 32 38 34 Q42 36 46 34" stroke="#6366F1" strokeWidth="1.3" strokeLinecap="round" fill="none" opacity="0.6" />
+      <rect x="54" y="0" width="26" height="56" fill="white" />
+      <rect x="57" y="6" width="20" height="2.5" rx="0.75" fill="#1E293B" />
+      <rect x="57" y="13" width="20" height="15" rx="2" fill="#EEF2FF" stroke="#6366F1" strokeWidth="0.75" />
+      <rect x="58" y="14.5" width="7" height="2" rx="0.5" fill="#6366F1" />
+      <rect x="58" y="18" width="17" height="1.5" rx="0.5" fill="#6366F1" opacity="0.45" />
+      <rect x="58" y="21.5" width="13" height="1.5" rx="0.5" fill="#94A3B8" />
+      <rect x="58" y="32" width="12" height="12" rx="2" fill="white" stroke="#6366F1" strokeWidth="0.75" />
+      <rect x="59.5" y="33.5" width="4" height="4" fill="#6366F1" opacity="0.7" />
+      <rect x="64.5" y="33.5" width="4" height="4" fill="#6366F1" opacity="0.7" />
+      <rect x="59.5" y="38" width="4" height="3.5" fill="#6366F1" opacity="0.7" />
+      <rect x="57" y="47" width="20" height="6" rx="1.5" fill="#6366F1" />
+    </svg>
+  ),
+  "postcard_6x9-premium-fluorescent": (
+    <svg viewBox="0 0 80 56" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%", display: "block" }}>
+      <rect width="80" height="56" fill="#0F172A" />
+      <rect x="0" y="0" width="80" height="4" fill="#FFE500" />
+      <rect x="0" y="4" width="80" height="19" fill="#1E293B" />
+      <path d="M14 19 L20 13 Q24 11 29 11 L44 11 Q49 11 53 14 L60 19 L61 21 L13 21 Z" fill="white" opacity="0.14" />
+      <circle cx="24" cy="21" r="2.8" fill="#0F172A" opacity="0.5" />
+      <circle cx="52" cy="21" r="2.8" fill="#0F172A" opacity="0.5" />
+      <rect x="6" y="4.5" width="16" height="2" rx="0.5" fill="#FFE500" opacity="0.85" />
+      <rect x="62" y="5" width="12" height="1.5" rx="0.5" fill="white" opacity="0.35" />
+      <rect x="6" y="26" width="52" height="4.5" rx="1" fill="white" opacity="0.88" />
+      <rect x="6" y="32.5" width="38" height="3" rx="0.75" fill="white" opacity="0.55" />
+      <rect x="6" y="37.5" width="22" height="2.5" rx="1" fill="#FFE500" />
+      <rect x="6" y="42" width="46" height="1.5" rx="0.5" fill="#475569" />
+      <rect x="6" y="45" width="36" height="1.5" rx="0.5" fill="#475569" />
+      <rect x="6" y="49" width="30" height="6" rx="1.5" fill="#FFE500" />
+      <rect x="7.5" y="50.5" width="27" height="3" rx="0.75" fill="#1A1A00" opacity="0.35" />
+      <rect x="42" y="49" width="11" height="6" rx="1.5" fill="#1E293B" stroke="#FFE500" strokeWidth="0.75" />
+      <rect x="58" y="49" width="16" height="6" rx="1.5" fill="#334155" />
+    </svg>
+  ),
+  "postcard_6x9-conquest": (
+    <svg viewBox="0 0 80 56" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%", display: "block" }}>
+      <rect width="80" height="56" fill="white" />
+      <rect width="80" height="56" fill="#F9FAFB" />
+      <rect x="0" y="0" width="80" height="4.5" fill="#16A34A" />
+      <rect x="0" y="4.5" width="80" height="18" fill="#D1D5DB" />
+      <path d="M15 19 L21 13 Q25 11 29 11 L44 11 Q49 11 53 13 L59 19 L60 21 L14 21 Z" fill="white" opacity="0.48" />
+      <circle cx="25" cy="21" r="2.5" fill="#D1D5DB" />
+      <circle cx="51" cy="21" r="2.5" fill="#D1D5DB" />
+      <rect x="0" y="22.5" width="80" height="6" fill="#16A34A" />
+      <rect x="4" y="24" width="28" height="2.5" rx="0.5" fill="white" opacity="0.7" />
+      <rect x="60" y="24.5" width="15" height="1.5" rx="0.5" fill="white" opacity="0.5" />
+      <rect x="4" y="31" width="24" height="4.5" rx="1.25" fill="#16A34A" />
+      <rect x="5" y="32" width="22" height="2.5" rx="0.75" fill="white" opacity="0.65" />
+      <rect x="4" y="38" width="52" height="4" rx="0.75" fill="#0F172A" />
+      <rect x="4" y="44" width="36" height="2.5" rx="0.75" fill="#374151" opacity="0.55" />
+      <rect x="4" y="48.5" width="44" height="1.5" rx="0.5" fill="#CBD5E1" />
+      <rect x="62" y="31" width="14" height="14" rx="1.5" fill="white" stroke="#16A34A" strokeWidth="1" />
+      <rect x="63.5" y="32.5" width="4" height="4" fill="#16A34A" opacity="0.8" />
+      <rect x="69" y="32.5" width="4" height="4" fill="#16A34A" opacity="0.8" />
+      <rect x="63.5" y="38" width="4" height="4" fill="#16A34A" opacity="0.8" />
+      <rect x="69" y="38" width="4" height="2" fill="#16A34A" opacity="0.5" />
+      <rect x="4" y="52" width="72" height="4" rx="1.25" fill="#16A34A" />
+    </svg>
+  ),
+};
 
 // ── Lifecycle chip colors ─────────────────────────────────────
 
@@ -785,31 +923,51 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
 
   const needsMailTemplate = channel === "direct_mail" || channel === "multi_channel";
 
-  const suggestedConfig = useMemo((): TemplateConfig | null => {
+  const suggestedConfig = useMemo((): { config: TemplateConfig; reason: string } | null => {
     if (selectedCount === 0) return null;
     const g = campaignGoal.toLowerCase();
-    const selectedCustomers = customers.filter((c) => selectedIds.has(c.id));
-    const stages = new Set(selectedCustomers.map((c) => c.lifecycle_stage));
+    const sel = customers.filter((c) => selectedIds.has(c.id));
+    const stages = new Set(sel.map((c) => c.lifecycle_stage));
+    const prospectCount = sel.filter((c) => c.lifecycle_stage === "prospect").length;
+    const lapsedCount = sel.filter((c) => c.lifecycle_stage === "lapsed").length;
+    const vipCount = sel.filter((c) => c.lifecycle_stage === "vip").length;
+    const prospectPct = Math.round((prospectCount / selectedCount) * 100);
+    const lapsedPct = Math.round((lapsedCount / selectedCount) * 100);
 
-    // Conquest: primarily prospect audience
     if (stages.has("prospect") && !stages.has("vip") && !stages.has("lapsed")) {
-      return TEMPLATE_CONFIGS.find((c) => c.designStyle === "conquest") ?? null;
+      return {
+        config: TEMPLATE_CONFIGS.find((c) => c.designStyle === "conquest")!,
+        reason: `${prospectPct}% of your audience are new prospects. The Conquest Postcard's clean, high-contrast design is optimized for first impressions — bold headline, clear CTA, no clutter.`,
+      };
     }
-    // Formal / legal: 8.5×11 letter
     if (g.includes("recall") || g.includes("warrant") || g.includes("legal") || g.includes("compli")) {
-      return TEMPLATE_CONFIGS.find((c) => c.templateType === "letter_8.5x11") ?? null;
+      return {
+        config: TEMPLATE_CONFIGS.find((c) => c.templateType === "letter_8.5x11")!,
+        reason: `Your campaign goal mentions a formal or compliance-related topic. A full-page letter in an envelope signals seriousness and is more appropriate than a postcard for legal communications.`,
+      };
     }
-    // VIP appreciation or urgent events: fluorescent
     if (stages.has("vip") || g.includes("appreciat") || g.includes("event") || g.includes("vip")) {
-      return TEMPLATE_CONFIGS.find((c) => c.designStyle === "premium-fluorescent") ?? null;
+      const note = vipCount > 0 ? `${vipCount} VIP customer${vipCount > 1 ? "s" : ""} in your audience` : "Event or appreciation keywords detected in your goal";
+      return {
+        config: TEMPLATE_CONFIGS.find((c) => c.designStyle === "premium-fluorescent")!,
+        reason: `${note}. The Fluorescent Offer Card's bold dark design with neon accents commands attention and signals exclusivity — proven to increase callback rates by up to 33%.`,
+      };
     }
-    // Lapsed win-back (only lapsed): tri-fold
     if (stages.has("lapsed") && !stages.has("vip") && !stages.has("active")) {
-      return TEMPLATE_CONFIGS.find((c) => c.designStyle === "complex-fold") ?? null;
+      return {
+        config: TEMPLATE_CONFIGS.find((c) => c.designStyle === "complex-fold")!,
+        reason: `${lapsedPct}% of your audience are lapsed customers. The Folded Self-Mailer's tri-fold format has more space to re-introduce your dealership — the cover hooks attention while inner panels deliver a personalized win-back offer.`,
+      };
     }
-    // Default: classic postcard
-    return TEMPLATE_CONFIGS.find((c) => c.designStyle === "standard" && c.templateType === "postcard_6x9") ?? null;
+    return {
+      config: TEMPLATE_CONFIGS.find((c) => c.designStyle === "standard" && c.templateType === "postcard_6x9")!,
+      reason: `Your mixed audience (active, at-risk, and returning customers) responds well to a personal touch. The Classic Postcard's handwritten note style drives strong engagement at the lowest cost per piece.`,
+    };
   }, [campaignGoal, selectedIds, customers, selectedCount]);
+
+  const selectedTemplateCfg = TEMPLATE_CONFIGS.find(
+    (c) => c.templateType === templateType && c.designStyle === designStyle
+  ) ?? null;
 
   return (
     <div className="space-y-5">
@@ -1260,50 +1418,88 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
 
             {/* Unified template selector */}
             {needsMailTemplate && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <Sparkles className="w-3 h-3" /> Template Style
-                  </p>
-                  {suggestedConfig && designStyle !== suggestedConfig.designStyle && (
-                    <button
-                      onClick={() => { setTemplateType(suggestedConfig.templateType); setDesignStyle(suggestedConfig.designStyle); setAccentColor(suggestedConfig.accentDefault); }}
-                      className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1 hover:bg-emerald-100 transition-colors flex items-center gap-1"
-                    >
-                      <Sparkles className="w-2.5 h-2.5" /> Apply AI suggestion: {suggestedConfig.label}
-                    </button>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5">
+              <div className="space-y-3">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3" /> Template Style
+                </p>
+
+                {/* AI recommendation banner */}
+                {suggestedConfig && (
+                  <div className={cn(
+                    "flex items-start gap-3 p-3 rounded-[var(--radius)] border transition-all",
+                    designStyle === suggestedConfig.config.designStyle && templateType === suggestedConfig.config.templateType
+                      ? "bg-emerald-50/70 border-emerald-200"
+                      : "bg-indigo-50/60 border-indigo-200"
+                  )}>
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">AI Recommendation</span>
+                        <span className="text-[10px] font-semibold text-slate-700">· {suggestedConfig.config.label}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 leading-snug">{suggestedConfig.reason}</p>
+                    </div>
+                    {designStyle !== suggestedConfig.config.designStyle || templateType !== suggestedConfig.config.templateType ? (
+                      <button
+                        onClick={() => { setTemplateType(suggestedConfig.config.templateType); setDesignStyle(suggestedConfig.config.designStyle); setAccentColor(suggestedConfig.config.accentDefault); }}
+                        className="shrink-0 text-[9px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded px-2.5 py-1.5 transition-colors whitespace-nowrap"
+                      >
+                        Apply
+                      </button>
+                    ) : (
+                      <span className="shrink-0 text-[9px] font-bold text-emerald-700 bg-emerald-100 rounded px-2 py-1 whitespace-nowrap">Applied ✓</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Template cards — horizontal layout with thumbnail */}
+                <div className="space-y-2">
                   {TEMPLATE_CONFIGS.map((cfg) => {
                     const isSelected = templateType === cfg.templateType && designStyle === cfg.designStyle;
-                    const isSuggested = suggestedConfig?.designStyle === cfg.designStyle && suggestedConfig?.templateType === cfg.templateType;
+                    const isSuggested = suggestedConfig?.config.designStyle === cfg.designStyle && suggestedConfig?.config.templateType === cfg.templateType;
+                    const thumbKey = `${cfg.templateType}-${cfg.designStyle}`;
+                    const totalCost = withAddress > 0 ? `$${(withAddress * cfg.costPerPiece).toFixed(2)} total` : null;
                     return (
                       <button
-                        key={`${cfg.templateType}-${cfg.designStyle}`}
+                        key={thumbKey}
                         onClick={() => { setTemplateType(cfg.templateType); setDesignStyle(cfg.designStyle); if (cfg.accentDefault !== "indigo" || !isSelected) setAccentColor(cfg.accentDefault); }}
                         className={cn(
-                          "text-left p-3 border-2 rounded-[var(--radius)] transition-all hover:shadow-sm relative overflow-hidden",
+                          "w-full text-left flex items-center gap-3 p-2.5 border-2 rounded-[var(--radius)] transition-all hover:shadow-sm relative overflow-hidden",
                           isSelected ? "border-indigo-400 bg-indigo-50/60" : "bg-white border-slate-200 hover:border-indigo-300"
                         )}
                       >
-                        {isSelected && <div className="absolute top-0 left-0 right-0 h-[3px] bg-indigo-500" />}
-                        <div className="flex items-start justify-between gap-1 mb-1">
-                          <p className="text-[12px] font-semibold text-slate-900 leading-tight">{cfg.label}</p>
-                          {isSuggested ? (
-                            <span className="shrink-0 text-[7px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 whitespace-nowrap">AI ✦</span>
-                          ) : cfg.badge ? (
-                            <span className="shrink-0 text-[7px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 whitespace-nowrap">{cfg.badge}</span>
-                          ) : null}
+                        {isSelected && <div className="absolute top-0 left-0 bottom-0 w-[3px] bg-indigo-500" />}
+                        <div className="shrink-0 w-[88px] h-[62px] rounded overflow-hidden border border-slate-200 bg-slate-50">
+                          {TEMPLATE_THUMBS[thumbKey]}
                         </div>
-                        <p className="text-[10px] text-slate-400 leading-snug line-clamp-2">{cfg.description}</p>
-                        <div className="flex items-center justify-between mt-1.5">
-                          <span className="text-[10px] font-bold text-emerald-700">{cfg.cost}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="text-[12px] font-semibold text-slate-900">{cfg.label}</span>
+                            {isSuggested ? (
+                              <span className="text-[7px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 whitespace-nowrap">AI ✦</span>
+                            ) : cfg.badge ? (
+                              <span className="text-[7px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 whitespace-nowrap">{cfg.badge}</span>
+                            ) : null}
+                          </div>
+                          <p className="text-[10px] text-slate-400 leading-snug line-clamp-2 mb-1.5">{cfg.description}</p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-emerald-700">{cfg.cost}/piece</span>
+                            {totalCost && <span className="text-[10px] text-slate-500">· {totalCost}</span>}
+                          </div>
                         </div>
                       </button>
                     );
                   })}
                 </div>
+
+                {/* Live cost estimator */}
+                {selectedTemplateCfg && withAddress > 0 && (
+                  <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
+                    <span className="text-[10px] text-slate-500">{withAddress} addressable customers × {selectedTemplateCfg.cost}/piece</span>
+                    <span className="text-[11px] font-bold text-slate-800">${(withAddress * selectedTemplateCfg.costPerPiece).toFixed(2)} estimated</span>
+                  </div>
+                )}
+
                 {designStyle !== "standard" && (
                   <p className="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100 rounded px-2.5 py-1.5">
                     AI will output a structured layout spec with panels, colors, and print-house notes in addition to personalized copy.

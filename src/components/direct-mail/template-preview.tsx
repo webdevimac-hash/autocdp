@@ -1596,15 +1596,23 @@ function ConquestFront({
       <div style={{ height: "6px", background: `linear-gradient(90deg, ${accent.header} 0%, ${adjustBrightness(accent.header, 20)} 100%)` }} />
       <VehiclePhotoZone heroBg={accent.header} height="122px" imageUrl={vehiclePhotoUrl} showLabel dealershipName={dealershipName} />
       <div style={{ padding: "11px 16px 14px" }}>
-        <div style={{ display: "flex", alignItems: "center", marginBottom: "7px" }}>
-          <div style={{ background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", padding: "2px 8px", borderRadius: "2px" }}>
-            EXCLUSIVE OFFER
+        {/* Eyebrow + phone row */}
+        <div style={{ display: "flex", alignItems: "center", marginBottom: "5px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+            <div style={{ background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 800, letterSpacing: "0.13em", textTransform: "uppercase", padding: "2px 7px", borderRadius: "2px" }}>
+              EXCLUSIVE OFFER
+            </div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 700, letterSpacing: "0.10em", textTransform: "uppercase", color: "#9CA3AF" }}>
+              · Neighborhood Exclusive
+            </div>
           </div>
           {dealershipPhone && <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", color: "#6B7280", marginLeft: "auto" }}>{dealershipPhone}</span>}
         </div>
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 900, color: "#0F172A", lineHeight: 1.2, marginBottom: "10px", letterSpacing: "-0.01em" }}>
+        {/* Bold headline */}
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "17px", fontWeight: 900, color: "#0F172A", lineHeight: 1.15, marginBottom: "10px", letterSpacing: "-0.02em" }}>
           {headline}
         </div>
+        {/* Copy + QR side by side */}
         <div style={{ display: "flex", gap: "10px" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <HandwrittenContent text={content} fontSize={14} lineHeight={1.78} />
@@ -1620,8 +1628,13 @@ function ConquestFront({
             </div>
           </div>
         </div>
-        <div style={{ marginTop: "10px", background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", padding: "7px 14px", borderRadius: "3px", display: "inline-block" }}>
+        {/* Full-width CTA */}
+        <div style={{ marginTop: "11px", background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", padding: "8px 14px", borderRadius: "3px", textAlign: "center" }}>
           {cta}
+        </div>
+        {/* Urgency subline */}
+        <div style={{ textAlign: "center", marginTop: "4px", fontFamily: "'Inter', sans-serif", fontSize: "6px", color: "#9CA3AF", letterSpacing: "0.04em" }}>
+          Limited time offer · Present this card to redeem
         </div>
       </div>
       {(addrLines.line1 || addrLines.line2) && (
@@ -1680,8 +1693,11 @@ function RealConquestFront({
         {dealershipPhone && <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 700, color: "rgba(255,255,255,0.88)", flexShrink: 0 }}>{dealershipPhone}</span>}
       </div>
       <div style={{ padding: "12px 14px 14px", flex: 1, display: "flex", flexDirection: "column" }}>
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: accent.header, marginBottom: "6px" }}>EXCLUSIVE OFFER</div>
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "16px", fontWeight: 900, color: "#0F172A", lineHeight: 1.15, letterSpacing: "-0.01em", marginBottom: "10px" }}>{headline}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "5px" }}>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 800, letterSpacing: "0.13em", textTransform: "uppercase", color: accent.header }}>EXCLUSIVE OFFER</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9CA3AF" }}>· Neighborhood Exclusive</div>
+        </div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "17px", fontWeight: 900, color: "#0F172A", lineHeight: 1.12, letterSpacing: "-0.02em", marginBottom: "10px" }}>{headline}</div>
         <div style={{ display: "flex", gap: "12px", flex: 1 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <HandwrittenContent text={content} fontSize={13} lineHeight={1.80} />
@@ -1695,9 +1711,8 @@ function RealConquestFront({
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 900, color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>SCAN TO<br />VIEW OFFER</div>
           </div>
         </div>
-        <div style={{ marginTop: "12px" }}>
-          <div style={{ background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", padding: "7px 14px", borderRadius: "2px", display: "inline-block" }}>{cta}</div>
-        </div>
+        <div style={{ marginTop: "11px", background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", padding: "7px 14px", borderRadius: "2px", textAlign: "center" }}>{cta}</div>
+        <div style={{ textAlign: "center", marginTop: "4px", fontFamily: "'Inter', sans-serif", fontSize: "5.5px", color: "#9CA3AF", letterSpacing: "0.04em" }}>Limited time offer · Present this card to redeem</div>
       </div>
       {(addrLines.line1 || addrLines.line2) && (
         <div style={{ padding: "5px 14px", borderTop: "1px solid #EDE8D8", background: "rgba(254,252,243,0.97)", display: "flex", alignItems: "center", gap: "6px" }}>
