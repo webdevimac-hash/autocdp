@@ -11,9 +11,14 @@ import { Header } from "@/components/layout/header";
 import { isDemoMode } from "@/lib/demo";
 import {
   MetricGridCard,
-  dashIfZero,
   type MtdFooterStat,
 } from "@/components/dashboard/metric-grid-card";
+
+// Local helper — avoids calling a function from a "use client" module
+// in server-component context, which can cause RSC serialization errors.
+function dashIfZero(n: number): string | number {
+  return n === 0 ? "—" : n;
+}
 
 export const metadata = { title: "Live Dashboard" };
 

@@ -7,6 +7,14 @@ interface CadencePanelProps {
 }
 
 export async function CadencePanel({ dealershipId }: CadencePanelProps) {
+  try {
+    return await renderCadencePanel(dealershipId);
+  } catch {
+    return null;
+  }
+}
+
+async function renderCadencePanel(dealershipId: string) {
   const svc = createServiceClient();
 
   // Only render if there are customers
@@ -17,12 +25,7 @@ export async function CadencePanel({ dealershipId }: CadencePanelProps) {
 
   if (!count || count === 0) return null;
 
-  let summary: Awaited<ReturnType<typeof getCadenceSummary>>;
-  try {
-    summary = await getCadenceSummary(dealershipId);
-  } catch {
-    return null;
-  }
+  const summary = await getCadenceSummary(dealershipId);
   const { eligible, suppressed, neverContacted, upcomingBatches } = summary;
 
   const eligiblePct = count > 0 ? Math.round((eligible / count) * 100) : 0;

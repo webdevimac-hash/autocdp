@@ -33,13 +33,14 @@ export const metadata = { title: "Dashboard" };
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
 
   const demoMode = await isDemoMode();
 
   const { data: userDealership } = await supabase
     .from("user_dealerships")
     .select("dealership_id")
-    .eq("user_id", user!.id)
+    .eq("user_id", user.id)
     .single();
 
   const dealershipId = userDealership?.dealership_id;
