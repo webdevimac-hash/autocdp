@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import type { ReactNode, CSSProperties } from "react";
@@ -9,7 +9,7 @@ import type { MailTemplateType, DesignStyle, LayoutSpec } from "@/types";
 // Layer 1: directional (baseFrequency x≠y) simulates paper pulp grain direction
 // Layer 2: fine high-frequency noise simulates individual surface fibers
 const PAPER_TEXTURE = [
-  `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='pf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.62%200.88' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23pf)' opacity='0.052'/%3E%3C/svg%3E")`,
+  `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='pf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.62%200.88' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23pf)' opacity='0.062'/%3E%3C/svg%3E")`,
   `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='pg'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23pg)' opacity='0.024'/%3E%3C/svg%3E")`,
 ].join(", ");
 
@@ -190,7 +190,11 @@ function HandwrittenWord({
       {text.split("").map((char, i) => {
         const code = char.charCodeAt(0);
         const s = hseed(startCharOffset + i, code, lineIdx, paraIdx);
-        const pressure = pick(C_PRES, s + 9);
+        const basePressure = pick(C_PRES, s + 9);
+        // Pen fatigue: deeper in letter -> strokes feather as pen lifts
+        // 0 at start -> max -12% at char 545+
+        const fatigue = Math.min(0.12, (startCharOffset + i) * 0.00022);
+        const pressure = basePressure * (1 - fatigue);
         return (
           <span
             key={startCharOffset + i}
@@ -732,7 +736,7 @@ function RealPostcardFront({
 // ── Realistic Postcard Back ───────────────────────────────────
 
 function RealPostcardBack({
-  dealershipName, customerName, logoUrl, accent, dealershipAddress, dealershipPhone, customerAddress,
+  dealershipName, customerName, logoUrl, accent, dealershipAddress, dealershipPhone, customerAddress, content,
 }: {
   dealershipName: string;
   customerName?: string;
@@ -741,6 +745,7 @@ function RealPostcardBack({
   dealershipAddress?: AddressRecord | null;
   dealershipPhone?: string | null;
   customerAddress?: AddressRecord | null;
+  content?: string;
 }) {
   const dAddrLines = addrToLines(dealershipAddress);
   const cAddrLines = addrToLines(customerAddress);
@@ -779,8 +784,17 @@ function RealPostcardBack({
 
       <div style={{ flex: 1, display: "flex", position: "relative", minHeight: "160px" }}>
         <div style={{ position: "absolute", top: "10px", bottom: "10px", left: "46%", width: "1px", background: "repeating-linear-gradient(180deg, #9CA3AF 0, #9CA3AF 5px, transparent 5px, transparent 10px)" }} />
-        <div style={{ width: "44%", padding: "10px 10px 8px 14px", backgroundImage: "repeating-linear-gradient(transparent, transparent 20px, rgba(218,209,189,0.35) 20px, rgba(218,209,189,0.35) 21px)", backgroundPositionY: "30px" }}>
-          <div style={{ fontSize: "5.5px", color: "#C4B69A", fontFamily: "'Inter', sans-serif", letterSpacing: "0.10em", textTransform: "uppercase", fontWeight: 700 }}>MESSAGE AREA</div>
+        <div style={{ width: "44%", padding: "10px 10px 8px 14px", backgroundImage: "repeating-linear-gradient(transparent, transparent 20px, rgba(218,209,189,0.35) 20px, rgba(218,209,189,0.35) 21px)", backgroundPositionY: "30px", overflow: "hidden" }}>
+          <div style={{ fontSize: "5.5px", color: "#C4B69A", fontFamily: "'Inter', sans-serif", letterSpacing: "0.10em", textTransform: "uppercase", fontWeight: 700, marginBottom: "6px" }}>MESSAGE AREA</div>
+          {content && (
+            <div style={{
+              fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: "9.5px",
+              color: "#6B7280", lineHeight: "20px", overflow: "hidden",
+              maxHeight: "120px", wordBreak: "break-word",
+            }}>
+              {content.slice(0, 160)}{content.length > 160 ? "…" : ""}
+            </div>
+          )}
         </div>
         <div style={{ flex: 1, padding: "10px 14px 8px 18px" }}>
           <div style={{ fontSize: "6px", fontFamily: "'Inter', sans-serif", fontWeight: 800, color: "#9CA3AF", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "6px" }}>DELIVER TO</div>
@@ -828,6 +842,12 @@ function RealLetterPreview({
   const is8511 = templateType === "letter_8.5x11";
   const cAddrLines = addrToLines(customerAddress);
   const dAddrLines = addrToLines(dealershipAddress);
+  // If the AI content already ends with a short signoff paragraph (≤2 lines), don't
+  // render the hardcoded "Sincerely," block — that would double the closing.
+  const contentParas = content.trim().split(/\n\n+/).filter((p) => p.trim());
+  const lastPara = contentParas[contentParas.length - 1] ?? "";
+  const contentHasSignoff =
+    contentParas.length >= 2 && lastPara.split("\n").filter((l) => l.trim()).length <= 2;
 
   return (
     <div style={{
@@ -879,20 +899,22 @@ function RealLetterPreview({
         <HandwrittenContent text={content} fontSize={is8511 ? 14 : 13} lineHeight={1.88} />
       </div>
 
-      <div style={{ padding: "10px 22px 18px" }}>
-        <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: is8511 ? 17 : 15, color: "#374151", lineHeight: 1.2 }}>Sincerely,</div>
-        <div style={{
-          fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: is8511 ? 22 : 19, color: "#1F2937",
-          fontWeight: 700, marginTop: "8px", letterSpacing: "0.01em",
-          borderBottom: "1px solid rgba(0,0,0,0.08)", paddingBottom: "4px",
-          display: "inline-block", minWidth: "100px",
-        }}>
-          {dealershipName.split(" ")[0]}
+      {!contentHasSignoff && (
+        <div style={{ padding: "10px 22px 18px" }}>
+          <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: is8511 ? 17 : 15, color: "#374151", lineHeight: 1.2 }}>Sincerely,</div>
+          <div style={{
+            fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: is8511 ? 22 : 19, color: "#1F2937",
+            fontWeight: 700, marginTop: "8px", letterSpacing: "0.01em",
+            borderBottom: "1px solid rgba(0,0,0,0.08)", paddingBottom: "4px",
+            display: "inline-block", minWidth: "100px",
+          }}>
+            {dealershipName.split(" ")[0]}
+          </div>
+          <div style={{ fontSize: "7.5px", fontFamily: "'Inter', sans-serif", color: "#9CA3AF", marginTop: "3px" }}>
+            {dealershipName} — Service Department
+          </div>
         </div>
-        <div style={{ fontSize: "7.5px", fontFamily: "'Inter', sans-serif", color: "#9CA3AF", marginTop: "3px" }}>
-          {dealershipName} — Service Department
-        </div>
-      </div>
+      )}
 
       <div style={{ height: "4px", background: accent.header }} />
     </div>
@@ -902,19 +924,22 @@ function RealLetterPreview({
 // ── Postcard back side (design mode) ─────────────────────────
 
 function PostcardBack({
-  dealershipName, customerName, accent, logoUrl,
+  dealershipName, customerName, accent, logoUrl, customerAddress, dealershipAddress,
 }: {
   dealershipName: string; customerName?: string; accent: AccentConfig; logoUrl?: string | null;
+  customerAddress?: AddressRecord | null; dealershipAddress?: AddressRecord | null;
 }) {
+  const cAddrLines = addrToLines(customerAddress);
+  const dAddrLines = addrToLines(dealershipAddress);
   return (
     <div style={{
       width: "100%", maxWidth: "420px",
-      background: "#FEFCF3", border: "1px solid #D1C9B0",
+      background: "#FEFCF3", backgroundImage: PAPER_TEXTURE, border: "1px solid #D1C9B0",
       borderRadius: "12px", overflow: "hidden", fontFamily: "'Inter', sans-serif",
       boxShadow: "0 4px 6px -1px rgba(0,0,0,0.08), 0 10px 24px -4px rgba(0,0,0,0.10)",
     }}>
       <div style={{ height: "5px", background: accent.header }} />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "12px 16px 10px", borderBottom: "1px solid #f1f5f9" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "12px 16px 10px", borderBottom: "1px solid rgba(218,209,189,0.5)" }}>
         <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", lineHeight: 1.55 }}>
           {logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -924,30 +949,29 @@ function PostcardBack({
             />
           )}
           <div style={{ fontSize: "11px", color: "#475569", fontWeight: 600 }}>{dealershipName}</div>
-          <div style={{ fontSize: "10px", color: "#94a3b8" }}>Service Department</div>
+          {dAddrLines.line1 && <div style={{ fontSize: "9px", color: "#94a3b8" }}>{dAddrLines.line1}</div>}
+          {dAddrLines.line2 && <div style={{ fontSize: "9px", color: "#94a3b8" }}>{dAddrLines.line2}</div>}
         </div>
-        <div style={{ width: "72px", height: "52px", border: "1px solid #CBD5E1", borderRadius: "4px", background: "#F8FAFC", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2px", flexShrink: 0 }}>
-          <div style={{ fontSize: "6px", fontWeight: 700, color: accent.header, letterSpacing: "0.12em", textTransform: "uppercase" }}>FIRST CLASS</div>
-          <div style={{ fontSize: "5.5px", color: "#94a3b8", letterSpacing: "0.06em" }}>U.S. POSTAGE</div>
-          <div style={{ fontSize: "5.5px", color: "#94a3b8" }}>PAID</div>
-          <div style={{ width: "28px", height: "1px", background: "#CBD5E1", margin: "1px 0" }} />
-          <div style={{ fontSize: "5px", color: "#94a3b8", letterSpacing: "0.06em" }}>PERMIT NO. 1</div>
-        </div>
+        <USPSIndicia city={dealershipAddress?.city} state={dealershipAddress?.state} accentColor={accent.header} />
       </div>
       <div style={{ height: "1px", margin: "0 16px", background: "repeating-linear-gradient(90deg, #CBD5E1 0, #CBD5E1 6px, transparent 6px, transparent 12px)" }} />
       <div style={{ padding: "12px 16px 16px" }}>
         <div style={{ fontSize: "7.5px", color: "#94a3b8", fontWeight: 700, letterSpacing: "0.10em", marginBottom: "8px", textTransform: "uppercase" }}>DELIVER TO:</div>
         <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", lineHeight: 1.65 }}>
           <div style={{ fontSize: "16px", color: "#1e293b", fontWeight: 700 }}>{customerName ?? "Customer Name"}</div>
-          <div style={{ fontSize: "13px", color: "#475569" }}>123 Street Address</div>
-          <div style={{ fontSize: "12px", color: "#64748B" }}>City, ST 00000</div>
+          {cAddrLines.line1 ? (
+            <>
+              <div style={{ fontSize: "13px", color: "#475569" }}>{cAddrLines.line1}</div>
+              <div style={{ fontSize: "12px", color: "#64748B" }}>{cAddrLines.line2}</div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: "13px", color: "#C4B69A" }}>Street Address</div>
+              <div style={{ fontSize: "12px", color: "#C4B69A" }}>City, ST 00000</div>
+            </>
+          )}
         </div>
-        <div style={{ marginTop: "12px", display: "flex", gap: "1.5px", alignItems: "flex-end", height: "20px" }}>
-          {Array.from({ length: 65 }, (_, i) => {
-            const h = [8, 14, 20, 14][i % 4];
-            return <div key={i} style={{ width: "2px", height: `${h}px`, background: "#94a3b8", borderRadius: "1px" }} />;
-          })}
-        </div>
+        <IMBBarcode />
       </div>
     </div>
   );
@@ -1028,14 +1052,14 @@ function Postcard6x9Preview({
               </div>
             </div>
           ) : (
-            <PostcardBack dealershipName={dealershipName} customerName={customerName} accent={accent} logoUrl={logoUrl} />
+            <PostcardBack dealershipName={dealershipName} customerName={customerName} accent={accent} logoUrl={logoUrl} customerAddress={customerAddress} dealershipAddress={dealershipAddress} />
           )}
         </div>
       ) : (
         <div style={{ background: "linear-gradient(145deg, #EAE5DE 0%, #E0D9D0 100%)", padding: "14px 8px 18px", borderRadius: 14 }}>
           <div style={{ display: "flex", justifyContent: "center" }}>
             <div style={{ width: "100%", maxWidth: 560 }}>
-              <PrintReadyFrame width={520} height={320}>
+              <PrintReadyFrame width={520}>
                 <div style={{ transform: "rotate(-0.4deg)", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.22))" }}>
                   {!showBack ? (
                     <RealPostcardFront
@@ -1049,6 +1073,7 @@ function Postcard6x9Preview({
                       dealershipName={dealershipName} customerName={customerName} logoUrl={logoUrl}
                       accent={accent} dealershipAddress={dealershipAddress}
                       dealershipPhone={dealershipPhone} customerAddress={customerAddress}
+                      content={content}
                     />
                   )}
                 </div>
@@ -1148,7 +1173,7 @@ function LetterPreview({
         <div style={{ background: "linear-gradient(145deg, #EAE5DE 0%, #E0D9D0 100%)", padding: "14px 8px 18px", borderRadius: 14 }}>
           <div className="flex justify-center">
             <div style={{ width: "100%", maxWidth: 520 }}>
-              <PrintReadyFrame width={templateType === "letter_8.5x11" ? 440 : 340} height={620}>
+              <PrintReadyFrame width={templateType === "letter_8.5x11" ? 440 : 340}>
                 <div style={{ transform: "rotate(-0.3deg)", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.18))" }}>
                   <RealLetterPreview
                     content={content} dealershipName={dealershipName} templateType={templateType}
