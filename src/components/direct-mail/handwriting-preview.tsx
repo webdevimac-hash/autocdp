@@ -92,19 +92,48 @@ const ACCENT_META: Record<AccentColor, {
   },
 };
 
-// ── Handwriting engine (19-element prime arrays, 6 dimensions) ─
+// ── Handwriting engine — 3-scale, prime-length arrays ─────────
+// Different prime lengths (19 / 17 / 23) prevent visual periodicity
+// across the line × word × character axes.
 
-const ROT   = [-1.6,-1.0,-0.6,-0.3,-0.1, 0.1, 0.3, 0.6, 0.9, 1.2, 1.5,-0.8,-0.4, 0.2, 0.5, 0.8,-0.5, 0.4,-0.9] as const;
-const TY    = [-1.4,-0.9,-0.5,-0.2, 0.1, 0.4, 0.7, 1.0, 1.3,-1.1,-0.7,-0.3, 0.1, 0.5, 0.8,-0.6,-0.2, 0.6,-0.4] as const;
-const OPQ   = [0.72,0.76,0.80,0.84,0.88,0.91,0.94,0.97,1.00,0.98,0.95,0.91,0.86,0.82,0.78,0.74,0.93,0.87,0.96] as const;
-const SX    = [0.95,0.97,0.98,0.99,1.00,1.01,1.02,1.03,0.96,0.98,1.00,1.02,0.97,0.99,1.01,0.96,1.03,0.98,1.01] as const;
-const SY    = [0.96,0.98,0.99,1.00,1.01,1.02,0.97,0.99,1.01,0.98,1.00,1.02,0.97,0.99,1.01,0.96,1.00,0.98,1.02] as const;
-const SPC   = [-0.4,-0.2,-0.1, 0.0, 0.1, 0.2, 0.3,-0.3, 0.15,-0.15, 0.25,-0.25, 0.05,-0.05, 0.2,-0.1, 0.0, 0.15,-0.2] as const;
-const LDRIFT = [-0.7,-0.3, 0.1, 0.5,-0.6,-0.1, 0.4,-0.4, 0.2,-0.5, 0.3,-0.2, 0.6,-0.3, 0.0, 0.4,-0.7, 0.1,-0.4] as const;
+// Line-level (19 elements)
+const L_DRIFT = [-1.0,-0.5,0.0,0.5,-0.8,-0.2,0.6,-0.6,0.3,-0.7,0.7,-0.3,0.9,-0.1,0.5,-0.8,0.2,-0.5,0.8] as const;
+
+// Word-level (17 elements)
+const W_DRIFT_Y = [-1.9,-1.2,-0.5,-0.1,0.2,0.7,1.2,1.8,-1.4,-0.7,-0.2,0.4,1.4,-0.9,0.9,-1.6,0.7] as const;
+const W_LEAN    = [-0.55,-0.25,-0.1,0.0,0.1,0.25,0.48,-0.42,0.15,-0.15,0.35,-0.35,0.2,-0.2,0.32,-0.32,0.12] as const;
+
+// Character-level (23 elements)
+const C_ROT  = [-3.2,-2.4,-1.7,-1.0,-0.5,-0.2,0.1,0.5,0.9,1.6,2.3,3.0,-2.8,-1.8,-0.7,0.7,1.8,2.7,-1.1,-0.3,0.3,1.1,-2.0] as const;
+const C_TY   = [-2.3,-1.7,-1.0,-0.5,-0.15,0.2,0.6,1.0,1.5,2.1,-1.9,-1.3,-0.6,0.0,0.5,1.0,1.4,-1.5,-0.8,0.3,-0.4,1.2,-0.9] as const;
+const C_PRES = [0.58,0.66,0.74,0.81,0.87,0.91,0.95,0.98,1.00,0.99,0.96,0.92,0.87,0.82,0.76,0.72,0.94,0.87,0.79,0.83,0.89,0.71,0.96] as const;
+const C_SX   = [0.93,0.95,0.97,0.98,0.99,1.00,1.01,1.02,1.03,0.96,0.98,1.00,1.02,0.94,0.99,1.01,0.97,1.03,0.95,1.00,0.98,1.02,0.96] as const;
+const C_SY   = [0.95,0.97,0.98,0.99,1.00,1.01,1.02,0.96,0.98,1.01,0.97,0.99,1.01,0.95,1.00,0.98,1.02,0.97,0.99,1.00,0.96,1.03,0.98] as const;
+const C_OPQ  = [0.68,0.72,0.76,0.80,0.84,0.88,0.91,0.94,0.97,1.00,0.98,0.95,0.91,0.86,0.82,0.78,0.74,0.93,0.87,0.96,0.89,0.83,0.77] as const;
+const C_SPC  = [-0.5,-0.3,-0.2,-0.1,0.0,0.1,0.2,0.3,-0.4,0.15,-0.15,0.25,-0.25,0.05,-0.05,0.2,-0.1,0.0,0.15,-0.2,0.3,-0.35,0.08] as const;
 
 type LookupArr = readonly number[];
 function pick(arr: LookupArr, n: number): number {
   return arr[((n % arr.length) + arr.length) % arr.length];
+}
+
+function hseed(charOff: number, code: number, li: number, pi: number): number {
+  return (charOff * 31 + code * 17 + li * 7 + pi * 3) | 0;
+}
+
+// 4-layer text-shadow simulating ink seeping into paper fibers
+function inkShadow(pressure: number): string {
+  const a1 = (pressure * 0.20).toFixed(3);
+  const a2 = (pressure * 0.11).toFixed(3);
+  const a3 = (pressure * 0.07).toFixed(3);
+  const b1 = (0.45 * pressure).toFixed(2);
+  const b2 = (0.30 * pressure).toFixed(2);
+  return (
+    `0.35px 0.25px ${b1}px rgba(26,31,54,${a1}),` +
+    `-0.18px 0.12px ${b2}px rgba(26,31,54,${a2}),` +
+    `0.12px -0.18px ${b2}px rgba(26,31,54,${a3}),` +
+    `0px 0.4px ${b1}px rgba(26,31,54,${a3})`
+  );
 }
 
 interface LineInfo { text: string; charOffset: number; lineIdx: number; paraIdx: number; }
@@ -123,29 +152,74 @@ function buildLayout(text: string): ParaInfo[] {
   });
 }
 
-function HandwrittenLine({ text, charOffset, lineIdx, paraIdx }: LineInfo) {
-  if (!text) return <span>&nbsp;</span>;
-  const drift = pick(LDRIFT, lineIdx * 11 + paraIdx * 7);
+function HandwrittenWord({ text, wordIdx, lineIdx, paraIdx, startCharOffset }: {
+  text: string;
+  wordIdx: number;
+  lineIdx: number;
+  paraIdx: number;
+  startCharOffset: number;
+}) {
+  const ws = (wordIdx * 7 + lineIdx * 11 + paraIdx * 3) | 0;
+  const wordDriftY = pick(W_DRIFT_Y, ws);
+  const wordLean   = pick(W_LEAN, ws + 5);
   return (
-    <span style={{ display: "inline-block", transform: `translateY(${drift}px)` }}>
+    <span style={{ display: "inline-block", transform: `translateY(${wordDriftY}px) rotate(${wordLean}deg)`, transformOrigin: "bottom left" }}>
       {text.split("").map((char, i) => {
         const code = char.charCodeAt(0);
-        const s = (charOffset + i) * 31 + code * 17 + lineIdx * 7 + paraIdx * 3;
+        const s = hseed(startCharOffset + i, code, lineIdx, paraIdx);
+        const pressure = pick(C_PRES, s + 9);
         return (
           <span
-            key={charOffset + i}
+            key={startCharOffset + i}
             style={{
               display: "inline-block",
-              transform: `rotate(${pick(ROT, s)}deg) translateY(${pick(TY, s + 3)}px) scaleX(${pick(SX, s + 7)}) scaleY(${pick(SY, s + 11)})`,
+              transform: `rotate(${pick(C_ROT, s)}deg) translateY(${pick(C_TY, s + 3)}px) scaleX(${pick(C_SX, s + 7)}) scaleY(${pick(C_SY, s + 11)})`,
               transformOrigin: "bottom center",
-              opacity: pick(OPQ, s + 5),
-              letterSpacing: char === " " ? "0" : `${pick(SPC, s + 13)}px`,
+              opacity: pick(C_OPQ, s + 5),
+              letterSpacing: `${pick(C_SPC, s + 13)}px`,
+              textShadow: inkShadow(pressure),
             }}
           >
-            {char === " " ? "\u00A0" : char}
+            {char}
           </span>
         );
       })}
+    </span>
+  );
+}
+
+function HandwrittenLine({ text, charOffset, lineIdx, paraIdx }: LineInfo) {
+  if (!text) return <span>&nbsp;</span>;
+  const drift = pick(L_DRIFT, lineIdx * 11 + paraIdx * 7);
+
+  // Split into word/space segments; track per-word index for word-level variation
+  const parts = text.split(/(\s+)/);
+  let pos = charOffset;
+  let wordCount = 0;
+  const segments = parts.map((part) => {
+    const isSpace = /^\s+$/.test(part);
+    const seg = { text: part, offset: pos, wordIdx: isSpace ? -1 : wordCount };
+    if (!isSpace) wordCount++;
+    pos += part.length;
+    return seg;
+  }).filter((s) => s.text.length > 0);
+
+  return (
+    <span style={{ display: "inline-block", transform: `translateY(${drift}px)` }}>
+      {segments.map((seg, si) =>
+        seg.wordIdx === -1 ? (
+          <span key={si}>{" ".repeat(seg.text.length)}</span>
+        ) : (
+          <HandwrittenWord
+            key={si}
+            text={seg.text}
+            wordIdx={seg.wordIdx}
+            lineIdx={lineIdx}
+            paraIdx={paraIdx}
+            startCharOffset={seg.offset}
+          />
+        )
+      )}
     </span>
   );
 }
@@ -155,7 +229,7 @@ function HandwrittenBody({ text }: { text: string }) {
   return (
     <div>
       {paras.map((para, pi) => (
-        <div key={pi} style={{ marginBottom: pi < paras.length - 1 ? "22px" : 0 }}>
+        <div key={pi} style={{ marginBottom: pi < paras.length - 1 ? "26px" : 0 }}>
           {para.lines.map((line, li) => (
             <div key={li} style={{ minHeight: "31px", display: "flex", alignItems: "flex-end" }}>
               <HandwrittenLine {...line} />
@@ -282,7 +356,7 @@ export function HandwritingPreview() {
         <div>
           <h3 className="text-[13px] font-semibold text-slate-800">Handwriting Engine — Preview</h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            6-dimension character variation: rotation, ink pressure, baseline drift, x/y scale, letter spacing.
+            3-scale engine: line drift × word lean/lift × per-character rotation, ink pressure, baseline, scale, spacing.
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -593,7 +667,7 @@ export function HandwritingPreview() {
 
       {/* ── Architecture notes ── */}
       <div className="bg-slate-900 rounded-[var(--radius)] px-5 py-4">
-        <p className="text-[10px] font-mono text-slate-500 mb-2.5 uppercase tracking-widest">// Production architecture</p>
+        <p className="text-[10px] font-mono text-slate-500 mb-2.5 uppercase tracking-widest">// Production pipeline</p>
         <div className="space-y-1.5">
           {[
             "1. Creative Agent generates personalized copy per customer",

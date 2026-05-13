@@ -4,6 +4,7 @@ import { runCreativeAgent } from "@/lib/anthropic/agents/creative-agent";
 import { buildPreviewQRImageUrl } from "@/lib/qrcode-gen";
 import { loadDealershipMemories, formatMemoriesForPrompt } from "@/lib/memories";
 import { loadBaselineExamples } from "@/lib/anthropic/baseline";
+import { resolveVehiclePhoto, placeholderPhotoFor } from "@/lib/inventory-photos";
 import type { Customer, Visit, CommunicationChannel, MailTemplateType } from "@/types";
 
 /**
@@ -118,6 +119,28 @@ export async function POST(req: NextRequest) {
       ? buildPreviewQRImageUrl(previewTrackingUrl, 120)
       : null;
 
+    // Vehicle photo — look up inventory for a real photo, else deterministic Unsplash placeholder
+    const recentVisit = visits?.[0];
+    const vehicleString = recentVisit
+      ? [recentVisit.year, recentVisit.make, recentVisit.model].filter(Boolean).join(" ")
+      : null;
+
+    let vehiclePhotoUrl: string | null = null;
+    if (resolvedChannel === "direct_mail" && recentVisit?.make) {
+      const { data: invRow } = await supabase
+        .from("inventory")
+        .select("id, metadata")
+        .eq("dealership_id", ud.dealership_id)
+        .ilike("make", recentVisit.make)
+        .ilike("model", recentVisit.model ?? "")
+        .limit(1)
+        .single() as { data: { id: string; metadata: Record<string, unknown> } | null };
+
+      vehiclePhotoUrl = invRow
+        ? resolveVehiclePhoto(invRow.id, invRow.metadata)
+        : placeholderPhotoFor(vehicleString ?? "car");
+    }
+
     return NextResponse.json({
       customerId,
       customerName: `${customer.first_name} ${customer.last_name}`,
@@ -130,10 +153,9 @@ export async function POST(req: NextRequest) {
       previewQrUrl,
       designStyle: resolvedChannel === "direct_mail" ? designStyle : null,
       layoutSpec: creative.layoutSpec ?? null,
-      vehicle: visits?.[0]
-        ? [visits[0].year, visits[0].make, visits[0].model].filter(Boolean).join(" ")
-        : null,
-      lastVisitDate: visits?.[0]?.visit_date ?? null,
+      vehicle: vehicleString,
+      vehiclePhotoUrl,
+      lastVisitDate: recentVisit?.visit_date ?? null,
       // Convenience — cleaned SMS body (strip HTML if any)
       smsBody: resolvedChannel === "sms" ? creative.content.replace(/<[^>]+>/g, "").slice(0, 160) : null,
     });

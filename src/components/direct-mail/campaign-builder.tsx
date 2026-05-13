@@ -268,6 +268,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
     confidence: number;
     previewQrUrl: string | null;
     vehicle: string | null;
+    vehiclePhotoUrl: string | null;
     channel: BuilderChannel;
     designStyle?: DesignStyle;
     layoutSpec?: import("@/types").LayoutSpec;
@@ -328,7 +329,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
   const [testTemplateType, setTestTemplateType] = useState<MailTemplateType>("postcard_6x9");
   const [testGoal, setTestGoal] = useState("Win back this customer with a personalized service reminder and special offer.");
   const [testLoading, setTestLoading] = useState(false);
-  const [testPreview, setTestPreview] = useState<{ content: string; previewQrUrl: string | null; vehicle: string | null; reasoning: string } | null>(null);
+  const [testPreview, setTestPreview] = useState<{ content: string; previewQrUrl: string | null; vehicle: string | null; vehiclePhotoUrl: string | null; reasoning: string } | null>(null);
   const [testLiveResult, setTestLiveResult] = useState<ChannelResult | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
   const testCustomer = customers.find((c) => c.id === testCustomerId) ?? customers[0] ?? null;
@@ -348,7 +349,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Preview failed");
-      setTestPreview({ content: data.content, previewQrUrl: data.previewQrUrl, vehicle: data.vehicle, reasoning: data.reasoning });
+      setTestPreview({ content: data.content, previewQrUrl: data.previewQrUrl, vehicle: data.vehicle, vehiclePhotoUrl: data.vehiclePhotoUrl ?? null, reasoning: data.reasoning });
     } catch (err) {
       setTestError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -485,6 +486,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
         confidence: data.confidence,
         previewQrUrl: data.previewQrUrl ?? null,
         vehicle: data.vehicle ?? null,
+        vehiclePhotoUrl: data.vehiclePhotoUrl ?? null,
         channel,
         designStyle: data.designStyle ?? designStyle,
         layoutSpec: data.layoutSpec,
@@ -869,7 +871,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                 <div className="p-3.5 bg-indigo-50 border border-indigo-100 rounded-[var(--radius)] text-xs text-indigo-800">
                   <strong>AI reasoning:</strong> {testPreview.reasoning}
                 </div>
-                <TemplatePreview templateType={testTemplateType} content={testPreview.content} dealershipName={dealershipName} vehicle={testPreview.vehicle} qrPreviewUrl={testPreview.previewQrUrl ?? undefined} logoUrl={dealershipLogoUrl} accentColor={accentColor} customerAddress={testCustomer?.address ?? null} dealershipAddress={dealershipAddress} dealershipPhone={dealershipPhone} />
+                <TemplatePreview templateType={testTemplateType} content={testPreview.content} dealershipName={dealershipName} vehicle={testPreview.vehicle} vehiclePhotoUrl={testPreview.vehiclePhotoUrl ?? null} qrPreviewUrl={testPreview.previewQrUrl ?? undefined} logoUrl={dealershipLogoUrl} accentColor={accentColor} customerAddress={testCustomer?.address ?? null} dealershipAddress={dealershipAddress} dealershipPhone={dealershipPhone} />
                 <div className="p-3.5 bg-amber-50 border border-amber-100 rounded-[var(--radius)] flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                   <p className="text-xs text-amber-800">
@@ -1561,6 +1563,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                 content={previewResult.content}
                 dealershipName={dealershipName}
                 vehicle={previewResult.vehicle}
+                vehiclePhotoUrl={previewResult.vehiclePhotoUrl}
                 qrPreviewUrl={previewResult.previewQrUrl}
                 logoUrl={dealershipLogoUrl}
                 accentColor={accentColor}
