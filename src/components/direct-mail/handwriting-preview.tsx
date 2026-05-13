@@ -36,6 +36,9 @@ const SAMPLE_MESSAGES = [
   },
 ];
 
+// SVG feTurbulence paper-fiber texture — embedded as data URI, ~3.8% opacity
+const PAPER_TEXTURE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='pf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23pf)' opacity='0.038'/%3E%3C/svg%3E")`;
+
 // ── Accent color system (local to preview demo) ───────────────
 
 const ACCENT_META: Record<AccentColor, {
@@ -121,9 +124,11 @@ function hseed(charOff: number, code: number, li: number, pi: number): number {
   return (charOff * 31 + code * 17 + li * 7 + pi * 3) | 0;
 }
 
-// 5-layer text-shadow — nonlinear pressure curve
+// 5-layer text-shadow — nonlinear pressure curve + per-character micro-jitter via seed
 // Low pressure → wide/soft bleed (lifted stroke); high pressure → dense/sharp layering
-function inkShadow(pressure: number): string {
+function inkShadow(pressure: number, seed = 0): string {
+  const jx = (((seed * 7919 + 13) & 0xff) / 255 - 0.5) * 0.12;
+  const jy = (((seed * 6271 + 17) & 0xff) / 255 - 0.5) * 0.10;
   const bleedRadius = (0.55 - 0.28 * pressure).toFixed(2);
   const sharpRadius = (0.18 + 0.22 * pressure).toFixed(2);
   const a1 = (pressure * pressure * 0.26).toFixed(3);
@@ -132,10 +137,10 @@ function inkShadow(pressure: number): string {
   const a4 = (pressure * 0.09).toFixed(3);
   const a5 = ((1 - pressure) * 0.08).toFixed(3);
   return [
-    ` 0.30px  0.22px ${sharpRadius}px rgba(18,22,52,${a1})`,
-    `-0.16px  0.10px ${bleedRadius}px rgba(18,22,52,${a2})`,
-    ` 0.10px -0.16px ${bleedRadius}px rgba(18,22,52,${a3})`,
-    ` 0px     0.38px ${sharpRadius}px rgba(18,22,52,${a4})`,
+    ` ${(0.30 + jx).toFixed(2)}px  ${(0.22 + jy).toFixed(2)}px ${sharpRadius}px rgba(18,22,52,${a1})`,
+    `${(-0.16 + jx * 0.5).toFixed(2)}px  ${(0.10 + jy * 0.5).toFixed(2)}px ${bleedRadius}px rgba(18,22,52,${a2})`,
+    ` ${(0.10 + jx * 0.7).toFixed(2)}px ${(-0.16 + jy * 0.7).toFixed(2)}px ${bleedRadius}px rgba(18,22,52,${a3})`,
+    ` ${jx.toFixed(2)}px     ${(0.38 + jy).toFixed(2)}px ${sharpRadius}px rgba(18,22,52,${a4})`,
     ` 0px     0px    ${(parseFloat(bleedRadius) * 1.6).toFixed(2)}px rgba(18,22,52,${a5})`,
   ].join(",");
 }
@@ -181,7 +186,7 @@ function HandwrittenWord({ text, wordIdx, lineIdx, paraIdx, startCharOffset }: {
               transformOrigin: "bottom center",
               opacity: pick(C_OPQ, s + 5),
               letterSpacing: `${pick(C_SPC, s + 13)}px`,
-              textShadow: inkShadow(pressure),
+              textShadow: inkShadow(pressure, s),
             }}
           >
             {char}
@@ -473,8 +478,11 @@ export function HandwritingPreview() {
                 background: "#FDFCF8",
                 border: "1px solid #E2D9C8",
                 boxShadow: "0 4px 24px -4px rgba(15, 23, 42, 0.12), 0 1px 4px -1px rgba(15,23,42,0.06)",
-                backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 30px, rgba(180,155,110,0.11) 30px, rgba(180,155,110,0.11) 31px)",
-                backgroundSize: "100% 31px",
+                backgroundImage: [
+                  PAPER_TEXTURE,
+                  "repeating-linear-gradient(0deg, transparent, transparent 30px, rgba(180,155,110,0.11) 30px, rgba(180,155,110,0.11) 31px)",
+                ].join(", "),
+                backgroundSize: "200px 200px, 100% 31px",
                 backgroundPositionY: "58px",
               }}
             >
@@ -577,6 +585,7 @@ export function HandwritingPreview() {
               className="rounded-2xl overflow-hidden"
               style={{
                 background: "#FDFCF8",
+                backgroundImage: PAPER_TEXTURE,
                 border: "1px solid #E2D9C8",
                 boxShadow: "0 4px 24px -4px rgba(15, 23, 42, 0.12), 0 1px 4px -1px rgba(15,23,42,0.06)",
               }}

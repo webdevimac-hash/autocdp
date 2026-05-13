@@ -5,6 +5,9 @@ import type { ReactNode, CSSProperties } from "react";
 import { buildPreviewQRImageUrl } from "@/lib/qrcode-gen";
 import type { MailTemplateType, DesignStyle, LayoutSpec } from "@/types";
 
+// SVG feTurbulence paper-fiber texture — embedded as data URI, ~3.8% opacity
+const PAPER_TEXTURE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='pf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23pf)' opacity='0.038'/%3E%3C/svg%3E")`;
+
 // ── Accent color system ───────────────────────────────────────
 
 export type AccentColor = "indigo" | "yellow" | "orange" | "pink" | "green";
@@ -119,21 +122,24 @@ function hseed(gci: number, code: number, li: number, pi: number, extra = 0): nu
   return (gci * 31 + code * 17 + li * 7 + pi * 3 + extra * 13) | 0;
 }
 
-// Multi-layer ink bleed — nonlinear pressure curve
+// Multi-layer ink bleed — nonlinear pressure curve + per-character micro-jitter via seed
 // Low pressure → wide/soft bleed (lifted stroke); high pressure → dense/sharp layering
-function inkShadow(pressure: number): string {
-  const bleedRadius = (0.55 - 0.28 * pressure).toFixed(2);  // 0.27 (firm) → 0.55 (feather)
-  const sharpRadius = (0.18 + 0.22 * pressure).toFixed(2);  // 0.18 (light) → 0.40 (firm)
-  const a1 = (pressure * pressure * 0.26).toFixed(3);        // dense core, quadratic
+function inkShadow(pressure: number, seed = 0): string {
+  // Deterministic micro-jitter: unique per character, no visible period
+  const jx = (((seed * 7919 + 13) & 0xff) / 255 - 0.5) * 0.12;
+  const jy = (((seed * 6271 + 17) & 0xff) / 255 - 0.5) * 0.10;
+  const bleedRadius = (0.55 - 0.28 * pressure).toFixed(2);
+  const sharpRadius = (0.18 + 0.22 * pressure).toFixed(2);
+  const a1 = (pressure * pressure * 0.26).toFixed(3);
   const a2 = (pressure * 0.14 + (1 - pressure) * 0.09).toFixed(3);
-  const a3 = ((1 - pressure) * 0.12 + pressure * 0.06).toFixed(3); // stronger halo when light
+  const a3 = ((1 - pressure) * 0.12 + pressure * 0.06).toFixed(3);
   const a4 = (pressure * 0.09).toFixed(3);
-  const a5 = ((1 - pressure) * 0.08).toFixed(3);             // wide ambient halo at low pressure
+  const a5 = ((1 - pressure) * 0.08).toFixed(3);
   return [
-    ` 0.30px  0.22px ${sharpRadius}px rgba(18,22,52,${a1})`,
-    `-0.16px  0.10px ${bleedRadius}px rgba(18,22,52,${a2})`,
-    ` 0.10px -0.16px ${bleedRadius}px rgba(18,22,52,${a3})`,
-    ` 0px     0.38px ${sharpRadius}px rgba(18,22,52,${a4})`,
+    ` ${(0.30 + jx).toFixed(2)}px  ${(0.22 + jy).toFixed(2)}px ${sharpRadius}px rgba(18,22,52,${a1})`,
+    `${(-0.16 + jx * 0.5).toFixed(2)}px  ${(0.10 + jy * 0.5).toFixed(2)}px ${bleedRadius}px rgba(18,22,52,${a2})`,
+    ` ${(0.10 + jx * 0.7).toFixed(2)}px ${(-0.16 + jy * 0.7).toFixed(2)}px ${bleedRadius}px rgba(18,22,52,${a3})`,
+    ` ${jx.toFixed(2)}px     ${(0.38 + jy).toFixed(2)}px ${sharpRadius}px rgba(18,22,52,${a4})`,
     ` 0px     0px    ${(parseFloat(bleedRadius) * 1.6).toFixed(2)}px rgba(18,22,52,${a5})`,
   ].join(",");
 }
@@ -184,7 +190,7 @@ function HandwrittenWord({
               transformOrigin: "bottom center",
               opacity: pick(C_OPQ, s + 5),
               letterSpacing: char === " " ? "0" : `${pick(C_SPC, s + 13)}px`,
-              textShadow: inkShadow(pressure),
+              textShadow: inkShadow(pressure, s),
             }}
           >
             {char === " " ? " " : char}
@@ -557,65 +563,38 @@ function ModeToggle({ mode, onChange }: { mode: PreviewMode; onChange: (m: Previ
 // dashed indicator, and a PostGrid spec badge.
 
 function PrintReadyFrame({
-  children, width = 520, height = 320,
+  children, width = 520,
 }: {
-  children: ReactNode; width?: number; height?: number;
+  children: ReactNode; width?: number;
 }) {
-  const markLen = 10;
-  const markGap = 4;
-  const pad = markLen + markGap + 6;
+  const markLen = 11;
+  const markGap = 5;
+  const pad = markLen + markGap + 4;
+  const mk: CSSProperties = { position: "absolute", background: "#9B8279" };
   return (
-    <div style={{ position: "relative", display: "inline-block", padding: `${pad}px`, width: "100%" }}>
-      {/* Bleed-zone indicator */}
+    <div style={{ position: "relative", padding: `${pad}px`, width: "100%", boxSizing: "border-box" }}>
+      {/* Bleed-zone dashed indicator */}
       <div style={{
         position: "absolute",
-        top: `${markLen + markGap}px`,
-        left: `${markLen + markGap}px`,
-        right: `${markLen + markGap}px`,
-        bottom: `${markLen + markGap}px`,
-        border: "0.75px dashed rgba(139,114,101,0.38)",
-        borderRadius: "1px",
-        pointerEvents: "none",
+        top: pad - 4, left: pad - 4, right: pad - 4, bottom: pad - 4,
+        border: "0.75px dashed rgba(139,114,101,0.42)",
+        borderRadius: "1px", pointerEvents: "none",
       }} />
-      {/* Crop marks — 8 lines, 2 per corner */}
-      <svg
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "visible" }}
-        preserveAspectRatio="none"
-        fill="none"
-      >
-        {/* Top-left */}
-        <line x1={pad - markGap - 1} y1={pad} x2={pad - markGap - markLen} y2={pad} stroke="#9B8279" strokeWidth="0.8" />
-        <line x1={pad} y1={pad - markGap - 1} x2={pad} y2={pad - markGap - markLen} stroke="#9B8279" strokeWidth="0.8" />
-        {/* Top-right */}
-        <line x1="calc(100% - 0px)" y1={pad} x2="calc(100% - 0px)" y2={pad} stroke="none" />
-      </svg>
-      {/* Corner crop marks via absolute divs (works at any container width) */}
-      {[
-        { top: pad, left: 0, w: markLen - 2, h: "0.8px" },
-        { top: 0, left: pad, w: "0.8px", h: markLen - 2 },
-        { top: pad, right: 0, w: markLen - 2, h: "0.8px" },
-        { top: 0, right: pad, w: "0.8px", h: markLen - 2 },
-        { bottom: pad, left: 0, w: markLen - 2, h: "0.8px" },
-        { bottom: 0, left: pad, w: "0.8px", h: markLen - 2 },
-        { bottom: pad, right: 0, w: markLen - 2, h: "0.8px" },
-        { bottom: 0, right: pad, w: "0.8px", h: markLen - 2 },
-      ].map((s, i) => (
-        <div key={i} style={{ position: "absolute", background: "#9B8279", ...s } as CSSProperties} />
-      ))}
+      {/* 8 crop marks — 2 per corner, proper width/height CSS */}
+      <div style={{ ...mk, top: pad - 4, left: 0, width: markLen, height: 1 }} />
+      <div style={{ ...mk, top: 0, left: pad - 4, width: 1, height: markLen }} />
+      <div style={{ ...mk, top: pad - 4, right: 0, width: markLen, height: 1 }} />
+      <div style={{ ...mk, top: 0, right: pad - 4, width: 1, height: markLen }} />
+      <div style={{ ...mk, bottom: pad - 4, left: 0, width: markLen, height: 1 }} />
+      <div style={{ ...mk, bottom: 0, left: pad - 4, width: 1, height: markLen }} />
+      <div style={{ ...mk, bottom: pad - 4, right: 0, width: markLen, height: 1 }} />
+      <div style={{ ...mk, bottom: 0, right: pad - 4, width: 1, height: markLen }} />
       {/* Spec badge */}
       <div style={{
-        position: "absolute",
-        bottom: 0,
-        left: "50%",
-        transform: "translateX(-50%)",
-        fontFamily: "'Inter', sans-serif",
-        fontSize: "7px",
-        fontWeight: 700,
-        letterSpacing: "0.09em",
-        color: "#9B8279",
-        textTransform: "uppercase",
-        whiteSpace: "nowrap",
-        pointerEvents: "none",
+        position: "absolute", bottom: 2, left: "50%", transform: "translateX(-50%)",
+        fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 700,
+        letterSpacing: "0.09em", color: "#9B8279", textTransform: "uppercase",
+        whiteSpace: "nowrap", pointerEvents: "none",
       }}>
         {width >= 480 ? '6″ × 9″' : '8.5″ × 11″'}&nbsp;&middot;&nbsp;300 DPI&nbsp;&middot;&nbsp;PostGrid&nbsp;&middot;&nbsp;1/8″ bleed
       </div>
@@ -646,6 +625,7 @@ function RealPostcardFront({
       maxWidth: "520px",
       background: "#FEFCF3",
       backgroundImage: [
+        PAPER_TEXTURE,
         "repeating-linear-gradient(89.4deg, transparent, transparent 4px, rgba(155,135,100,0.022) 4px, rgba(155,135,100,0.022) 5px)",
         "repeating-linear-gradient(90.6deg, transparent, transparent 7px, rgba(155,135,100,0.013) 7px, rgba(155,135,100,0.013) 8px)",
       ].join(", "),
@@ -751,6 +731,7 @@ function RealPostcardBack({
       maxWidth: "520px", minHeight: "320px",
       background: "#FEFCF3",
       backgroundImage: [
+        PAPER_TEXTURE,
         "repeating-linear-gradient(89.4deg, transparent, transparent 4px, rgba(155,135,100,0.022) 4px, rgba(155,135,100,0.022) 5px)",
         "repeating-linear-gradient(90.6deg, transparent, transparent 7px, rgba(155,135,100,0.013) 7px, rgba(155,135,100,0.013) 8px)",
       ].join(", "),
@@ -834,6 +815,7 @@ function RealLetterPreview({
       maxWidth: is8511 ? "440px" : "340px",
       background: "#FFFFFF",
       backgroundImage: [
+        PAPER_TEXTURE,
         "repeating-linear-gradient(89.4deg, transparent, transparent 4px, rgba(155,135,100,0.012) 4px, rgba(155,135,100,0.012) 5px)",
         "repeating-linear-gradient(90.6deg, transparent, transparent 7px, rgba(155,135,100,0.008) 7px, rgba(155,135,100,0.008) 8px)",
       ].join(", "),
@@ -996,7 +978,10 @@ function Postcard6x9Preview({
             <div className="rounded-xl overflow-hidden" style={{
               width: "100%", maxWidth: "420px",
               background: "#FEFCF3",
-              backgroundImage: "repeating-linear-gradient(transparent, transparent 30px, #EDE8D8 30px, #EDE8D8 31px)",
+              backgroundImage: [
+                PAPER_TEXTURE,
+                "repeating-linear-gradient(transparent, transparent 30px, #EDE8D8 30px, #EDE8D8 31px)",
+              ].join(", "),
               backgroundPositionY: "72px",
               boxShadow: "0 4px 6px -1px rgba(0,0,0,0.08), 0 10px 24px -4px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9)",
             }}>
@@ -1102,6 +1087,7 @@ function LetterPreview({
         <div className="rounded-xl shadow-xl overflow-hidden" style={{
           width: "100%", maxWidth: templateType === "letter_8.5x11" ? "480px" : "360px",
           aspectRatio, position: "relative", background: "#FFFFFF",
+          backgroundImage: PAPER_TEXTURE,
           display: "flex", flexDirection: "column",
         }}>
           <div style={{
