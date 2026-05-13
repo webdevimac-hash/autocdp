@@ -36,13 +36,13 @@ export function Header({ title, subtitle, userEmail, actions }: HeaderProps) {
 
   return (
     <header
-      className="h-14 flex items-center justify-between px-4 md:px-6 sticky top-0 z-30"
+      className="h-[58px] flex items-center justify-between px-4 md:px-6 sticky top-0 z-30"
       style={{
-        background: "rgba(255, 255, 255, 0.92)",
-        backdropFilter: "blur(12px) saturate(180%)",
-        WebkitBackdropFilter: "blur(12px) saturate(180%)",
+        background: "rgba(247, 249, 252, 0.95)",
+        backdropFilter: "blur(14px) saturate(200%)",
+        WebkitBackdropFilter: "blur(14px) saturate(200%)",
         borderBottom: "1px solid rgba(15, 23, 42, 0.07)",
-        boxShadow: "0 1px 0 0 rgba(15, 23, 42, 0.04)",
+        boxShadow: "0 1px 3px 0 rgba(15, 23, 42, 0.05)",
       }}
     >
       {/* Left: menu + title */}
@@ -57,8 +57,8 @@ export function Header({ title, subtitle, userEmail, actions }: HeaderProps) {
 
         <div className="min-w-0">
           <h1
-            className="text-[15px] font-semibold leading-tight tracking-tight truncate"
-            style={{ color: "#0F172A" }}
+            className="text-[15px] font-bold leading-tight tracking-tight truncate"
+            style={{ color: "#0B1526" }}
           >
             {title}
           </h1>
@@ -187,7 +187,7 @@ export function Header({ title, subtitle, userEmail, actions }: HeaderProps) {
         >
           <AvatarFallback
             className="text-[11px] font-bold"
-            style={{ background: "linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)", color: "#4338CA" }}
+            style={{ background: "linear-gradient(135deg, #ECFDF5 0%, #A7F3D0 100%)", color: "#065F46" }}
           >
             {initials}
           </AvatarFallback>

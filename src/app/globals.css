@@ -165,27 +165,40 @@
 
 .stat-card {
   background: #FFFFFF;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: var(--radius);
-  padding: 20px 24px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 12px;
+  padding: 22px 24px 20px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.03);
-  transition: box-shadow 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow:
+    0 1px 4px 0 rgba(15, 23, 42, 0.05),
+    0 1px 2px -1px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  transition: box-shadow 0.22s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .stat-card:hover {
-  box-shadow: 0 6px 20px -4px rgba(15, 23, 42, 0.10), 0 2px 6px -2px rgba(15, 23, 42, 0.05);
-  transform: translateY(-1px);
+  box-shadow:
+    0 12px 32px -8px rgba(15, 23, 42, 0.12),
+    0 4px 12px -4px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  transform: translateY(-2px);
 }
 .stat-card::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 12px;
-  bottom: 12px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
+  top: 10px;
+  bottom: 10px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
 }
+/* Subtle per-color background wash */
+.stat-card-indigo  { background: linear-gradient(160deg, #F8F9FF 0%, #FFFFFF 55%); }
+.stat-card-violet  { background: linear-gradient(160deg, #FAF8FF 0%, #FFFFFF 55%); }
+.stat-card-emerald { background: linear-gradient(160deg, #F5FFFA 0%, #FFFFFF 55%); }
+.stat-card-amber   { background: linear-gradient(160deg, #FFFDF5 0%, #FFFFFF 55%); }
+.stat-card-sky     { background: linear-gradient(160deg, #F5FBFF 0%, #FFFFFF 55%); }
+.stat-card-rose    { background: linear-gradient(160deg, #FFF5F6 0%, #FFFFFF 55%); }
 .stat-card-indigo::before  { background: linear-gradient(180deg, #818cf8, #6366F1); }
 .stat-card-violet::before  { background: linear-gradient(180deg, #a78bfa, #8B5CF6); }
 .stat-card-emerald::before { background: linear-gradient(180deg, #34d399, #10B981); }
@@ -231,14 +244,14 @@
 .inst-table { width: 100%; border-collapse: collapse; }
 .inst-table thead tr {
   border-bottom: 1px solid rgba(15, 23, 42, 0.07);
-  background: #F8FAFC;
+  background: linear-gradient(180deg, #FAFBFD 0%, #F8FAFC 100%);
 }
 .inst-table th {
-  padding: 11px 20px;
-  font-size: 11px;
-  font-weight: 600;
+  padding: 12px 20px;
+  font-size: 10.5px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.075em;
   color: #64748B;
   text-align: left;
   white-space: nowrap;
@@ -251,7 +264,7 @@
   vertical-align: middle;
 }
 .inst-table tbody tr { transition: background 0.1s ease; }
-.inst-table tbody tr:hover td { background: #F8FAFC; }
+.inst-table tbody tr:hover td { background: #F6F9FF; }
 .inst-table tbody tr:last-child td { border-bottom: none; }
 
 /* ═══════════════════════════════════════════════════════════ */
@@ -260,28 +273,31 @@
 
 .inst-panel {
   background: #FFFFFF;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: var(--radius);
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04);
+  box-shadow:
+    0 1px 4px 0 rgba(15, 23, 42, 0.05),
+    0 4px 16px -4px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 .inst-panel-header {
-  padding: 16px 24px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.055);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: linear-gradient(180deg, #FAFBFC 0%, #FFFFFF 100%);
+  background: linear-gradient(180deg, #FAFBFD 0%, #FDFDFF 65%, #FFFFFF 100%);
 }
 .inst-panel-title {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: #0F172A;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.01em;
 }
 .inst-panel-subtitle {
-  font-size: 12px;
+  font-size: 11.5px;
   color: #64748B;
   margin-top: 1px;
   line-height: 1.5;
@@ -447,6 +463,18 @@ button, a, [role="button"], input, select, textarea {
 /* ═══════════════════════════════════════════════════════════ */
 /* UTILITY CLASSES                                             */
 /* ═══════════════════════════════════════════════════════════ */
+
+/* ── Setup prompt step cards (dark background) ──────────────── */
+.setup-step-link {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.setup-step-link:hover {
+  background: rgba(16, 185, 129, 0.10);
+  border-color: rgba(16, 185, 129, 0.28);
+}
 
 @layer components {
   .stat-value    { @apply text-2xl font-bold text-slate-900 tracking-tight; }

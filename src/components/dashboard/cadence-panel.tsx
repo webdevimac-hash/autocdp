@@ -36,17 +36,17 @@ export async function CadencePanel({ dealershipId }: CadencePanelProps) {
 
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center">
+          <div className="rounded-xl p-3 text-center" style={{ background: "linear-gradient(135deg, #F0FDF9 0%, #DCFCE7 100%)", border: "1px solid rgba(16,185,129,0.18)" }}>
             <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto mb-1" />
             <p className="text-[22px] font-bold text-emerald-700 leading-none tabular-nums">{eligible.toLocaleString()}</p>
             <p className="text-[11px] text-emerald-600 mt-1 font-medium">Eligible</p>
           </div>
-          <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-center">
+          <div className="rounded-xl p-3 text-center" style={{ background: "linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)", border: "1px solid rgba(245,158,11,0.18)" }}>
             <Clock className="w-4 h-4 text-amber-500 mx-auto mb-1" />
             <p className="text-[22px] font-bold text-amber-700 leading-none tabular-nums">{suppressed.toLocaleString()}</p>
             <p className="text-[11px] text-amber-600 mt-1 font-medium">In Cooldown</p>
           </div>
-          <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3 text-center">
+          <div className="rounded-xl p-3 text-center" style={{ background: "linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)", border: "1px solid rgba(99,102,241,0.18)" }}>
             <Users className="w-4 h-4 text-indigo-500 mx-auto mb-1" />
             <p className="text-[22px] font-bold text-indigo-700 leading-none tabular-nums">{neverContacted.toLocaleString()}</p>
             <p className="text-[11px] text-indigo-600 mt-1 font-medium">Never Contacted</p>
