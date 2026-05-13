@@ -1129,7 +1129,21 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                 <div className="p-3.5 bg-indigo-50 border border-indigo-100 rounded-[var(--radius)] text-xs text-indigo-800">
                   <strong>AI reasoning:</strong> {testPreview.reasoning}
                 </div>
-                <TemplatePreview templateType={testTemplateType} content={testPreview.content} dealershipName={dealershipName} vehicle={testPreview.vehicle} vehiclePhotoUrl={testPreview.vehiclePhotoUrl ?? null} qrPreviewUrl={testPreview.previewQrUrl ?? undefined} logoUrl={dealershipLogoUrl} accentColor={accentColor} customerAddress={testCustomer?.address ?? null} dealershipAddress={dealershipAddress} dealershipPhone={dealershipPhone} />
+                <TemplatePreview
+                  templateType={testTemplateType}
+                  content={testPreview.content}
+                  dealershipName={dealershipName}
+                  customerName={testCustomer ? `${testCustomer.first_name} ${testCustomer.last_name}` : undefined}
+                  vehicle={testPreview.vehicle}
+                  vehiclePhotoUrl={testPreview.vehiclePhotoUrl ?? null}
+                  qrPreviewUrl={testPreview.previewQrUrl ?? undefined}
+                  logoUrl={dealershipLogoUrl}
+                  accentColor={accentColor}
+                  customerAddress={testCustomer?.address ?? null}
+                  dealershipAddress={dealershipAddress}
+                  dealershipPhone={dealershipPhone}
+                  initialMode="realistic"
+                />
                 <div className="p-3.5 bg-amber-50 border border-amber-100 rounded-[var(--radius)] flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                   <p className="text-xs text-amber-800">

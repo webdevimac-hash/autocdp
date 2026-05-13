@@ -981,7 +981,7 @@ function PostcardBack({
 
 function Postcard6x9Preview({
   content, dealershipName, customerName, offer, qrPreviewUrl, logoUrl, accent,
-  customerAddress, dealershipAddress, dealershipPhone, vehiclePhotoUrl,
+  customerAddress, dealershipAddress, dealershipPhone, vehiclePhotoUrl, initialMode,
 }: {
   content: string;
   dealershipName: string;
@@ -994,9 +994,10 @@ function Postcard6x9Preview({
   dealershipAddress?: AddressRecord | null;
   dealershipPhone?: string | null;
   vehiclePhotoUrl?: string | null;
+  initialMode?: PreviewMode;
 }) {
   const [showBack, setShowBack] = useState(false);
-  const [previewMode, setPreviewMode] = useState<PreviewMode>("design");
+  const [previewMode, setPreviewMode] = useState<PreviewMode>(initialMode ?? "design");
 
   return (
     <div className="space-y-2.5">
@@ -1104,7 +1105,7 @@ function Postcard6x9Preview({
 
 function LetterPreview({
   content, dealershipName, templateType, logoUrl, accent,
-  customerName, customerAddress, dealershipAddress, dealershipPhone,
+  customerName, customerAddress, dealershipAddress, dealershipPhone, initialMode,
 }: {
   content: string;
   dealershipName: string;
@@ -1115,10 +1116,11 @@ function LetterPreview({
   customerAddress?: AddressRecord | null;
   dealershipAddress?: AddressRecord | null;
   dealershipPhone?: string | null;
+  initialMode?: PreviewMode;
 }) {
   const aspectRatio = templateType === "letter_8.5x11" ? "8.5/11" : "6/9";
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-  const [previewMode, setPreviewMode] = useState<PreviewMode>("design");
+  const [previewMode, setPreviewMode] = useState<PreviewMode>(initialMode ?? "design");
   const cAddrLines = addrToLines(customerAddress);
 
   return (
@@ -1834,6 +1836,7 @@ interface TemplatePreviewProps {
   customerAddress?: { street?: string | null; city?: string | null; state?: string | null; zip?: string | null } | null;
   dealershipAddress?: { street?: string | null; city?: string | null; state?: string | null; zip?: string | null } | null;
   dealershipPhone?: string | null;
+  initialMode?: PreviewMode;
 }
 
 export function TemplatePreview({
@@ -1851,6 +1854,7 @@ export function TemplatePreview({
   customerAddress,
   dealershipAddress,
   dealershipPhone,
+  initialMode,
 }: TemplatePreviewProps) {
   const qrUrl = qrPropUrl ?? buildPreviewQRImageUrl(
     `${typeof window !== "undefined" ? window.location.origin : ""}/track/preview`,
@@ -1939,6 +1943,7 @@ export function TemplatePreview({
             offer={offer} qrPreviewUrl={qrUrl} logoUrl={logoUrl} accent={accent}
             customerAddress={customerAddress} dealershipAddress={dealershipAddress}
             dealershipPhone={dealershipPhone} vehiclePhotoUrl={vehiclePhotoUrl}
+            initialMode={initialMode}
           />
         </div>
       ) : (
@@ -1946,7 +1951,7 @@ export function TemplatePreview({
           content={content} dealershipName={dealershipName} templateType={templateType}
           logoUrl={logoUrl} accent={accent} customerName={customerName}
           customerAddress={customerAddress} dealershipAddress={dealershipAddress}
-          dealershipPhone={dealershipPhone}
+          dealershipPhone={dealershipPhone} initialMode={initialMode}
         />
       )}
     </div>
