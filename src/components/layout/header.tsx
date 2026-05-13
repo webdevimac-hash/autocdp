@@ -1,7 +1,6 @@
 "use client";
 
 import { Bell, Search, Menu, Sparkles } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
@@ -178,20 +177,19 @@ export function Header({ title, subtitle, userEmail, actions }: HeaderProps) {
           />
         </button>
 
-        {/* Avatar */}
-        <Avatar
-          className="h-8 w-8 ml-0.5 cursor-pointer transition-all"
-          style={{ boxShadow: "0 0 0 2px transparent" }}
+        {/* Avatar — plain div, no radix-ui dependency */}
+        <div
+          className="h-8 w-8 ml-0.5 cursor-pointer rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 transition-all select-none"
+          style={{
+            background: "linear-gradient(135deg, #ECFDF5 0%, #A7F3D0 100%)",
+            color: "#065F46",
+            boxShadow: "0 0 0 2px transparent",
+          }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 0 2px #E0E7FF"; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 0 2px transparent"; }}
         >
-          <AvatarFallback
-            className="text-[11px] font-bold"
-            style={{ background: "linear-gradient(135deg, #ECFDF5 0%, #A7F3D0 100%)", color: "#065F46" }}
-          >
-            {initials}
-          </AvatarFallback>
-        </Avatar>
+          {initials}
+        </div>
       </div>
     </header>
   );
