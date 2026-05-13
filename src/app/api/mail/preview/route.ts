@@ -126,19 +126,35 @@ export async function POST(req: NextRequest) {
       : null;
 
     let vehiclePhotoUrl: string | null = null;
-    if (resolvedChannel === "direct_mail" && recentVisit?.make) {
-      const { data: invRow } = await supabase
-        .from("inventory")
-        .select("id, metadata")
-        .eq("dealership_id", ud.dealership_id)
-        .ilike("make", recentVisit.make)
-        .ilike("model", recentVisit.model ?? "")
-        .limit(1)
-        .single() as { data: { id: string; metadata: Record<string, unknown> } | null };
+    if (resolvedChannel === "direct_mail") {
+      if (recentVisit?.make) {
+        // Try to match the customer's specific vehicle make/model from inventory
+        const { data: invRow } = await supabase
+          .from("inventory")
+          .select("id, metadata")
+          .eq("dealership_id", ud.dealership_id)
+          .ilike("make", recentVisit.make)
+          .ilike("model", recentVisit.model ?? "")
+          .limit(1)
+          .single() as { data: { id: string; metadata: Record<string, unknown> } | null };
 
-      vehiclePhotoUrl = invRow
-        ? resolveVehiclePhoto(invRow.id, invRow.metadata)
-        : placeholderPhotoFor(vehicleString ?? "car");
+        vehiclePhotoUrl = invRow
+          ? resolveVehiclePhoto(invRow.id, invRow.metadata)
+          : placeholderPhotoFor(vehicleString ?? "car");
+      } else {
+        // No visit history (prospect) — show any available inventory photo so the
+        // postcard front renders a real vehicle rather than the gradient placeholder
+        const { data: anyInv } = await supabase
+          .from("inventory")
+          .select("id, metadata")
+          .eq("dealership_id", ud.dealership_id)
+          .limit(1)
+          .single() as { data: { id: string; metadata: Record<string, unknown> } | null };
+
+        vehiclePhotoUrl = anyInv
+          ? resolveVehiclePhoto(anyInv.id, anyInv.metadata)
+          : placeholderPhotoFor(customer.id ?? "vehicle");
+      }
     }
 
     return NextResponse.json({
