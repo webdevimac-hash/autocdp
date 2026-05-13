@@ -1,8 +1,18 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
-import { Plus, AlertCircle, Phone, MessageCircle, Mail, Video, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  Plus,
+  AlertCircle,
+  Phone,
+  MessageCircle,
+  Mail,
+  Video,
+  Search,
+  BellOff,
+  Filter,
+} from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,6 +57,34 @@ export function LeadsList({ rows, totalCount, loadDetail }: LeadsListProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<CustomerDetailData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState("");
+
+  // Client-side filtering against the first 100 rows server gave us. Real
+  // search will live behind /api/leads/search when ready.
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => {
+      const hay = [
+        r.first_name,
+        r.last_name,
+        r.store,
+        r.source,
+        r.source_description,
+        r.deal_sales_1?.name,
+        r.deal_bdc?.name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [rows, query]);
+
+  // Quick stats above the table.
+  const noFollowupCount = rows.filter((r) => !r.next_task).length;
+  const overdueCount    = rows.filter((r) => r.next_task_overdue).length;
+  const newToday        = rows.filter((r) => r.created_label?.includes("minute") || r.created_label?.includes("hour ago")).length;
 
   async function handleRowClick(id: string) {
     setSelectedId(id);
@@ -67,35 +105,62 @@ export function LeadsList({ rows, totalCount, loadDetail }: LeadsListProps) {
   return (
     <>
       {/* Top action row */}
-      <div className="flex items-center justify-between px-6 py-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-slate-100 bg-white sticky top-[3.5rem] z-20">
+        <div className="flex flex-wrap items-center gap-2.5">
           <Button
             variant="outline"
             size="sm"
-            className="gap-1.5 border-indigo-200 text-indigo-700"
+            className="gap-1.5 border-indigo-200 bg-indigo-50/40 text-indigo-700 hover:bg-indigo-50"
           >
             <Plus className="h-3.5 w-3.5" />
             Add Filter
           </Button>
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <input
-              placeholder="Search leads…"
-              className="h-8 w-64 rounded-md border border-slate-200 bg-white pl-8 pr-3 text-sm placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by name, store, source, salesperson…"
+              className="h-9 w-72 rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
             />
           </div>
+
+          {/* Live filter chips */}
+          <QuickChip
+            icon={<BellOff className="h-3 w-3" />}
+            label="No Follow-up"
+            count={noFollowupCount}
+            tone="rose"
+          />
+          <QuickChip
+            icon={<AlertCircle className="h-3 w-3" />}
+            label="Overdue"
+            count={overdueCount}
+            tone="amber"
+          />
+          <QuickChip
+            icon={<Filter className="h-3 w-3" />}
+            label="New today"
+            count={newToday}
+            tone="emerald"
+          />
         </div>
-        <div className="text-sm font-semibold text-slate-700">
-          {totalCount.toLocaleString()} Leads
+        <div className="flex items-baseline gap-2">
+          <span className="text-xl font-black tabular-nums tracking-tight text-slate-900">
+            {totalCount.toLocaleString()}
+          </span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            Leads
+          </span>
         </div>
       </div>
 
       {/* Table */}
-      <div className="px-6 pb-8">
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="px-4 sm:px-6 py-4 pb-10">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+              <thead className="bg-slate-50/80 backdrop-blur-sm text-xs uppercase tracking-[0.12em] text-slate-500 sticky top-0 z-10">
                 <tr>
                   <Th>Customer</Th>
                   <Th>Store</Th>
@@ -123,14 +188,30 @@ export function LeadsList({ rows, totalCount, loadDetail }: LeadsListProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {rows.map((r) => (
-                  <LeadRowComp
-                    key={r.id}
-                    row={r}
-                    onClick={() => handleRowClick(r.id)}
-                    isSelected={selectedId === r.id}
-                  />
-                ))}
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={15} className="py-14 text-center">
+                      <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 ring-1 ring-slate-100">
+                        <Search className="h-5 w-5 text-slate-300" />
+                      </div>
+                      <p className="text-[13px] font-semibold text-slate-700">
+                        No matches for &ldquo;{query}&rdquo;
+                      </p>
+                      <p className="mt-1 text-[11.5px] text-slate-400">
+                        Try a different name, store, or source.
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((r) => (
+                    <LeadRowComp
+                      key={r.id}
+                      row={r}
+                      onClick={() => handleRowClick(r.id)}
+                      isSelected={selectedId === r.id}
+                    />
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -157,6 +238,46 @@ export function LeadsList({ rows, totalCount, loadDetail }: LeadsListProps) {
   );
 }
 
+// ─── Quick filter chip ────────────────────────────────────────────────────
+
+function QuickChip({
+  icon,
+  label,
+  count,
+  tone,
+}: {
+  icon: ReactNode;
+  label: string;
+  count: number;
+  tone: "rose" | "amber" | "emerald";
+}) {
+  const TONE_BG: Record<typeof tone, string> = {
+    rose:    "bg-rose-50 text-rose-700 ring-rose-200",
+    amber:   "bg-amber-50 text-amber-700 ring-amber-200",
+    emerald: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  };
+  const TONE_NUM: Record<typeof tone, string> = {
+    rose:    "bg-rose-200/60 text-rose-700",
+    amber:   "bg-amber-200/60 text-amber-700",
+    emerald: "bg-emerald-200/60 text-emerald-700",
+  };
+  return (
+    <button
+      type="button"
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold tracking-wide ring-1 transition-colors",
+        TONE_BG[tone],
+      )}
+    >
+      {icon}
+      {label}
+      <span className={cn("rounded px-1.5 py-0 tabular-nums leading-none", TONE_NUM[tone])}>
+        {count}
+      </span>
+    </button>
+  );
+}
+
 // ----- Row ------------------------------------------------------------------
 
 function LeadRowComp({
@@ -172,22 +293,45 @@ function LeadRowComp({
     `${row.first_name?.[0] ?? ""}${row.last_name?.[0] ?? ""}`.toUpperCase();
   const fullName = `${row.first_name} ${row.last_name}`;
 
+  // Deterministic emerald/indigo/violet/amber/sky avatar tint so each
+  // customer reads as their own visual entity (better at-a-glance scanning).
+  const avatarTones = [
+    "bg-emerald-100 text-emerald-700",
+    "bg-indigo-100 text-indigo-700",
+    "bg-violet-100 text-violet-700",
+    "bg-amber-100 text-amber-700",
+    "bg-sky-100 text-sky-700",
+    "bg-rose-100 text-rose-700",
+  ];
+  const tone = avatarTones[
+    [...initials].reduce((s, ch) => s + ch.charCodeAt(0), 0) % avatarTones.length
+  ];
+
   return (
     <tr
       onClick={onClick}
       className={cn(
-        "cursor-pointer transition-colors hover:bg-emerald-50/40",
-        isSelected && "bg-emerald-50/60",
+        "group cursor-pointer transition-colors",
+        isSelected
+          ? "bg-emerald-50/70"
+          : "hover:bg-emerald-50/30",
       )}
     >
       <Td>
         <div className="flex items-center gap-3">
-          <Avatar className="h-7 w-7">
-            <AvatarFallback className="bg-slate-200 text-[10px] font-semibold text-slate-700">
+          <Avatar className="h-8 w-8 ring-1 ring-white shadow-sm">
+            <AvatarFallback className={cn("text-[10px] font-bold", tone)}>
               {initials}
             </AvatarFallback>
           </Avatar>
-          <span className="font-medium text-slate-800">{fullName}</span>
+          <div className="leading-tight">
+            <div className="font-semibold text-slate-900">{fullName}</div>
+            {row.source && (
+              <div className="text-[10.5px] font-medium uppercase tracking-wider text-slate-400 hidden xl:block">
+                {row.source}
+              </div>
+            )}
+          </div>
         </div>
       </Td>
       <Td className="text-slate-600">{row.store}</Td>
@@ -269,20 +413,39 @@ function NextTaskCell({
 }) {
   if (!value) {
     return (
-      <Badge
-        variant="outline"
-        className="gap-1 rounded-md border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-600"
+      <button
+        type="button"
+        onClick={(e) => e.stopPropagation()}
+        className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-0.5 text-[11px] font-bold text-rose-600 ring-1 ring-rose-200 hover:bg-rose-100 transition-colors"
+        title="Set a follow-up task"
       >
-        <AlertCircle className="h-3 w-3" />
-        No Follow-up +
-      </Badge>
+        <BellOff className="h-3 w-3" />
+        No Follow-up
+        <span className="text-rose-400">＋</span>
+      </button>
     );
   }
   if (overdue) {
-    return <span className="font-medium text-amber-600">{value}</span>;
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">
+        <AlertCircle className="h-3 w-3" />
+        {value}
+      </span>
+    );
   }
-  if (value === "Today" || value === "Tomorrow") {
-    return <span className="text-slate-700">{value}</span>;
+  if (value === "Today") {
+    return (
+      <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-200">
+        {value}
+      </span>
+    );
+  }
+  if (value === "Tomorrow") {
+    return (
+      <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-bold text-indigo-700 ring-1 ring-indigo-200">
+        {value}
+      </span>
+    );
   }
   return <span className="text-slate-600">{value}</span>;
 }
