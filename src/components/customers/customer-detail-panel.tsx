@@ -58,7 +58,10 @@ export interface CustomerDetailData {
   campaign_source?: string;
   best_contact_method?: "phone" | "email" | "text" | "video";
   best_contact_value?: string;
-  genius_summary?: string | null; // null if not yet generated
+  /** Persisted one-paragraph customer summary written by the Data agent. */
+  swarm_summary?: string | null;
+  /** @deprecated use swarm_summary — kept for backward compat at the call site. */
+  genius_summary?: string | null;
   wish_list?: string[];
   details?: {
     sales_1?: { name: string; initials: string };
@@ -122,7 +125,7 @@ interface PanelHandlers {
   extraPast: TimelineItem[];
   extraPlanned: TimelineItem[];
   notes: TimelineItem[];
-  addNote: (text: string) => void;
+  addNote: (text: string) => void | Promise<void>;
 }
 
 // ----- Component ------------------------------------------------------------
@@ -138,7 +141,7 @@ export function CustomerDetailPanel({
     `${customer.first_name?.[0] ?? ""}${customer.last_name?.[0] ?? ""}`.toUpperCase();
 
   const [swarmSummary, setSwarmSummary] = useState<string | null>(
-    customer.genius_summary ?? null,
+    customer.swarm_summary ?? customer.genius_summary ?? null,
   );
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [extraPast, setExtraPast] = useState<TimelineItem[]>([]);
@@ -154,30 +157,38 @@ export function CustomerDetailPanel({
     setSummaryLoading(true);
     notify(
       "Swarm Summary",
-      "Spinning up Data + Targeting + Creative agents…",
+      "Spinning up the Data agent with Claude Sonnet…",
     );
 
-    // Try the real endpoint first; fall back to a local heuristic so the
-    // button always produces something useful even when the API isn't wired.
-    let summary: string | null = null;
     try {
       const res = await fetch(`/api/customers/${customer.id}/swarm-summary`, {
         method: "POST",
       });
-      if (res.ok) {
-        const json = (await res.json()) as { summary?: string };
-        if (json?.summary) summary = json.summary;
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(
+          (err as { error?: string }).error ?? `HTTP ${res.status}`,
+        );
       }
-    } catch {
-      // Network/route not configured yet — fall through to local fallback.
-    }
-
-    if (!summary) {
-      await new Promise((r) => setTimeout(r, 900));
+      const json = (await res.json()) as {
+        summary: string;
+        model?: string;
+      };
+      setSwarmSummary(json.summary);
+      notify(
+        "Swarm Summary ready",
+        json.model
+          ? `Synthesised by ${json.model}.`
+          : "Synthesised by the 5-agent swarm.",
+      );
+    } catch (err) {
+      // Surface the underlying reason but keep the panel usable with a
+      // local heuristic fallback so the button is never a dead end.
+      const reason = err instanceof Error ? err.message : "Unknown error";
       const channel = customer.best_contact_method ?? "text";
       const garageCount = customer.garage?.length ?? 0;
       const stage = customer.stage?.toLowerCase() ?? "lead";
-      summary = [
+      const summary = [
         `${customer.first_name} is currently a ${stage}`,
         garageCount
           ? `with ${garageCount} vehicle${garageCount === 1 ? "" : "s"} in their garage`
@@ -185,13 +196,16 @@ export function CustomerDetailPanel({
         `— preferred channel appears to be ${channel}.`,
         customer.open_deal
           ? `Open deal in ${customer.open_deal.status} status${customer.open_deal.interested ? ` (interest: ${customer.open_deal.interested})` : ""}.`
-          : "No active deal — consider a personalized win-back via direct mail if RO activity has gone quiet.",
+          : "Consider a personalized win-back via direct mail if RO activity has gone quiet.",
       ].join(" ");
+      setSwarmSummary(summary);
+      notify(
+        "Swarm Summary (local fallback)",
+        `Live agent unavailable: ${reason}. Showing a heuristic summary.`,
+      );
+    } finally {
+      setSummaryLoading(false);
     }
-
-    setSwarmSummary(summary);
-    setSummaryLoading(false);
-    notify("Swarm Summary ready", "Synthesised by the 5-agent swarm.");
   }
 
   function addPastItem(item: TimelineItem) {
@@ -200,20 +214,47 @@ export function CustomerDetailPanel({
   function addPlannedItem(item: TimelineItem) {
     setExtraPlanned((p) => [item, ...p]);
   }
-  function addNote(text: string) {
+  async function addNote(text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
-    const item: TimelineItem = {
+
+    // Optimistic insert into the local timeline.
+    const optimistic: TimelineItem = {
       id: `note-${Date.now()}`,
       type: "note",
       author: "You",
       timestamp: "Just now",
-      title: "Note added",
+      title: "Note",
       body: trimmed,
     };
-    setNotes((n) => [item, ...n]);
-    addPastItem(item);
-    notify("Note saved", "Added to customer timeline.");
+    setNotes((n) => [optimistic, ...n]);
+    addPastItem(optimistic);
+
+    try {
+      const res = await fetch(`/api/customers/${customer.id}/activity`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "note",
+          title: "Note",
+          body: trimmed,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(
+          (err as { error?: string }).error ?? `HTTP ${res.status}`,
+        );
+      }
+      notify("Note saved", "Persisted to customer timeline.");
+    } catch (err) {
+      notify(
+        "Note saved locally",
+        `Couldn't reach server: ${
+          err instanceof Error ? err.message : "unknown error"
+        }. Your note is still visible here.`,
+      );
+    }
   }
 
   const handlers: PanelHandlers = {
@@ -746,11 +787,11 @@ function Workspace({
     return [];
   }, [allPast, pastFilter]);
 
-  function handleSave() {
+  async function handleSave() {
     const trimmed = draft.trim();
     if (!trimmed) return;
     const isPlanned = composer === "task" || composer === "appt";
-    const item: TimelineItem = {
+    const optimistic: TimelineItem = {
       id: `${composer}-${Date.now()}`,
       type: composer,
       author: "You",
@@ -758,13 +799,41 @@ function Workspace({
       title: composerLabelFor(composer),
       body: trimmed,
     };
-    if (isPlanned) handlers.addPlannedItem(item);
-    else handlers.addPastItem(item);
+    if (isPlanned) handlers.addPlannedItem(optimistic);
+    else handlers.addPastItem(optimistic);
     setDraft("");
-    handlers.notify(
-      `${composerLabelFor(composer)} saved`,
-      isPlanned ? "Added to planned tasks." : "Logged to activity timeline.",
-    );
+
+    try {
+      const res = await fetch(`/api/customers/${customer.id}/activity`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: composer,
+          title: composerLabelFor(composer),
+          body: trimmed,
+          planned: isPlanned,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(
+          (err as { error?: string }).error ?? `HTTP ${res.status}`,
+        );
+      }
+      handlers.notify(
+        `${composerLabelFor(composer)} saved`,
+        isPlanned
+          ? "Added to planned tasks."
+          : "Logged to activity timeline.",
+      );
+    } catch (err) {
+      handlers.notify(
+        `${composerLabelFor(composer)} saved locally`,
+        `Server unreachable: ${
+          err instanceof Error ? err.message : "unknown error"
+        }. Item still visible here.`,
+      );
+    }
   }
 
   async function handleAiDraft() {
@@ -781,11 +850,8 @@ function Workspace({
     return () => handlers.notify(label, description);
   }
 
-  function handleLifecycleAction(label: string, stage: string) {
-    handlers.notify(
-      label,
-      `Lifecycle stage queued → "${stage}". The Optimization Agent will reconcile on next sync.`,
-    );
+  async function handleLifecycleAction(label: string, stage: string) {
+    // Optimistic timeline entry.
     handlers.addPastItem({
       id: `lifecycle-${Date.now()}`,
       type: "system",
@@ -794,6 +860,37 @@ function Workspace({
       title: label,
       body: `Customer marked as ${stage}.`,
     });
+
+    try {
+      const res = await fetch(`/api/customers/${customer.id}/lifecycle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(
+          (err as { error?: string }).error ?? `HTTP ${res.status}`,
+        );
+      }
+      const json = (await res.json()) as {
+        previous_stage?: string;
+        new_stage?: string;
+      };
+      handlers.notify(
+        label,
+        json.previous_stage
+          ? `Lifecycle: ${json.previous_stage} → ${stage}. Persisted.`
+          : `Lifecycle set to ${stage}. Persisted.`,
+      );
+    } catch (err) {
+      handlers.notify(
+        `${label} (local only)`,
+        `Server unreachable: ${
+          err instanceof Error ? err.message : "unknown error"
+        }. Stage will reconcile when DB is reachable.`,
+      );
+    }
   }
 
   // Counts for filter pill labels

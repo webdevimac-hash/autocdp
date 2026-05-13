@@ -58,12 +58,20 @@ export default async function CustomersPage() {
       .single();
     if (!c) return null;
 
-    const { data: visits } = await srv
-      .from("visits")
-      .select("year, make, model, visit_date")
-      .eq("customer_id", id)
-      .order("visit_date", { ascending: false })
-      .limit(10);
+    const [{ data: visits }, { data: activity }] = await Promise.all([
+      srv
+        .from("visits")
+        .select("year, make, model, visit_date")
+        .eq("customer_id", id)
+        .order("visit_date", { ascending: false })
+        .limit(10),
+      srv
+        .from("customer_activity")
+        .select("id, type, title, body, planned, completed_at, created_at, metadata")
+        .eq("customer_id", id)
+        .order("created_at", { ascending: false })
+        .limit(200),
+    ]);
 
     const addr = c.address as any;
     const garage = visits
@@ -86,6 +94,26 @@ export default async function CustomersPage() {
         ).slice(0, 5)
       : [];
 
+    // Split persisted timeline into planned vs past.
+    const planned_tasks = (activity ?? [])
+      .filter((a: any) => a.planned && !a.completed_at)
+      .map((a: any) => ({
+        id: a.id,
+        type: a.type,
+        title: a.title,
+        body: a.body ?? undefined,
+        timestamp: formatRelativeDate(a.created_at),
+      }));
+    const past_activity = (activity ?? [])
+      .filter((a: any) => !a.planned || a.completed_at)
+      .map((a: any) => ({
+        id: a.id,
+        type: a.type,
+        title: a.title,
+        body: a.body ?? undefined,
+        timestamp: formatRelativeDate(a.created_at),
+      }));
+
     return {
       id: c.id,
       first_name: c.first_name ?? "",
@@ -101,10 +129,11 @@ export default async function CustomersPage() {
           }
         : undefined,
       stage: c.lifecycle_stage?.replace("_", " ") ?? undefined,
-      genius_summary: null,
+      // Hydrate the persisted swarm summary so the rail renders it on open.
+      genius_summary: (c as any).swarm_summary ?? null,
       garage,
-      planned_tasks: [],
-      past_activity: [],
+      planned_tasks,
+      past_activity,
     };
   }
 
