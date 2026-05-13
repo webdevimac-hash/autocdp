@@ -3,11 +3,40 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Users, Megaphone, Bot, BarChart3,
-  CreditCard, Settings, Car, LogOut, Mail,
-  Upload, Package, Phone, Target, Plug,
-  Activity, Building2, X, ChevronDown, Shield, Sparkles, Newspaper, FileText, Inbox,
-  ChevronsRight, ListTodo, Send, Calendar, Zap, Star, ClipboardList, HeartPulse, Sparkle,
+  LayoutDashboard,
+  Users,
+  Megaphone,
+  Bot,
+  BarChart3,
+  CreditCard,
+  Settings,
+  Car,
+  LogOut,
+  Mail,
+  Upload,
+  Package,
+  Phone,
+  Target,
+  Plug,
+  Activity,
+  Building2,
+  X,
+  Check,
+  ChevronDown,
+  Shield,
+  Sparkles,
+  Newspaper,
+  FileText,
+  Inbox,
+  ChevronsRight,
+  ListTodo,
+  Send,
+  Calendar,
+  Zap,
+  Star,
+  ClipboardList,
+  HeartPulse,
+  Sparkle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -16,20 +45,47 @@ import { useState, useEffect } from "react";
 import type { Dealership } from "@/types";
 import type { DealershipMembership } from "@/lib/dealership";
 
+// ── Types ──────────────────────────────────────────────────────
+
+export interface SidebarCounts {
+  customers: number;
+  campaigns: number;
+  inventory: number;
+  communications: number;
+  agents: number;
+}
+
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  exact?: boolean;
+  /** Pull this number from SidebarCounts at render time. */
+  countKey?: keyof SidebarCounts;
+  /** Optional tone for the count chip. Defaults to slate. */
+  countTone?: "emerald" | "amber" | "rose" | "slate" | "indigo";
+}
+
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
 // ── Navigation groups ──────────────────────────────────────────
-const NAV_GROUPS = [
+
+const NAV_GROUPS: NavGroup[] = [
   {
     label: "Core",
     items: [
-      { label: "Dashboard",       href: "/dashboard",                  icon: LayoutDashboard, exact: true },
-      { label: "Live Dashboard",  href: "/dashboard/live-dashboard",   icon: Activity },
+      { label: "Dashboard",        href: "/dashboard",                  icon: LayoutDashboard, exact: true },
+      { label: "Live Dashboard",   href: "/dashboard/live-dashboard",   icon: Activity },
       { label: "Health Dashboard", href: "/dashboard/health-dashboard", icon: HeartPulse },
-      { label: "Desk Log",        href: "/dashboard/desk-log",         icon: ClipboardList },
-      { label: "Data Hygiene",    href: "/dashboard/data-hygiene",     icon: Sparkle },
-      { label: "Sales Hub",       href: "/dashboard/pipeline",        icon: ChevronsRight },
-      { label: "Workplan",        href: "/dashboard/workplan",        icon: ListTodo },
-      { label: "Customers",       href: "/dashboard/customers",       icon: Users },
-      { label: "Campaigns",       href: "/dashboard/campaigns",       icon: Megaphone },
+      { label: "Desk Log",         href: "/dashboard/desk-log",         icon: ClipboardList },
+      { label: "Data Hygiene",     href: "/dashboard/data-hygiene",     icon: Sparkle },
+      { label: "Sales Hub",        href: "/dashboard/pipeline",         icon: ChevronsRight },
+      { label: "Workplan",         href: "/dashboard/workplan",         icon: ListTodo },
+      { label: "Customers",        href: "/dashboard/customers",        icon: Users,    countKey: "customers" },
+      { label: "Campaigns",        href: "/dashboard/campaigns",        icon: Megaphone, countKey: "campaigns", countTone: "emerald" },
     ],
   },
   {
@@ -37,7 +93,7 @@ const NAV_GROUPS = [
     items: [
       { label: "Direct Mail",    href: "/dashboard/direct-mail",    icon: Mail },
       { label: "Email Blast",    href: "/dashboard/email-blast",    icon: Send },
-      { label: "Communications", href: "/dashboard/communications", icon: Inbox },
+      { label: "Communications", href: "/dashboard/communications", icon: Inbox,   countKey: "communications", countTone: "indigo" },
       { label: "Newsletter",     href: "/dashboard/newsletter",     icon: Newspaper },
       { label: "Templates",      href: "/dashboard/templates",      icon: FileText },
       { label: "Analytics",      href: "/dashboard/analytics",      icon: BarChart3 },
@@ -48,13 +104,13 @@ const NAV_GROUPS = [
   {
     label: "Platform",
     items: [
-      { label: "AI Agents",    href: "/dashboard/agents",        icon: Bot },
-      { label: "Inventory",    href: "/dashboard/inventory",     icon: Package },
-      { label: "Appointments", href: "/dashboard/appointments",  icon: Calendar },
-      { label: "Mining",       href: "/dashboard/mining",        icon: Zap },
-      { label: "Reputation",   href: "/dashboard/reputation",    icon: Star },
-      { label: "Integrations", href: "/dashboard/integrations",  icon: Plug },
-      { label: "Import",       href: "/dashboard/onboard",       icon: Upload },
+      { label: "AI Agents",    href: "/dashboard/agents",       icon: Bot,    countKey: "agents", countTone: "emerald" },
+      { label: "Inventory",    href: "/dashboard/inventory",    icon: Package, countKey: "inventory" },
+      { label: "Appointments", href: "/dashboard/appointments", icon: Calendar },
+      { label: "Mining",       href: "/dashboard/mining",       icon: Zap },
+      { label: "Reputation",   href: "/dashboard/reputation",   icon: Star },
+      { label: "Integrations", href: "/dashboard/integrations", icon: Plug },
+      { label: "Import",       href: "/dashboard/onboard",      icon: Upload },
     ],
   },
   {
@@ -68,15 +124,27 @@ const NAV_GROUPS = [
   },
 ];
 
+// ── Props ──────────────────────────────────────────────────────
+
 interface SidebarProps {
   dealership: Dealership | null;
   allDealerships?: DealershipMembership[];
   activeDealershipId?: string;
   demoMode?: boolean;
   isSuperAdmin?: boolean;
+  counts?: SidebarCounts;
 }
 
-export function Sidebar({ dealership, allDealerships = [], activeDealershipId, demoMode = false, isSuperAdmin = false }: SidebarProps) {
+// ── Component ──────────────────────────────────────────────────
+
+export function Sidebar({
+  dealership,
+  allDealerships = [],
+  activeDealershipId,
+  demoMode = false,
+  isSuperAdmin = false,
+  counts,
+}: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -91,7 +159,10 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId, d
     return () => window.removeEventListener("open-mobile-nav", handler);
   }, []);
 
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => {
+    setMobileOpen(false);
+    setSwitcherOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (mobileOpen) {
@@ -110,10 +181,10 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId, d
       if (e.changedTouches[0].clientX - startX < -60) setMobileOpen(false);
     };
     document.addEventListener("touchstart", onTouchStart, { passive: true });
-    document.addEventListener("touchend", onTouchEnd, { passive: true });
+    document.addEventListener("touchend",   onTouchEnd,   { passive: true });
     return () => {
       document.removeEventListener("touchstart", onTouchStart);
-      document.removeEventListener("touchend", onTouchEnd);
+      document.removeEventListener("touchend",   onTouchEnd);
     };
   }, [mobileOpen]);
 
@@ -124,7 +195,10 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId, d
   }
 
   function handleSwitch(dealershipId: string) {
-    if (dealershipId === activeDealershipId) { setSwitcherOpen(false); return; }
+    if (dealershipId === activeDealershipId) {
+      setSwitcherOpen(false);
+      return;
+    }
     window.location.href = `/api/switch-dealership?id=${dealershipId}`;
   }
 
@@ -133,9 +207,10 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId, d
     return pathname.startsWith(href);
   }
 
+  // ─── Sidebar markup ────────────────────────────────────────────
+
   const sidebarContent = (
     <aside className="flex h-full w-full flex-col" style={{ background: "#0B1526" }}>
-
       {/* Mobile close button */}
       <div className="md:hidden absolute top-3 right-3 z-10">
         <button
@@ -147,80 +222,39 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId, d
         </button>
       </div>
 
-      {/* Logo + dealership */}
-      <div className="shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-        <div
-          className={cn(
-            "flex items-center gap-3 px-4 py-[14px]",
-            hasMultiple && "cursor-pointer hover:bg-white/4 transition-colors"
-          )}
-          onClick={() => hasMultiple && setSwitcherOpen((o) => !o)}
-        >
-          <div
-            className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0"
-            style={{
-              background: "linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(139,92,246,0.20) 100%)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
-            }}
-          >
-            <Car className="w-4 h-4 text-white/85" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-bold text-sm leading-tight tracking-tight" style={{ color: "#FFFFFF" }}>AutoCDP</p>
-            <p className="text-[11px] truncate mt-0.5" style={{ color: "rgba(255,255,255,0.36)" }}>
-              {dealership?.name ?? "Loading…"}
-            </p>
-          </div>
-          {hasMultiple && (
-            <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 transition-transform", switcherOpen && "rotate-180")}
-              style={{ color: "rgba(255,255,255,0.28)" }} />
-          )}
-        </div>
-
-        {hasMultiple && switcherOpen && (
-          <div className="mx-3 mb-3 rounded-lg overflow-hidden border border-white/10">
-            {allDealerships.map((d) => (
-              <button
-                key={d.dealership_id}
-                onClick={() => handleSwitch(d.dealership_id)}
-                className={cn(
-                  "w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-xs transition-colors",
-                  d.dealership_id === activeDealershipId
-                    ? "bg-white/14 text-white font-semibold"
-                    : "text-white/50 hover:bg-white/8 hover:text-white/80"
-                )}
-              >
-                <Building2 className="w-3.5 h-3.5 shrink-0 text-white/30" />
-                <span className="truncate flex-1">{d.dealership_name}</span>
-                {d.dealership_id === activeDealershipId && (
-                  <span className="text-[9px] font-bold bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full">
-                    Active
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Rooftop switcher — premium DriveCentric style */}
+      <RooftopSwitcher
+        dealership={dealership}
+        allDealerships={allDealerships}
+        activeDealershipId={activeDealershipId}
+        hasMultiple={hasMultiple}
+        open={switcherOpen}
+        onToggle={() => setSwitcherOpen((o) => !o)}
+        onSwitch={handleSwitch}
+      />
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-2 px-2.5">
+      <nav className="flex-1 overflow-y-auto py-1 px-2">
         {NAV_GROUPS.map((group, gi) => (
-          <div key={group.label}>
-            <span className="nav-group-label" style={{ marginTop: gi === 0 ? 10 : undefined }}>
-              {group.label}
-            </span>
+          <div key={group.label} className="mb-1">
+            <div className="nav-group-label">
+              <span>{group.label}</span>
+            </div>
             {group.items.map((item) => {
-              const active = isActive(item.href, (item as { exact?: boolean }).exact);
+              const active = isActive(item.href, item.exact);
+              const Icon = item.icon;
+              const count = item.countKey ? counts?.[item.countKey] : undefined;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={cn("nav-link", active && "active")}
+                  className={cn("nav-link group", active && "active")}
                 >
-                  <item.icon className="nav-icon w-[15px] h-[15px]" />
-                  <span>{item.label}</span>
+                  <Icon className="nav-icon w-[15px] h-[15px]" />
+                  <span className="flex-1 truncate">{item.label}</span>
+                  {count !== undefined && count > 0 && (
+                    <CountChip n={count} tone={item.countTone ?? "slate"} active={active} />
+                  )}
                 </Link>
               );
             })}
@@ -230,8 +264,11 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId, d
 
       {/* Super-admin section */}
       {isSuperAdmin && (
-        <div className="shrink-0 border-t border-white/8 px-2.5 py-2">
-          <span className="nav-group-label" style={{ marginTop: 4 }}>AutoCDP Team</span>
+        <div
+          className="shrink-0 px-2 pt-1.5 pb-1"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <div className="nav-group-label">AutoCDP Team</div>
           <Link
             href="/dashboard/admin"
             className={cn("nav-link", isActive("/dashboard/admin") && "active")}
@@ -243,28 +280,30 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId, d
       )}
 
       {/* User footer */}
-      <div className="shrink-0 border-t border-white/8 p-2.5 pb-safe-sm space-y-0.5">
+      <div
+        className="shrink-0 p-2 pb-safe-sm space-y-0.5"
+        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+      >
         {/* Demo Mode toggle */}
         <form action="/api/demo/toggle" method="POST">
           <button
             type="submit"
             className={cn(
               "nav-link w-full",
-              demoMode && "bg-violet-500/20 text-violet-300"
+              demoMode && "bg-violet-500/20 text-violet-200",
             )}
           >
             <Sparkles className="nav-icon w-[15px] h-[15px]" />
-            <span>Demo Mode</span>
+            <span className="flex-1 text-left">Demo Mode</span>
             {demoMode && (
-              <span className="ml-auto text-[9px] font-bold bg-violet-500/30 text-violet-300 px-1.5 py-0.5 rounded-full">ON</span>
+              <span className="text-[9px] font-bold uppercase tracking-wider bg-violet-500/30 text-violet-200 px-1.5 py-0.5 rounded-full">
+                On
+              </span>
             )}
           </button>
         </form>
 
-        <button
-          onClick={handleSignOut}
-          className="nav-link w-full"
-        >
+        <button onClick={handleSignOut} className="nav-link w-full">
           <LogOut className="nav-icon w-[15px] h-[15px]" />
           <span>Sign out</span>
         </button>
@@ -292,7 +331,7 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId, d
       <div
         className={cn(
           "fixed left-0 top-0 h-full z-50 md:hidden transition-transform duration-300",
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
         )}
         style={{
           width: "min(18rem, 85vw)",
@@ -304,5 +343,166 @@ export function Sidebar({ dealership, allDealerships = [], activeDealershipId, d
         <div className="relative h-full">{sidebarContent}</div>
       </div>
     </>
+  );
+}
+
+// ─── Rooftop switcher ─────────────────────────────────────────────────────
+
+function RooftopSwitcher({
+  dealership,
+  allDealerships,
+  activeDealershipId,
+  hasMultiple,
+  open,
+  onToggle,
+  onSwitch,
+}: {
+  dealership: Dealership | null;
+  allDealerships: DealershipMembership[];
+  activeDealershipId?: string;
+  hasMultiple: boolean;
+  open: boolean;
+  onToggle: () => void;
+  onSwitch: (id: string) => void;
+}) {
+  return (
+    <div
+      className="shrink-0 px-3 pt-3 pb-2"
+      style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+    >
+      <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/30 px-1 mb-1.5">
+        Rooftop
+      </div>
+      <button
+        type="button"
+        onClick={hasMultiple ? onToggle : undefined}
+        disabled={!hasMultiple}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors",
+          hasMultiple
+            ? "hover:bg-white/[0.06] cursor-pointer"
+            : "cursor-default",
+        )}
+        style={{
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(255,255,255,0.07)",
+        }}
+      >
+        <div
+          className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(16,185,129,0.35) 0%, rgba(8,145,178,0.18) 100%)",
+            border: "1px solid rgba(16,185,129,0.45)",
+            boxShadow:
+              "0 0 0 1px rgba(255,255,255,0.04) inset, 0 4px 12px -2px rgba(16,185,129,0.35)",
+          }}
+        >
+          <Car className="h-4 w-4 text-white" />
+          {/* Permanent emerald active dot */}
+          <span
+            className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full"
+            style={{
+              background: "#10B981",
+              boxShadow:
+                "0 0 0 2px #0B1526, 0 0 8px rgba(16,185,129,0.7)",
+            }}
+          />
+        </div>
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="truncate text-[13px] font-bold text-white tracking-tight">
+            AutoCDP
+          </p>
+          <p className="truncate text-[11px] text-white/45 mt-0.5">
+            {dealership?.name ?? "Loading…"}
+          </p>
+        </div>
+        {hasMultiple && (
+          <ChevronDown
+            className={cn(
+              "h-3.5 w-3.5 shrink-0 transition-transform text-white/45",
+              open && "rotate-180",
+            )}
+          />
+        )}
+      </button>
+
+      {hasMultiple && open && (
+        <div
+          className="mt-2 overflow-hidden rounded-xl"
+          style={{
+            background: "rgba(0,0,0,0.30)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <div className="max-h-72 overflow-y-auto py-1">
+            {allDealerships.map((d) => {
+              const isActive = d.dealership_id === activeDealershipId;
+              return (
+                <button
+                  key={d.dealership_id}
+                  onClick={() => onSwitch(d.dealership_id)}
+                  className={cn(
+                    "flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors",
+                    isActive
+                      ? "bg-emerald-500/12 text-white"
+                      : "text-white/55 hover:bg-white/[0.06] hover:text-white/85",
+                  )}
+                >
+                  <Building2
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0",
+                      isActive ? "text-emerald-300" : "text-white/30",
+                    )}
+                  />
+                  <span className="flex-1 truncate font-medium">
+                    {d.dealership_name}
+                  </span>
+                  {isActive && (
+                    <span className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">
+                      <Check className="h-3 w-3" />
+                      Active
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Count chip ───────────────────────────────────────────────────────────
+
+const TONE_BG: Record<NonNullable<NavItem["countTone"]>, string> = {
+  emerald: "bg-emerald-500/20 text-emerald-300",
+  amber:   "bg-amber-500/20 text-amber-300",
+  rose:    "bg-rose-500/20 text-rose-300",
+  slate:   "bg-white/8 text-white/55",
+  indigo:  "bg-indigo-500/20 text-indigo-300",
+};
+
+function CountChip({
+  n,
+  tone,
+  active,
+}: {
+  n: number;
+  tone: NonNullable<NavItem["countTone"]>;
+  active: boolean;
+}) {
+  const formatted =
+    n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : n.toLocaleString();
+  return (
+    <span
+      className={cn(
+        "ml-2 inline-flex items-center justify-center rounded-md px-1.5 py-px text-[10px] font-bold tabular-nums leading-none min-w-[20px]",
+        active ? "bg-white/14 text-white" : TONE_BG[tone],
+      )}
+    >
+      {formatted}
+    </span>
   );
 }

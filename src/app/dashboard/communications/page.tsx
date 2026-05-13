@@ -3,6 +3,7 @@ import { getActiveDealershipId } from "@/lib/dealership";
 import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { CommunicationsClient } from "@/components/communications/communications-client";
+import { CommunicationsShell, type CommunicationsCounts } from "@/components/communications/communications-shell";
 
 export const metadata = { title: "Communications" };
 
@@ -71,20 +72,47 @@ export default async function CommunicationsPage() {
   const total     = count ?? 0;
   const hasMore   = total > LIMIT;
 
+  // ─── Sidebar counts derived from the same stats query ────────────────
+  // Unreplied = sent/delivered without a customer-side reply (use bounced
+  // as a proxy until a real reply join exists). Negative/Ignored/Fumbled
+  // are placeholders until tags ship.
+  const unreplied = all.filter((c) => c.status === "sent" || c.status === "delivered").length;
+  const counts: CommunicationsCounts = {
+    all: all.length,
+    unreplied,
+    chat: smsAll.length,
+    negative: 0,
+    ignored: 0,
+    fumbled: failed.length,
+    by_user: [],
+  };
+
+  // Resolve dealership name for the header chip
+  const { data: ud } = await supabase
+    .from("user_dealerships")
+    .select("dealerships(name)")
+    .eq("user_id", user.id)
+    .single();
+  const dealershipName = ((ud as any)?.dealerships?.name as string | undefined) ?? "Active rooftop";
+
   return (
     <>
       <Header
-        title="Communications"
-        subtitle={`Full history across mail, SMS, and email · ${total.toLocaleString()} total`}
+        title="Conversations"
+        subtitle={`${total.toLocaleString()} total · ${unreplied.toLocaleString()} unreplied`}
         userEmail={user.email}
       />
-      <main className="flex-1 p-4 sm:p-6 max-w-[1400px]">
-        <CommunicationsClient
-          initialComms={(commsRaw ?? []) as Parameters<typeof CommunicationsClient>[0]["initialComms"]}
-          initialStats={initialStats}
-          initialTotal={total}
-          initialHasMore={hasMore}
-        />
+      <main className="flex-1 max-w-[1500px]">
+        <CommunicationsShell counts={counts} dealershipName={dealershipName}>
+          <div className="p-4 sm:p-6">
+            <CommunicationsClient
+              initialComms={(commsRaw ?? []) as Parameters<typeof CommunicationsClient>[0]["initialComms"]}
+              initialStats={initialStats}
+              initialTotal={total}
+              initialHasMore={hasMore}
+            />
+          </div>
+        </CommunicationsShell>
       </main>
     </>
   );
