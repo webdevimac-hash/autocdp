@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { ReactNode, CSSProperties } from "react";
 import { buildPreviewQRImageUrl } from "@/lib/qrcode-gen";
 import type { MailTemplateType, DesignStyle, LayoutSpec } from "@/types";
 
@@ -118,19 +119,23 @@ function hseed(gci: number, code: number, li: number, pi: number, extra = 0): nu
   return (gci * 31 + code * 17 + li * 7 + pi * 3 + extra * 13) | 0;
 }
 
-// Multi-layer ink bleed — simulates ink seeping into paper fibers
+// Multi-layer ink bleed — nonlinear pressure curve
+// Low pressure → wide/soft bleed (lifted stroke); high pressure → dense/sharp layering
 function inkShadow(pressure: number): string {
-  const a1 = (pressure * 0.20).toFixed(3);
-  const a2 = (pressure * 0.11).toFixed(3);
-  const a3 = (pressure * 0.07).toFixed(3);
-  const b1 = (0.45 * pressure).toFixed(2);
-  const b2 = (0.30 * pressure).toFixed(2);
-  return (
-    `0.35px 0.25px ${b1}px rgba(26,31,54,${a1}),` +
-    `-0.18px 0.12px ${b2}px rgba(26,31,54,${a2}),` +
-    `0.12px -0.18px ${b2}px rgba(26,31,54,${a3}),` +
-    `0px 0.4px ${b1}px rgba(26,31,54,${a3})`
-  );
+  const bleedRadius = (0.55 - 0.28 * pressure).toFixed(2);  // 0.27 (firm) → 0.55 (feather)
+  const sharpRadius = (0.18 + 0.22 * pressure).toFixed(2);  // 0.18 (light) → 0.40 (firm)
+  const a1 = (pressure * pressure * 0.26).toFixed(3);        // dense core, quadratic
+  const a2 = (pressure * 0.14 + (1 - pressure) * 0.09).toFixed(3);
+  const a3 = ((1 - pressure) * 0.12 + pressure * 0.06).toFixed(3); // stronger halo when light
+  const a4 = (pressure * 0.09).toFixed(3);
+  const a5 = ((1 - pressure) * 0.08).toFixed(3);             // wide ambient halo at low pressure
+  return [
+    ` 0.30px  0.22px ${sharpRadius}px rgba(18,22,52,${a1})`,
+    `-0.16px  0.10px ${bleedRadius}px rgba(18,22,52,${a2})`,
+    ` 0.10px -0.16px ${bleedRadius}px rgba(18,22,52,${a3})`,
+    ` 0px     0.38px ${sharpRadius}px rgba(18,22,52,${a4})`,
+    ` 0px     0px    ${(parseFloat(bleedRadius) * 1.6).toFixed(2)}px rgba(18,22,52,${a5})`,
+  ].join(",");
 }
 
 interface LineInfo { text: string; charOffset: number; lineIdx: number; paraIdx: number; }
@@ -265,7 +270,7 @@ function HandwrittenContent({
       fontSize: `${fontSize}px`,
       lineHeight,
       color: "#1a1f36",
-      fontFamily: "'Caveat', cursive",
+      fontFamily: "'Patrick Hand', 'Caveat', cursive",
     }}>
       {paras.map((para, pi) => (
         <div key={pi} style={{ marginBottom: pi < paras.length - 1 ? `${fontSize * 0.7}px` : 0 }}>
@@ -540,9 +545,81 @@ function ModeToggle({ mode, onChange }: { mode: PreviewMode; onChange: (m: Previ
             transition: "all 0.15s ease",
           }}
         >
-          {m === "design" ? "✎ Handwriting" : "✦ Final Preview"}
+          {m === "design" ? "✎ Preview" : "✦ Print-Ready"}
         </button>
       ))}
+    </div>
+  );
+}
+
+// ── Print-Ready Frame ─────────────────────────────────────────
+// Wraps the print-ready card in printer crop marks, a bleed-zone
+// dashed indicator, and a PostGrid spec badge.
+
+function PrintReadyFrame({
+  children, width = 520, height = 320,
+}: {
+  children: ReactNode; width?: number; height?: number;
+}) {
+  const markLen = 10;
+  const markGap = 4;
+  const pad = markLen + markGap + 6;
+  return (
+    <div style={{ position: "relative", display: "inline-block", padding: `${pad}px`, width: "100%" }}>
+      {/* Bleed-zone indicator */}
+      <div style={{
+        position: "absolute",
+        top: `${markLen + markGap}px`,
+        left: `${markLen + markGap}px`,
+        right: `${markLen + markGap}px`,
+        bottom: `${markLen + markGap}px`,
+        border: "0.75px dashed rgba(139,114,101,0.38)",
+        borderRadius: "1px",
+        pointerEvents: "none",
+      }} />
+      {/* Crop marks — 8 lines, 2 per corner */}
+      <svg
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "visible" }}
+        preserveAspectRatio="none"
+        fill="none"
+      >
+        {/* Top-left */}
+        <line x1={pad - markGap - 1} y1={pad} x2={pad - markGap - markLen} y2={pad} stroke="#9B8279" strokeWidth="0.8" />
+        <line x1={pad} y1={pad - markGap - 1} x2={pad} y2={pad - markGap - markLen} stroke="#9B8279" strokeWidth="0.8" />
+        {/* Top-right */}
+        <line x1="calc(100% - 0px)" y1={pad} x2="calc(100% - 0px)" y2={pad} stroke="none" />
+      </svg>
+      {/* Corner crop marks via absolute divs (works at any container width) */}
+      {[
+        { top: pad, left: 0, w: markLen - 2, h: "0.8px" },
+        { top: 0, left: pad, w: "0.8px", h: markLen - 2 },
+        { top: pad, right: 0, w: markLen - 2, h: "0.8px" },
+        { top: 0, right: pad, w: "0.8px", h: markLen - 2 },
+        { bottom: pad, left: 0, w: markLen - 2, h: "0.8px" },
+        { bottom: 0, left: pad, w: "0.8px", h: markLen - 2 },
+        { bottom: pad, right: 0, w: markLen - 2, h: "0.8px" },
+        { bottom: 0, right: pad, w: "0.8px", h: markLen - 2 },
+      ].map((s, i) => (
+        <div key={i} style={{ position: "absolute", background: "#9B8279", ...s } as CSSProperties} />
+      ))}
+      {/* Spec badge */}
+      <div style={{
+        position: "absolute",
+        bottom: 0,
+        left: "50%",
+        transform: "translateX(-50%)",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: "7px",
+        fontWeight: 700,
+        letterSpacing: "0.09em",
+        color: "#9B8279",
+        textTransform: "uppercase",
+        whiteSpace: "nowrap",
+        pointerEvents: "none",
+      }}>
+        {width >= 480 ? '6″ × 9″' : '8.5″ × 11″'}&nbsp;&middot;&nbsp;300 DPI&nbsp;&middot;&nbsp;PostGrid&nbsp;&middot;&nbsp;1/8″ bleed
+      </div>
+      {children}
     </div>
   );
 }
@@ -708,16 +785,16 @@ function RealPostcardBack({
         <div style={{ flex: 1, padding: "10px 14px 8px 18px" }}>
           <div style={{ fontSize: "6px", fontFamily: "'Inter', sans-serif", fontWeight: 800, color: "#9CA3AF", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "6px" }}>DELIVER TO</div>
           <div style={{ border: "1px solid rgba(0,0,0,0.09)", borderRadius: "3px", padding: "7px 10px 8px", background: "rgba(255,255,255,0.55)" }}>
-            <div style={{ fontFamily: "'Caveat', cursive", fontSize: "18px", color: "#1F2937", fontWeight: 700, lineHeight: 1.2 }}>{customerName ?? "Customer Name"}</div>
+            <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: "18px", color: "#1F2937", fontWeight: 700, lineHeight: 1.2 }}>{customerName ?? "Customer Name"}</div>
             {cAddrLines.line1 ? (
               <>
-                <div style={{ fontFamily: "'Caveat', cursive", fontSize: "13px", color: "#4B5563", marginTop: "1px" }}>{cAddrLines.line1}</div>
-                <div style={{ fontFamily: "'Caveat', cursive", fontSize: "12px", color: "#6B7280" }}>{cAddrLines.line2}</div>
+                <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: "13px", color: "#4B5563", marginTop: "1px" }}>{cAddrLines.line1}</div>
+                <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: "12px", color: "#6B7280" }}>{cAddrLines.line2}</div>
               </>
             ) : (
               <>
-                <div style={{ fontFamily: "'Caveat', cursive", fontSize: "13px", color: "#C4B69A", marginTop: "1px" }}>123 Delivery Address</div>
-                <div style={{ fontFamily: "'Caveat', cursive", fontSize: "12px", color: "#C4B69A" }}>City, ST 00000</div>
+                <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: "13px", color: "#C4B69A", marginTop: "1px" }}>123 Delivery Address</div>
+                <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: "12px", color: "#C4B69A" }}>City, ST 00000</div>
               </>
             )}
           </div>
@@ -802,9 +879,9 @@ function RealLetterPreview({
       </div>
 
       <div style={{ padding: "10px 22px 18px" }}>
-        <div style={{ fontFamily: "'Caveat', cursive", fontSize: is8511 ? 17 : 15, color: "#374151", lineHeight: 1.2 }}>Sincerely,</div>
+        <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: is8511 ? 17 : 15, color: "#374151", lineHeight: 1.2 }}>Sincerely,</div>
         <div style={{
-          fontFamily: "'Caveat', cursive", fontSize: is8511 ? 22 : 19, color: "#1F2937",
+          fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: is8511 ? 22 : 19, color: "#1F2937",
           fontWeight: 700, marginTop: "8px", letterSpacing: "0.01em",
           borderBottom: "1px solid rgba(0,0,0,0.08)", paddingBottom: "4px",
           display: "inline-block", minWidth: "100px",
@@ -837,7 +914,7 @@ function PostcardBack({
     }}>
       <div style={{ height: "5px", background: accent.header }} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "12px 16px 10px", borderBottom: "1px solid #f1f5f9" }}>
-        <div style={{ fontFamily: "'Caveat', cursive", lineHeight: 1.55 }}>
+        <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", lineHeight: 1.55 }}>
           {logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt={dealershipName}
@@ -859,7 +936,7 @@ function PostcardBack({
       <div style={{ height: "1px", margin: "0 16px", background: "repeating-linear-gradient(90deg, #CBD5E1 0, #CBD5E1 6px, transparent 6px, transparent 12px)" }} />
       <div style={{ padding: "12px 16px 16px" }}>
         <div style={{ fontSize: "7.5px", color: "#94a3b8", fontWeight: 700, letterSpacing: "0.10em", marginBottom: "8px", textTransform: "uppercase" }}>DELIVER TO:</div>
-        <div style={{ fontFamily: "'Caveat', cursive", lineHeight: 1.65 }}>
+        <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", lineHeight: 1.65 }}>
           <div style={{ fontSize: "16px", color: "#1e293b", fontWeight: 700 }}>{customerName ?? "Customer Name"}</div>
           <div style={{ fontSize: "13px", color: "#475569" }}>123 Street Address</div>
           <div style={{ fontSize: "12px", color: "#64748B" }}>City, ST 00000</div>
@@ -951,32 +1028,31 @@ function Postcard6x9Preview({
           )}
         </div>
       ) : (
-        <div style={{ background: "linear-gradient(145deg, #EAE5DE 0%, #E0D9D0 100%)", padding: "24px 20px 28px", borderRadius: 14 }}>
-          <div className="text-center mb-3">
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", color: "#8B7265", textTransform: "uppercase", fontFamily: "'Inter', sans-serif" }}>
-              ✉ Realistic preview · Matches PostGrid output
-            </span>
-          </div>
+        <div style={{ background: "linear-gradient(145deg, #EAE5DE 0%, #E0D9D0 100%)", padding: "14px 8px 18px", borderRadius: 14 }}>
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <div style={{ width: "100%", maxWidth: 520, transform: "rotate(-0.4deg)", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.22))" }}>
-              {!showBack ? (
-                <RealPostcardFront
-                  content={content} dealershipName={dealershipName} offer={offer}
-                  qrPreviewUrl={qrPreviewUrl} logoUrl={logoUrl} accent={accent}
-                  dealershipAddress={dealershipAddress} dealershipPhone={dealershipPhone}
-                  vehiclePhotoUrl={vehiclePhotoUrl}
-                />
-              ) : (
-                <RealPostcardBack
-                  dealershipName={dealershipName} customerName={customerName} logoUrl={logoUrl}
-                  accent={accent} dealershipAddress={dealershipAddress}
-                  dealershipPhone={dealershipPhone} customerAddress={customerAddress}
-                />
-              )}
+            <div style={{ width: "100%", maxWidth: 560 }}>
+              <PrintReadyFrame width={520} height={320}>
+                <div style={{ transform: "rotate(-0.4deg)", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.22))" }}>
+                  {!showBack ? (
+                    <RealPostcardFront
+                      content={content} dealershipName={dealershipName} offer={offer}
+                      qrPreviewUrl={qrPreviewUrl} logoUrl={logoUrl} accent={accent}
+                      dealershipAddress={dealershipAddress} dealershipPhone={dealershipPhone}
+                      vehiclePhotoUrl={vehiclePhotoUrl}
+                    />
+                  ) : (
+                    <RealPostcardBack
+                      dealershipName={dealershipName} customerName={customerName} logoUrl={logoUrl}
+                      accent={accent} dealershipAddress={dealershipAddress}
+                      dealershipPhone={dealershipPhone} customerAddress={customerAddress}
+                    />
+                  )}
+                </div>
+              </PrintReadyFrame>
             </div>
           </div>
           {customerName && (
-            <p className="text-center mt-3" style={{ fontSize: 9, color: "#9B8E83", fontFamily: "'Inter', sans-serif" }}>
+            <p className="text-center mt-2" style={{ fontSize: 9, color: "#9B8E83", fontFamily: "'Inter', sans-serif" }}>
               Will be mailed to: <strong style={{ color: "#6B5E54" }}>{customerName}</strong>
               {customerAddress?.street ? ` · ${customerAddress.street}, ${[customerAddress.city, customerAddress.state].filter(Boolean).join(", ")}` : ""}
             </p>
@@ -1064,20 +1140,19 @@ function LetterPreview({
           <div style={{ height: "4px", background: accent.header, marginTop: "auto", flexShrink: 0 }} />
         </div>
       ) : (
-        <div style={{ background: "linear-gradient(145deg, #EAE5DE 0%, #E0D9D0 100%)", padding: "24px 20px 28px", borderRadius: 14 }}>
-          <div className="text-center mb-3">
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", color: "#8B7265", textTransform: "uppercase", fontFamily: "'Inter', sans-serif" }}>
-              ✉ Realistic preview · Matches PostGrid output
-            </span>
-          </div>
+        <div style={{ background: "linear-gradient(145deg, #EAE5DE 0%, #E0D9D0 100%)", padding: "14px 8px 18px", borderRadius: 14 }}>
           <div className="flex justify-center">
-            <div style={{ transform: "rotate(-0.3deg)", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.18))" }}>
-              <RealLetterPreview
-                content={content} dealershipName={dealershipName} templateType={templateType}
-                logoUrl={logoUrl} accent={accent} customerName={customerName}
-                customerAddress={customerAddress} dealershipAddress={dealershipAddress}
-                dealershipPhone={dealershipPhone}
-              />
+            <div style={{ width: "100%", maxWidth: 520 }}>
+              <PrintReadyFrame width={templateType === "letter_8.5x11" ? 440 : 340} height={620}>
+                <div style={{ transform: "rotate(-0.3deg)", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.18))" }}>
+                  <RealLetterPreview
+                    content={content} dealershipName={dealershipName} templateType={templateType}
+                    logoUrl={logoUrl} accent={accent} customerName={customerName}
+                    customerAddress={customerAddress} dealershipAddress={dealershipAddress}
+                    dealershipPhone={dealershipPhone}
+                  />
+                </div>
+              </PrintReadyFrame>
             </div>
           </div>
         </div>

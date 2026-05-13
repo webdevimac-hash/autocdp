@@ -121,19 +121,23 @@ function hseed(charOff: number, code: number, li: number, pi: number): number {
   return (charOff * 31 + code * 17 + li * 7 + pi * 3) | 0;
 }
 
-// 4-layer text-shadow simulating ink seeping into paper fibers
+// 5-layer text-shadow — nonlinear pressure curve
+// Low pressure → wide/soft bleed (lifted stroke); high pressure → dense/sharp layering
 function inkShadow(pressure: number): string {
-  const a1 = (pressure * 0.20).toFixed(3);
-  const a2 = (pressure * 0.11).toFixed(3);
-  const a3 = (pressure * 0.07).toFixed(3);
-  const b1 = (0.45 * pressure).toFixed(2);
-  const b2 = (0.30 * pressure).toFixed(2);
-  return (
-    `0.35px 0.25px ${b1}px rgba(26,31,54,${a1}),` +
-    `-0.18px 0.12px ${b2}px rgba(26,31,54,${a2}),` +
-    `0.12px -0.18px ${b2}px rgba(26,31,54,${a3}),` +
-    `0px 0.4px ${b1}px rgba(26,31,54,${a3})`
-  );
+  const bleedRadius = (0.55 - 0.28 * pressure).toFixed(2);
+  const sharpRadius = (0.18 + 0.22 * pressure).toFixed(2);
+  const a1 = (pressure * pressure * 0.26).toFixed(3);
+  const a2 = (pressure * 0.14 + (1 - pressure) * 0.09).toFixed(3);
+  const a3 = ((1 - pressure) * 0.12 + pressure * 0.06).toFixed(3);
+  const a4 = (pressure * 0.09).toFixed(3);
+  const a5 = ((1 - pressure) * 0.08).toFixed(3);
+  return [
+    ` 0.30px  0.22px ${sharpRadius}px rgba(18,22,52,${a1})`,
+    `-0.16px  0.10px ${bleedRadius}px rgba(18,22,52,${a2})`,
+    ` 0.10px -0.16px ${bleedRadius}px rgba(18,22,52,${a3})`,
+    ` 0px     0.38px ${sharpRadius}px rgba(18,22,52,${a4})`,
+    ` 0px     0px    ${(parseFloat(bleedRadius) * 1.6).toFixed(2)}px rgba(18,22,52,${a5})`,
+  ].join(",");
 }
 
 interface LineInfo { text: string; charOffset: number; lineIdx: number; paraIdx: number; }
@@ -495,7 +499,7 @@ export function HandwritingPreview() {
                       </svg>
                     </div>
                     <div>
-                      <div style={{ fontFamily: "'Caveat', cursive", fontSize: "14px", color: "#64748B", fontWeight: 700 }}>
+                      <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: "14px", color: "#64748B", fontWeight: 700 }}>
                         Sunrise Ford
                       </div>
                       <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", color: meta.swatch, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>
@@ -503,7 +507,7 @@ export function HandwritingPreview() {
                       </div>
                     </div>
                   </div>
-                  <div style={{ fontFamily: "'Caveat', cursive", fontSize: "12px", color: "#94a3b8" }}>123 Auto Row, Phoenix AZ 85001</div>
+                  <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: "12px", color: "#94a3b8" }}>123 Auto Row, Phoenix AZ 85001</div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <Postmark />
@@ -513,7 +517,7 @@ export function HandwritingPreview() {
 
               {/* Recipient address */}
               <div className="px-5 sm:px-6 pt-4 pb-3">
-                <div style={{ fontFamily: "'Caveat', cursive", lineHeight: 1.65 }}>
+                <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", lineHeight: 1.65 }}>
                   <div style={{ fontSize: "18px", color: "#1e293b", fontWeight: 700 }}>{sample.recipient}</div>
                   <div style={{ fontSize: "15px", color: "#475569" }}>{sample.address}</div>
                   <div style={{ fontSize: "14px", color: "#64748B" }}>{sample.cityStateZip}</div>
@@ -527,7 +531,7 @@ export function HandwritingPreview() {
               <div
                 className="px-5 sm:px-6 pt-4 pb-5"
                 style={{
-                  fontFamily: "'Caveat', cursive",
+                  fontFamily: "'Patrick Hand', 'Caveat', cursive",
                   fontSize: "clamp(16px, 2.8vw, 18px)",
                   lineHeight: "31px",
                   color: "#1e293b",
@@ -580,9 +584,9 @@ export function HandwritingPreview() {
               {/* Top: return address + postage area */}
               <div className="flex items-start justify-between px-5 sm:px-6 pt-5 pb-4" style={{ borderBottom: "1px solid rgba(180,155,110,0.22)" }}>
                 <div>
-                  <div style={{ fontFamily: "'Caveat', cursive", fontSize: "13px", color: "#64748B", fontWeight: 700 }}>Sunrise Ford</div>
-                  <div style={{ fontFamily: "'Caveat', cursive", fontSize: "12px", color: "#94a3b8" }}>123 Auto Row</div>
-                  <div style={{ fontFamily: "'Caveat', cursive", fontSize: "12px", color: "#94a3b8" }}>Phoenix, AZ 85001</div>
+                  <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: "13px", color: "#64748B", fontWeight: 700 }}>Sunrise Ford</div>
+                  <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: "12px", color: "#94a3b8" }}>123 Auto Row</div>
+                  <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: "12px", color: "#94a3b8" }}>Phoenix, AZ 85001</div>
                 </div>
                 <div style={{
                   width: "90px", height: "60px",
@@ -614,7 +618,7 @@ export function HandwritingPreview() {
                 <div style={{ fontSize: "7.5px", color: "#94a3b8", fontWeight: 700, letterSpacing: "0.10em", marginBottom: "10px", fontFamily: "Inter, sans-serif", textTransform: "uppercase" }}>
                   DELIVER TO:
                 </div>
-                <div style={{ fontFamily: "'Caveat', cursive", lineHeight: 1.65 }}>
+                <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", lineHeight: 1.65 }}>
                   <div style={{ fontSize: "20px", color: "#1e293b", fontWeight: 700 }}>{sample.recipient}</div>
                   <div style={{ fontSize: "16px", color: "#475569" }}>{sample.address}</div>
                   <div style={{ fontSize: "15px", color: "#64748B" }}>{sample.cityStateZip}</div>
