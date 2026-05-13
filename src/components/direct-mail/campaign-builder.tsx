@@ -304,6 +304,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
   // ── Send Test Mail panel ──────────────────────────────────
   const [testPanelOpen, setTestPanelOpen] = useState(false);
   const [testCustomerId, setTestCustomerId] = useState<string>("");
+  const [testOverrideAddress, setTestOverrideAddress] = useState<string>("");
   const [testTemplateType, setTestTemplateType] = useState<MailTemplateType>("postcard_6x9");
   const [testGoal, setTestGoal] = useState("Win back this customer with a personalized service reminder and special offer.");
   const [testLoading, setTestLoading] = useState(false);
@@ -622,29 +623,38 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
     <div className="space-y-5">
 
       {/* ── Send Test Mail panel ───────────────────────────── */}
-      <div className={cn(
-        "rounded-[var(--radius)] bg-white transition-all duration-200",
-        testPanelOpen
-          ? "border border-indigo-200 shadow-card"
-          : "border border-dashed border-slate-200 hover:border-indigo-200 shadow-card"
-      )}>
+      <div
+        className={cn(
+          "rounded-[var(--radius)] transition-all duration-200",
+          testPanelOpen
+            ? "shadow-[0_0_0_3px_rgba(16,185,129,0.14)]"
+            : "hover:shadow-[0_0_0_3px_rgba(16,185,129,0.08)] shadow-card"
+        )}
+        style={{
+          border: testPanelOpen ? "2px solid #10B981" : "2px solid #A7F3D0",
+          background: testPanelOpen ? "rgba(236,253,245,0.45)" : "#fff",
+        }}
+      >
         <div className="px-5 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-              <FlaskConical className="w-4 h-4 text-indigo-600" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%)" }}>
+              <Send className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-[13px] font-semibold text-slate-900">Send Test Mail</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">Preview a single personalized mail piece end-to-end.</p>
+              <div className="flex items-center gap-2">
+                <p className="text-[14px] font-bold text-slate-900">Send Test Mail</p>
+                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ background: "#D1FAE5", color: "#065F46" }}>REAL POSTGRID</span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">Generate + mail a real piece to any address. No charge in test mode.</p>
             </div>
           </div>
           <Button
             size="sm"
             variant={testPanelOpen ? "outline" : "default"}
-            className="h-8 shrink-0"
-            onClick={() => { setTestPanelOpen((o) => !o); setTestPreview(null); setTestLiveResult(null); setTestError(null); }}
+            className={cn("h-9 px-4 shrink-0 font-semibold", !testPanelOpen && "bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-sm")}
+            onClick={() => { setTestPanelOpen((o) => !o); setTestPreview(null); setTestLiveResult(null); setTestError(null); setTestOverrideAddress(""); }}
           >
-            {testPanelOpen ? "Close" : <><FlaskConical className="mr-1.5 w-3.5 h-3.5" />Send Test Mail</>}
+            {testPanelOpen ? <><X className="mr-1.5 w-3.5 h-3.5" />Close</> : <><Send className="mr-1.5 w-3.5 h-3.5" />Open Test Panel</>}
           </Button>
         </div>
 
@@ -653,7 +663,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Test customer</label>
-                <select className="w-full border border-slate-200 rounded-[var(--radius)] px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 bg-slate-50/50"
+                <select className="w-full border border-slate-200 rounded-[var(--radius)] px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-400 bg-slate-50/50"
                   value={testCustomerId}
                   onChange={(e) => { setTestCustomerId(e.target.value); setTestPreview(null); setTestLiveResult(null); }}
                 >
@@ -666,7 +676,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Template</label>
-                <select className="w-full border border-slate-200 rounded-[var(--radius)] px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 bg-slate-50/50"
+                <select className="w-full border border-slate-200 rounded-[var(--radius)] px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-400 bg-slate-50/50"
                   value={testTemplateType}
                   onChange={(e) => { setTestTemplateType(e.target.value as MailTemplateType); setTestPreview(null); setTestLiveResult(null); }}
                 >
@@ -678,8 +688,20 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Campaign goal</label>
-              <textarea className="w-full border border-slate-200 rounded-[var(--radius)] p-3 text-base sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 h-16 bg-slate-50/50"
+              <textarea className="w-full border border-slate-200 rounded-[var(--radius)] p-3 text-base sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-400 h-16 bg-slate-50/50"
                 value={testGoal} onChange={(e) => { setTestGoal(e.target.value); setTestPreview(null); setTestLiveResult(null); }} />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Override delivery address</label>
+              <input
+                type="text"
+                className="w-full border border-slate-200 rounded-[var(--radius)] px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-400 bg-slate-50/50"
+                placeholder="123 Main St, Phoenix AZ 85001 (defaults to customer's address)"
+                value={testOverrideAddress}
+                onChange={(e) => setTestOverrideAddress(e.target.value)}
+              />
+              <p className="text-[10px] text-slate-400 leading-relaxed">Leave blank to use the customer's address on file. Enter your own address to receive the physical test piece.</p>
             </div>
 
             {testError && (
@@ -690,7 +712,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
             )}
 
             {!testPreview && !testLiveResult && (
-              <Button onClick={runTestPreview} disabled={testLoading || customers.length === 0} className="w-full">
+              <Button onClick={runTestPreview} disabled={testLoading || customers.length === 0} className="w-full h-10 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 border-0" style={{ boxShadow: "0 1px 3px rgba(5,150,105,0.25), 0 4px 12px rgba(5,150,105,0.15)" }}>
                 {testLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating...</> : <><Zap className="mr-2 h-4 w-4" />Generate AI Copy &amp; Preview</>}
               </Button>
             )}

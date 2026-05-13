@@ -228,25 +228,34 @@ function USPSIndicia({ city, state, accentColor }: { city?: string | null; state
   const location = [city, state].filter(Boolean).join(", ").toUpperCase() || "ANYTOWN, USA";
   return (
     <div style={{
-      width: "86px",
-      height: "72px",
+      width: "92px",
+      height: "76px",
       border: "1.5px solid #CBD5E1",
       borderRadius: "4px",
-      background: "#F8FAFC",
+      background: "linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%)",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
       gap: "2px",
       flexShrink: 0,
-      padding: "5px",
+      padding: "6px 5px",
+      position: "relative",
+      overflow: "hidden",
     }}>
-      <div style={{ fontSize: "5.5px", fontWeight: 700, color: accentColor, letterSpacing: "0.10em", textTransform: "uppercase", fontFamily: "'Inter', sans-serif" }}>PRESORTED</div>
-      <div style={{ fontSize: "5.5px", fontWeight: 700, color: accentColor, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "'Inter', sans-serif" }}>FIRST-CLASS MAIL</div>
-      <div style={{ width: "64px", height: "1px", background: "#CBD5E1", margin: "2px 0" }} />
-      <div style={{ fontSize: "5px", color: "#64748B", fontFamily: "'Inter', sans-serif", letterSpacing: "0.06em" }}>U.S. POSTAGE PAID</div>
-      <div style={{ fontSize: "5px", color: "#94A3B8", fontFamily: "'Inter', sans-serif", letterSpacing: "0.04em" }}>PERMIT NO. 1234</div>
-      <div style={{ fontSize: "5px", color: "#94A3B8", fontFamily: "'Inter', sans-serif", letterSpacing: "0.04em", textAlign: "center" }}>{location}</div>
+      {/* Wavy USPS cancellation marks */}
+      <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.12, pointerEvents: "none" }} viewBox="0 0 92 76" preserveAspectRatio="none">
+        {[14, 26, 38, 50, 62].map((y) => (
+          <path key={y} d={`M-5,${y} C8,${y - 4} 20,${y + 4} 32,${y} S56,${y - 4} 68,${y} S80,${y + 4} 100,${y}`} stroke="#334155" strokeWidth="1.6" fill="none" />
+        ))}
+      </svg>
+      <div style={{ fontSize: "5.5px", fontWeight: 800, color: accentColor, letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "'Inter', sans-serif", position: "relative" }}>PRESORTED</div>
+      <div style={{ fontSize: "5.5px", fontWeight: 800, color: accentColor, letterSpacing: "0.09em", textTransform: "uppercase", fontFamily: "'Inter', sans-serif", position: "relative" }}>FIRST-CLASS MAIL</div>
+      <div style={{ width: "72px", height: "1px", background: "#E2E8F0", margin: "2px 0" }} />
+      <div style={{ fontSize: "5px", color: "#475569", fontFamily: "'Inter', sans-serif", letterSpacing: "0.06em", fontWeight: 600, position: "relative" }}>U.S. POSTAGE PAID</div>
+      <div style={{ fontSize: "4.5px", color: "#94A3B8", fontFamily: "'Inter', sans-serif", letterSpacing: "0.04em", position: "relative" }}>PERMIT NO. 1234</div>
+      <div style={{ width: "72px", height: "1px", background: "#E2E8F0", margin: "1px 0" }} />
+      <div style={{ fontSize: "4.5px", color: "#94A3B8", fontFamily: "'Inter', sans-serif", letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.3, position: "relative" }}>{location}</div>
     </div>
   );
 }
@@ -413,28 +422,38 @@ function RealPostcardFront({
         {offer && <OfferStrip offer={offer} accent={accent} />}
 
         {/* QR code — absolute positioned above footer */}
-        <div style={{ position: "absolute", bottom: "36px", right: "13px", textAlign: "center" }}>
+        <div style={{
+          position: "absolute",
+          bottom: "38px",
+          right: "12px",
+          textAlign: "center",
+          background: "rgba(255,255,255,0.94)",
+          padding: "5px 5px 4px",
+          borderRadius: "7px",
+          border: "1px solid rgba(0,0,0,0.09)",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,1)",
+        }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={qrPreviewUrl}
             alt="Tracking QR"
-            width={68}
-            height={68}
+            width={66}
+            height={66}
             style={{
               display: "block",
-              borderRadius: "5px",
-              border: "1px solid #D1C9B0",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+              borderRadius: "4px",
+              border: "1px solid #E5DFC8",
             }}
           />
           <div style={{
-            fontSize: "6.5px",
+            fontSize: "6px",
             color: "#8A8070",
             fontFamily: "'Inter', sans-serif",
-            fontWeight: 700,
-            letterSpacing: "0.06em",
+            fontWeight: 800,
+            letterSpacing: "0.08em",
             marginTop: "3px",
             textAlign: "center",
+            textTransform: "uppercase",
           }}>
             SCAN FOR OFFER
           </div>
@@ -491,7 +510,6 @@ function RealPostcardBack({
       backgroundImage: [
         "repeating-linear-gradient(89.4deg, transparent, transparent 4px, rgba(155,135,100,0.022) 4px, rgba(155,135,100,0.022) 5px)",
         "repeating-linear-gradient(90.6deg, transparent, transparent 7px, rgba(155,135,100,0.013) 7px, rgba(155,135,100,0.013) 8px)",
-        "repeating-linear-gradient(transparent, transparent 29px, rgba(218,209,189,0.5) 29px, rgba(218,209,189,0.5) 30px)",
       ].join(", "),
       borderRadius: "8px",
       overflow: "hidden",
@@ -500,72 +518,105 @@ function RealPostcardBack({
       flexDirection: "column",
       width: "100%",
     }}>
-      {/* Top zone: return address + postage */}
+      {/* Top zone: return address (left) + postage indicia (right) */}
       <div style={{
         display: "flex",
         justifyContent: "space-between",
         alignItems: "flex-start",
         padding: "12px 14px 10px",
+        borderBottom: "1px solid rgba(218,209,189,0.5)",
       }}>
-        {/* Return address (left) */}
+        {/* Return address */}
         <div style={{ fontFamily: "'Inter', sans-serif", lineHeight: 1.55 }}>
           {logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={logoUrl}
               alt={dealershipName}
-              style={{ height: "14px", width: "auto", maxWidth: "50px", objectFit: "contain", display: "block", marginBottom: "3px" }}
+              style={{ height: "14px", width: "auto", maxWidth: "52px", objectFit: "contain", display: "block", marginBottom: "3px" }}
               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
             />
           )}
-          <div style={{ fontSize: "8.5px", fontWeight: 700, color: "#374151" }}>{dealershipName}</div>
+          <div style={{ fontSize: "8.5px", fontWeight: 800, color: "#1F2937" }}>{dealershipName}</div>
           {dAddrLines.line1 && <div style={{ fontSize: "7.5px", color: "#6B7280" }}>{dAddrLines.line1}</div>}
           {dAddrLines.line2 && <div style={{ fontSize: "7.5px", color: "#6B7280" }}>{dAddrLines.line2}</div>}
-          {dealershipPhone && <div style={{ fontSize: "7.5px", color: "#6B7280" }}>{dealershipPhone}</div>}
+          {dealershipPhone && <div style={{ fontSize: "7.5px", color: "#6B7280", marginTop: "1px" }}>{dealershipPhone}</div>}
         </div>
 
-        {/* Postage indicia (right) */}
+        {/* Postage indicia */}
         <USPSIndicia city={dealershipAddress?.city} state={dealershipAddress?.state} accentColor={accent.header} />
       </div>
 
-      {/* Horizontal divider (dashed USPS-style) */}
-      <div style={{
-        height: "1px",
-        margin: "0 14px",
-        background: "repeating-linear-gradient(90deg, #9CA3AF 0, #9CA3AF 4px, transparent 4px, transparent 8px)",
-      }} />
-
-      {/* Delivery zone */}
-      <div style={{ flex: 1, padding: "10px 14px 6px 52%" }}>
+      {/* USPS mandate: left/right zone divider */}
+      <div style={{ flex: 1, display: "flex", position: "relative", minHeight: "150px" }}>
+        {/* Vertical USPS divider line */}
         <div style={{
-          fontSize: "7px",
-          fontFamily: "'Inter', sans-serif",
-          fontWeight: 700,
-          color: "#9CA3AF",
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          marginBottom: "5px",
+          position: "absolute",
+          top: "10px",
+          bottom: "10px",
+          left: "46%",
+          width: "1px",
+          background: "repeating-linear-gradient(180deg, #9CA3AF 0, #9CA3AF 5px, transparent 5px, transparent 10px)",
+        }} />
+
+        {/* Left: indeterminate message zone (ruled lines, blank) */}
+        <div style={{
+          width: "44%",
+          padding: "10px 10px 8px 14px",
+          backgroundImage: "repeating-linear-gradient(transparent, transparent 20px, rgba(218,209,189,0.35) 20px, rgba(218,209,189,0.35) 21px)",
+          backgroundPositionY: "30px",
         }}>
-          DELIVER TO
+          <div style={{ fontSize: "5.5px", color: "#C4B69A", fontFamily: "'Inter', sans-serif", letterSpacing: "0.10em", textTransform: "uppercase", fontWeight: 700 }}>
+            MESSAGE AREA
+          </div>
         </div>
-        <div style={{ fontFamily: "'Caveat', cursive", fontSize: "18px", color: "#1F2937", fontWeight: 700, lineHeight: 1.3 }}>
-          {customerName ?? "Customer Name"}
+
+        {/* Right: delivery address zone */}
+        <div style={{ flex: 1, padding: "10px 14px 8px 18px" }}>
+          <div style={{
+            fontSize: "6.5px",
+            fontFamily: "'Inter', sans-serif",
+            fontWeight: 800,
+            color: "#9CA3AF",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            marginBottom: "6px",
+          }}>
+            DELIVER TO
+          </div>
+          {/* Address outlined box */}
+          <div style={{
+            border: "1px solid rgba(0,0,0,0.09)",
+            borderRadius: "3px",
+            padding: "7px 10px 8px",
+            background: "rgba(255,255,255,0.55)",
+          }}>
+            <div style={{ fontFamily: "'Caveat', cursive", fontSize: "17px", color: "#1F2937", fontWeight: 700, lineHeight: 1.3 }}>
+              {customerName ?? "Customer Name"}
+            </div>
+            {cAddrLines.line1 ? (
+              <>
+                <div style={{ fontFamily: "'Caveat', cursive", fontSize: "13px", color: "#4B5563", marginTop: "1px" }}>{cAddrLines.line1}</div>
+                <div style={{ fontFamily: "'Caveat', cursive", fontSize: "12px", color: "#6B7280" }}>{cAddrLines.line2}</div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontFamily: "'Caveat', cursive", fontSize: "13px", color: "#C4B69A", marginTop: "1px" }}>123 Delivery Address</div>
+                <div style={{ fontFamily: "'Caveat', cursive", fontSize: "12px", color: "#C4B69A" }}>City, ST 00000</div>
+              </>
+            )}
+          </div>
         </div>
-        {cAddrLines.line1 ? (
-          <>
-            <div style={{ fontFamily: "'Caveat', cursive", fontSize: "13px", color: "#4B5563" }}>{cAddrLines.line1}</div>
-            <div style={{ fontFamily: "'Caveat', cursive", fontSize: "12px", color: "#6B7280" }}>{cAddrLines.line2}</div>
-          </>
-        ) : (
-          <>
-            <div style={{ fontFamily: "'Caveat', cursive", fontSize: "13px", color: "#C4B69A" }}>123 Delivery Address</div>
-            <div style={{ fontFamily: "'Caveat', cursive", fontSize: "12px", color: "#C4B69A" }}>City, ST 00000</div>
-          </>
-        )}
       </div>
 
       {/* IMB Barcode zone */}
-      <div style={{ padding: "6px 14px 10px" }}>
+      <div style={{
+        padding: "5px 14px 10px",
+        borderTop: "1px solid rgba(218,209,189,0.5)",
+      }}>
+        <div style={{ fontSize: "5px", color: "#C4B69A", fontFamily: "'Inter', sans-serif", letterSpacing: "0.10em", textTransform: "uppercase", marginBottom: "3px", fontWeight: 700 }}>
+          INTELLIGENT MAIL BARCODE
+        </div>
         <IMBBarcode />
       </div>
     </div>
@@ -653,12 +704,36 @@ function RealLetterPreview({
       )}
 
       {/* Body */}
-      <div style={{ padding: "12px 22px 18px" }}>
+      <div style={{ padding: "12px 22px 0" }}>
         <HandwrittenContent
           text={content}
           fontSize={is8511 ? 14 : 13}
           lineHeight={1.85}
         />
+      </div>
+
+      {/* Signature area */}
+      <div style={{ padding: "10px 22px 18px" }}>
+        <div style={{ fontFamily: "'Caveat', cursive", fontSize: is8511 ? 17 : 15, color: "#374151", lineHeight: 1.2 }}>
+          Sincerely,
+        </div>
+        <div style={{
+          fontFamily: "'Caveat', cursive",
+          fontSize: is8511 ? 22 : 19,
+          color: "#1F2937",
+          fontWeight: 700,
+          marginTop: "8px",
+          letterSpacing: "0.01em",
+          borderBottom: "1px solid rgba(0,0,0,0.08)",
+          paddingBottom: "4px",
+          display: "inline-block",
+          minWidth: "100px",
+        }}>
+          {dealershipName.split(" ")[0]}
+        </div>
+        <div style={{ fontSize: "7.5px", fontFamily: "'Inter', sans-serif", color: "#9CA3AF", marginTop: "3px" }}>
+          {dealershipName} — Service Department
+        </div>
       </div>
     </div>
   );

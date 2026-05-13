@@ -186,37 +186,73 @@ function Postmark() {
   );
 }
 
-// ── USPS-style stamp ──────────────────────────────────────────
+// ── USPS-style stamp with perforations + cancellation marks ──
 
 function Stamp({ accentColor }: { accentColor: string }) {
+  const perfDotH = "radial-gradient(circle, #C4B9AB 55%, transparent 55%) repeat-x center / 6px 4px";
+  const perfDotV = "radial-gradient(circle, #C4B9AB 55%, transparent 55%) repeat-y center / 4px 6px";
   return (
-    <div style={{
-      width: "52px", height: "68px",
-      border: "1.5px solid #CBD5E1",
-      borderRadius: "3px", overflow: "hidden",
-      display: "flex", flexDirection: "column",
-      background: "#F8FAFC",
-      boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.8), 0 1px 3px rgba(15,23,42,0.08)",
-      flexShrink: 0,
-    }}>
-      <div style={{ height: "4px", background: `linear-gradient(90deg, ${accentColor}, ${accentColor}88)` }} />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "3px", padding: "4px 2px" }}>
+    <div style={{ position: "relative", width: "58px", height: "74px", flexShrink: 0 }}>
+      {/* Perforated edges */}
+      <div style={{ position: "absolute", top: 0, left: "4px", right: "4px", height: "4px", background: perfDotH }} />
+      <div style={{ position: "absolute", bottom: 0, left: "4px", right: "4px", height: "4px", background: perfDotH }} />
+      <div style={{ position: "absolute", left: 0, top: "4px", bottom: "4px", width: "4px", background: perfDotV }} />
+      <div style={{ position: "absolute", right: 0, top: "4px", bottom: "4px", width: "4px", background: perfDotV }} />
+
+      {/* Stamp body */}
+      <div style={{
+        position: "absolute",
+        inset: "4px",
+        border: "1px solid #CBD5E1",
+        borderRadius: "1px",
+        overflow: "hidden",
+        background: "#fff",
+        boxShadow: "0 1px 4px rgba(15,23,42,0.10)",
+        display: "flex",
+        flexDirection: "column",
+      }}>
+        {/* Flag top stripe */}
+        <div style={{ height: "3px", background: "linear-gradient(90deg, #B91C1C 0 40%, #1D4ED8 40%)" }} />
+
+        {/* Flag graphic */}
         <div style={{
-          width: "34px", height: "26px",
-          background: `linear-gradient(135deg, ${accentColor}22 0%, ${accentColor}44 100%)`,
-          borderRadius: "2px",
-          display: "flex", alignItems: "center", justifyContent: "center",
+          flex: 1,
+          background: "linear-gradient(180deg, #1E3A5F 0%, #2563EB 100%)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "2px",
+          padding: "3px 2px",
         }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <rect x="2" y="4" width="12" height="8" rx="1" stroke={accentColor} strokeWidth="1.2" fill="none" />
-            <path d="M2 6l6 4 6-4" stroke={accentColor} strokeWidth="1.2" />
-          </svg>
+          <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.92)", lineHeight: 1, letterSpacing: "1px" }}>★ ★</div>
+          <div style={{ fontSize: "5px", fontWeight: 800, color: "rgba(255,255,255,0.7)", letterSpacing: "0.08em", fontFamily: "Inter, sans-serif", textTransform: "uppercase" }}>
+            FOREVER
+          </div>
+          <div style={{ fontSize: "4.5px", color: "rgba(255,255,255,0.5)", letterSpacing: "0.10em", fontFamily: "Inter, sans-serif" }}>
+            USA
+          </div>
         </div>
-        <span style={{ fontSize: "5.5px", fontWeight: 700, color: accentColor, letterSpacing: "0.1em", fontFamily: "Inter, sans-serif", textAlign: "center", lineHeight: 1.2 }}>
-          FIRST{"\n"}CLASS
-        </span>
+
+        {/* Bottom denomination stripe */}
+        <div style={{ height: "2px", background: "#B91C1C" }} />
       </div>
-      <div style={{ height: "3px", background: accentColor, opacity: 0.3 }} />
+
+      {/* Cancellation wavy marks overlay */}
+      <svg
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: 0.40 }}
+        viewBox="0 0 58 74"
+      >
+        {[22, 33, 44, 55].map((y) => (
+          <path
+            key={y}
+            d={`M-4,${y} C6,${y - 3} 16,${y + 3} 26,${y} S46,${y - 3} 62,${y}`}
+            stroke="#475569"
+            strokeWidth="0.9"
+            fill="none"
+          />
+        ))}
+      </svg>
     </div>
   );
 }
@@ -546,8 +582,11 @@ export function HandwritingPreview() {
           >
             <RefreshCw className="w-3.5 h-3.5" /> Regenerate
           </button>
-          <button className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 min-h-[40px] px-4 py-2 rounded-[var(--radius)] bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 active:bg-slate-700 transition-all shadow-sm">
-            <Printer className="w-3.5 h-3.5" /> Send to Print
+          <button
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 min-h-[40px] px-5 py-2 rounded-[var(--radius)] text-xs font-bold transition-all shadow-sm"
+            style={{ background: "linear-gradient(135deg, #059669 0%, #10B981 100%)", color: "#fff", border: "1px solid rgba(5,150,105,0.7)", boxShadow: "0 1px 3px rgba(5,150,105,0.30), 0 4px 12px rgba(5,150,105,0.18)" }}
+          >
+            <Printer className="w-3.5 h-3.5" /> Send Test Mail
           </button>
         </div>
       </div>
