@@ -264,7 +264,6 @@ export default async function DashboardPage() {
             />
             <AgentActivityCard
               runs={agentRuns}
-              formatRelative={formatRelativeDate}
             />
           </div>
         </div>

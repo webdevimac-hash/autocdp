@@ -9,7 +9,7 @@ import {
   AlertCircle,
   ArrowUpRight,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatRelativeDate } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -23,7 +23,6 @@ export interface AgentRunRow {
 
 interface AgentActivityCardProps {
   runs: AgentRunRow[];
-  formatRelative: (iso: string) => string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────
@@ -39,7 +38,7 @@ const AGENT_TONE: Record<
   optimization: { fg: "text-amber-700",   bg: "bg-amber-50",   ring: "ring-amber-200",   label: "Optimization" },
 };
 
-export function AgentActivityCard({ runs, formatRelative }: AgentActivityCardProps) {
+export function AgentActivityCard({ runs }: AgentActivityCardProps) {
   const runningCount = runs.filter((r) => r.status === "running").length;
 
   return (
@@ -87,7 +86,7 @@ export function AgentActivityCard({ runs, formatRelative }: AgentActivityCardPro
                   <div className="flex flex-wrap items-center gap-1.5">
                     <AgentChip type={run.agent_type} />
                     <span className="text-[11px] text-slate-400">
-                      {formatRelative(run.created_at)}
+                      {formatRelativeDate(run.created_at)}
                     </span>
                   </div>
                   {run.output_summary && (
