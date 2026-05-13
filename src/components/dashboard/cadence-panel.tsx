@@ -17,7 +17,12 @@ export async function CadencePanel({ dealershipId }: CadencePanelProps) {
 
   if (!count || count === 0) return null;
 
-  const summary = await getCadenceSummary(dealershipId);
+  let summary: Awaited<ReturnType<typeof getCadenceSummary>>;
+  try {
+    summary = await getCadenceSummary(dealershipId);
+  } catch {
+    return null;
+  }
   const { eligible, suppressed, neverContacted, upcomingBatches } = summary;
 
   const eligiblePct = count > 0 ? Math.round((eligible / count) * 100) : 0;
