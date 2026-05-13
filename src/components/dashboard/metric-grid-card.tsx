@@ -1,5 +1,3 @@
-"use client";
-
 import { ArrowDown, ArrowUp, Info } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";

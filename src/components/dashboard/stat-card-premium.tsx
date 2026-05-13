@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowUp, ArrowDown, ArrowUpRight } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
