@@ -13,9 +13,10 @@ import {
   ChevronRight, RefreshCw, Zap, Eye, FlaskConical,
   ExternalLink, Mail, MessageSquare, Layers, Phone,
   AtSign, Car, Clock, Sparkles, ShieldCheck, X, Award,
+  BarChart2, TrendingUp, SplitSquareHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Customer, MailTemplateType, CampaignType, DesignStyle } from "@/types";
+import type { Customer, MailTemplateType, CampaignType, DesignStyle, CampaignScoreResult } from "@/types";
 
 // ── Channel config ────────────────────────────────────────────
 
@@ -277,6 +278,8 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
   type VariationResult = {
     customerId: string;
     customerName: string;
+    variantLabel?: string;  // "Relationship" | "Value Offer" | "Timely Hook"
+    variantFocus?: string;
     content: string;
     smsBody: string | null;
     subject: string | null;
@@ -288,6 +291,23 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
   const [variations, setVariations] = useState<VariationResult[]>([]);
   const [generatingVariations, setGeneratingVariations] = useState(false);
   const [selectedVariation, setSelectedVariation] = useState<number | null>(null);
+
+  // A/B test config
+  const [abTestEnabled, setAbTestEnabled] = useState(false);
+  const [abTestVariantBIndex, setAbTestVariantBIndex] = useState(1);
+  const [abTestSplitRatio, setAbTestSplitRatio] = useState(0.5);
+
+  // Campaign score (Step 5)
+  const [campaignScore, setCampaignScore] = useState<CampaignScoreResult | null>(null);
+  const [campaignScoreLoading, setCampaignScoreLoading] = useState(false);
+
+  // Test batch
+  const [testBatchSize, setTestBatchSize] = useState<5 | 10>(5);
+  const [testBatchLoading, setTestBatchLoading] = useState(false);
+  const [testBatchResults, setTestBatchResults] = useState<Array<{
+    customerId: string; customerName: string; success: boolean; message: string;
+    result?: { postgrid_id?: string };
+  }> | null>(null);
 
   // Step 5 — send
   const [sending, setSending] = useState(false);
@@ -360,6 +380,47 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
       setTestError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setTestLoading(false);
+    }
+  }
+
+  async function sendTestBatch() {
+    if (selectedIds.size === 0) return;
+    setTestBatchLoading(true);
+    setTestBatchResults(null);
+    setTestError(null);
+    try {
+      const res = await fetch("/api/mail/test-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerIds: Array.from(selectedIds),
+          templateType: testTemplateType,
+          campaignGoal: testGoal,
+          designStyle,
+          batchSize: testBatchSize,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Batch send failed");
+      const results = (data.results ?? []) as Array<{
+        customerId: string; customerName: string;
+        result: { success: boolean; message: string; postgrid_id?: string };
+      }>;
+      setTestBatchResults(results.map((r) => ({
+        customerId: r.customerId,
+        customerName: r.customerName,
+        success: r.result.success,
+        message: r.result.message,
+        result: { postgrid_id: r.result.postgrid_id },
+      })));
+      toast({
+        title: `Test batch dispatched`,
+        description: `${data.successCount ?? 0} of ${data.totalProcessed ?? 0} pieces submitted to PostGrid`,
+      });
+    } catch (err) {
+      setTestError(err instanceof Error ? err.message : "Batch send failed");
+    } finally {
+      setTestBatchLoading(false);
     }
   }
 
@@ -436,53 +497,49 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
     }
   }, [previewCustomerId, customers, selectedIds, templateType, campaignGoal, channel]);
 
-  // ── Generate variations ───────────────────────────────────
+  // ── Generate style variations (3 creative approaches for the same customer) ─
 
   const generateVariations = useCallback(async () => {
-    const selectedArr = Array.from(selectedIds);
-    if (selectedArr.length === 0) return;
+    const targetId = previewCustomerId
+      || Array.from(selectedIds)[0]
+      || "";
+    if (!targetId) return;
 
-    // Pick up to 3 different customers
-    const sampleIds = selectedArr.slice(0, Math.min(3, selectedArr.length));
     setGeneratingVariations(true);
     setVariations([]);
     setSelectedVariation(null);
+    setAbTestEnabled(false);
 
     try {
-      const results = await Promise.allSettled(
-        sampleIds.map((id) =>
-          fetch("/api/mail/preview", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              customerId: id,
-              templateType: channel === "direct_mail" || channel === "multi_channel" ? templateType : undefined,
-              campaignGoal,
-              channel: channel === "multi_channel" ? "email" : channel,
-              designStyle: channel === "direct_mail" ? designStyle : undefined,
-            }),
-          }).then((r) => r.json())
-        )
-      );
+      const res = await fetch("/api/mail/variations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: targetId,
+          templateType: channel === "direct_mail" ? templateType : undefined,
+          campaignGoal,
+          designStyle: channel === "direct_mail" ? designStyle : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error || !data.variants?.length) return;
 
-      const built: VariationResult[] = results
-        .map((r, i) => {
-          if (r.status === "rejected") return null;
-          const d = r.value;
-          if (d.error) return null;
-          return {
-            customerId: sampleIds[i],
-            customerName: d.customerName ?? `Customer ${i + 1}`,
-            content: d.content,
-            smsBody: d.smsBody ?? null,
-            subject: d.subject ?? null,
-            previewQrUrl: d.previewQrUrl ?? null,
-            vehicle: d.vehicle ?? null,
-            confidence: d.confidence ?? 0.8,
-            designStyle: d.designStyle,
-          } as VariationResult;
-        })
-        .filter((v): v is VariationResult => v !== null);
+      const built: VariationResult[] = (data.variants as Array<{
+        variantLabel: string; variantFocus: string; content: string;
+        reasoning: string; confidence: number; previewQrUrl: string | null; vehicle: string | null;
+      }>).map((v) => ({
+        customerId: targetId,
+        customerName: data.customerName ?? "",
+        variantLabel: v.variantLabel,
+        variantFocus: v.variantFocus,
+        content: v.content,
+        smsBody: null,
+        subject: null,
+        previewQrUrl: v.previewQrUrl,
+        vehicle: v.vehicle,
+        confidence: v.confidence,
+        designStyle,
+      }));
 
       setVariations(built);
       if (built.length > 0) setSelectedVariation(0);
@@ -491,7 +548,29 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
     } finally {
       setGeneratingVariations(false);
     }
-  }, [selectedIds, templateType, campaignGoal, channel, designStyle]);
+  }, [previewCustomerId, selectedIds, templateType, campaignGoal, channel, designStyle]);
+
+  // ── Campaign Score ────────────────────────────────────────
+
+  const fetchCampaignScore = useCallback(async (content?: string) => {
+    if (selectedIds.size === 0) return;
+    setCampaignScoreLoading(true);
+    try {
+      const res = await fetch("/api/mail/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerIds: Array.from(selectedIds),
+          templateType: channel === "direct_mail" ? templateType : undefined,
+          campaignGoal,
+          channel: channel === "multi_channel" ? "direct_mail" : channel,
+          previewContent: content ?? previewResult?.content,
+        }),
+      });
+      if (res.ok) setCampaignScore(await res.json());
+    } catch { /* non-fatal */ }
+    finally { setCampaignScoreLoading(false); }
+  }, [selectedIds, templateType, campaignGoal, channel, previewResult]);
 
   // ── Step 5: Send ──────────────────────────────────────────
 
@@ -507,7 +586,18 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
         const res = await fetch("/api/mail/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ customerIds, templateType, campaignGoal, dryRun, campaignType, accentColor, includeBookNow, designStyle }),
+          body: JSON.stringify({
+            customerIds, templateType, campaignGoal, dryRun, campaignType, accentColor, includeBookNow, designStyle,
+            abTestConfig: abTestEnabled && variations[abTestVariantBIndex]
+              ? {
+                  enabled: true,
+                  variantALabel: variations[0]?.variantLabel ?? "Control",
+                  variantBLabel: variations[abTestVariantBIndex]?.variantLabel ?? "Variant B",
+                  variantBStyle: variations[abTestVariantBIndex]?.variantFocus ?? "",
+                  splitRatio: abTestSplitRatio,
+                }
+              : undefined,
+          }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Send failed");
@@ -711,10 +801,67 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               </div>
             )}
 
-            {!testPreview && !testLiveResult && (
-              <Button onClick={runTestPreview} disabled={testLoading || customers.length === 0} className="w-full h-10 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 border-0" style={{ boxShadow: "0 1px 3px rgba(5,150,105,0.25), 0 4px 12px rgba(5,150,105,0.15)" }}>
-                {testLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating...</> : <><Zap className="mr-2 h-4 w-4" />Generate AI Copy &amp; Preview</>}
-              </Button>
+            {!testPreview && !testLiveResult && !testBatchResults && (
+              <div className="space-y-3">
+                <Button onClick={runTestPreview} disabled={testLoading || testBatchLoading || customers.length === 0} className="w-full h-10 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 border-0" style={{ boxShadow: "0 1px 3px rgba(5,150,105,0.25), 0 4px 12px rgba(5,150,105,0.15)" }}>
+                  {testLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating...</> : <><Zap className="mr-2 h-4 w-4" />Generate AI Copy &amp; Preview (1 piece)</>}
+                </Button>
+
+                {/* Send Test Batch */}
+                <div className="border-t border-slate-100 pt-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] font-semibold text-slate-600">Send Test Batch</p>
+                    <div className="flex gap-1.5">
+                      {([5, 10] as const).map((n) => (
+                        <button key={n} onClick={() => setTestBatchSize(n)}
+                          className={cn(
+                            "px-2.5 py-1 text-xs font-bold rounded border transition-all",
+                            testBatchSize === n ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500 hover:border-emerald-300"
+                          )}>
+                          {n} pieces
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Picks one representative from each lifecycle stage (VIP, lapsed, active, at-risk) and sends real PostGrid test pieces in a single batch.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full h-9 text-xs font-semibold border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                    onClick={sendTestBatch}
+                    disabled={testBatchLoading || testLoading || selectedIds.size === 0}
+                  >
+                    {testBatchLoading
+                      ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />Sending batch…</>
+                      : <><Send className="mr-2 h-3.5 w-3.5" />Send Test Batch ({testBatchSize} pieces)</>}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Test batch results */}
+            {testBatchResults && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-[12px] font-semibold text-slate-800 flex items-center gap-1.5">
+                    <CheckCircle className="w-4 h-4 text-emerald-500" />
+                    Batch sent — {testBatchResults.filter((r) => r.success).length}/{testBatchResults.length} succeeded
+                  </p>
+                  <button onClick={() => setTestBatchResults(null)} className="text-[10px] text-slate-400 hover:text-slate-700">Reset</button>
+                </div>
+                <div className="divide-y divide-slate-50 border border-slate-100 rounded-[var(--radius)] max-h-52 overflow-y-auto">
+                  {testBatchResults.map((r, i) => (
+                    <div key={i} className="px-3 py-2.5 flex items-center gap-3">
+                      {r.success ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-medium text-slate-900 truncate">{r.customerName}</p>
+                        <p className="text-[10px] text-slate-400 truncate">{r.result?.postgrid_id ?? r.message}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             {testPreview && !testLiveResult && (
@@ -1275,12 +1422,12 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               <strong>AI reasoning:</strong> {previewResult.reasoning}
             </div>
 
-            {/* Variations carousel */}
+            {/* Style variations carousel */}
             {variations.length > 0 && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-indigo-400" /> {variations.length} Personalized Variations
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-indigo-400" /> {variations.length} Style Variations
                   </p>
                   <button
                     onClick={generateVariations}
@@ -1294,14 +1441,14 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                 <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
                   {variations.map((v, i) => (
                     <button
-                      key={v.customerId}
+                      key={i}
                       onClick={() => {
                         setSelectedVariation(i);
                         setPreviewResult({
                           content: v.content,
                           subject: v.subject,
                           smsBody: v.smsBody,
-                          reasoning: previewResult.reasoning,
+                          reasoning: v.variantFocus ?? previewResult.reasoning,
                           confidence: v.confidence,
                           previewQrUrl: v.previewQrUrl,
                           vehicle: v.vehicle,
@@ -1311,20 +1458,100 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                         });
                       }}
                       className={cn(
-                        "shrink-0 w-44 text-left p-3 rounded-lg border-2 transition-all space-y-1",
+                        "shrink-0 w-48 text-left p-3 rounded-lg border-2 transition-all space-y-1.5",
                         selectedVariation === i
-                          ? "border-indigo-400 bg-indigo-50/60"
+                          ? "border-indigo-400 bg-indigo-50/60 shadow-sm"
                           : "border-slate-200 bg-white hover:border-indigo-300"
                       )}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-slate-500 truncate">{v.customerName}</span>
-                        <span className="text-[9px] font-bold text-emerald-600 shrink-0 ml-1">{Math.round(v.confidence * 100)}%</span>
+                      <div className="flex items-center justify-between gap-1">
+                        {v.variantLabel && (
+                          <span className={cn(
+                            "text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full",
+                            i === 0 ? "bg-violet-100 text-violet-700"
+                            : i === 1 ? "bg-amber-100 text-amber-700"
+                            : "bg-emerald-100 text-emerald-700"
+                          )}>
+                            {v.variantLabel}
+                          </span>
+                        )}
+                        <span className="text-[9px] font-bold text-emerald-600 shrink-0 ml-auto">{Math.round(v.confidence * 100)}%</span>
                       </div>
-                      <p className="text-[10px] text-slate-400 line-clamp-3 leading-snug">{v.content}</p>
+                      {v.variantFocus && (
+                        <p className="text-[9px] text-slate-400 italic leading-snug">{v.variantFocus}</p>
+                      )}
+                      <p className="text-[10px] text-slate-600 line-clamp-3 leading-snug">{v.content}</p>
                     </button>
                   ))}
                 </div>
+
+                {/* A/B test configuration */}
+                {variations.length >= 2 && (
+                  <div className={cn(
+                    "rounded-[var(--radius)] border-2 transition-all",
+                    abTestEnabled ? "border-violet-300 bg-violet-50/40" : "border-slate-200 bg-white hover:border-slate-300"
+                  )}>
+                    <label className="flex items-center gap-3 px-4 py-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={abTestEnabled}
+                        onChange={(e) => setAbTestEnabled(e.target.checked)}
+                        className="rounded"
+                      />
+                      <SplitSquareHorizontal className={cn("w-4 h-4 shrink-0", abTestEnabled ? "text-violet-600" : "text-slate-400")} />
+                      <div>
+                        <p className="text-[13px] font-semibold text-slate-900">A/B Test this campaign</p>
+                        <p className="text-xs text-slate-400">Split your audience and measure which creative style performs better.</p>
+                      </div>
+                    </label>
+                    {abTestEnabled && (
+                      <div className="border-t border-violet-100 px-4 pb-4 pt-3 space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Variant A (control)</p>
+                            <div className="p-2.5 rounded-lg bg-violet-50 border border-violet-100 text-xs text-violet-800 font-medium">
+                              {variations[0]?.variantLabel ?? "First variation"}
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Variant B (challenger)</p>
+                            <select
+                              value={abTestVariantBIndex}
+                              onChange={(e) => setAbTestVariantBIndex(Number(e.target.value))}
+                              className="w-full border border-slate-200 rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white"
+                            >
+                              {variations.slice(1).map((v, i) => (
+                                <option key={i + 1} value={i + 1}>{v.variantLabel ?? `Variation ${i + 2}`}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Split ratio</p>
+                          <div className="flex gap-2">
+                            {([0.5, 0.67, 0.75] as const).map((ratio) => (
+                              <button
+                                key={ratio}
+                                onClick={() => setAbTestSplitRatio(ratio)}
+                                className={cn(
+                                  "flex-1 py-1.5 text-xs font-semibold rounded-lg border-2 transition-all",
+                                  abTestSplitRatio === ratio
+                                    ? "border-violet-400 bg-violet-50 text-violet-800"
+                                    : "border-slate-200 text-slate-500 hover:border-violet-300"
+                                )}
+                              >
+                                {ratio === 0.5 ? "50/50" : ratio === 0.67 ? "67/33" : "75/25"}
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-slate-400">
+                            {Math.round(selectedCount * abTestSplitRatio)} customers → Variant A &nbsp;·&nbsp; {Math.round(selectedCount * (1 - abTestSplitRatio))} → Variant B
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1396,7 +1623,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
 
             <div className="flex justify-between pt-1">
               <Button variant="ghost" size="sm" className="h-11 sm:h-8" onClick={() => setCurrentStep(3)}>Back</Button>
-              <Button size="sm" className="h-11 sm:h-8" onClick={() => setCurrentStep(5)}>
+              <Button size="sm" className="h-11 sm:h-8" onClick={() => { setCurrentStep(5); fetchCampaignScore(previewResult?.content); }}>
                 <Send className="mr-1.5 w-3.5 h-3.5" />Continue to Send
               </Button>
             </div>
@@ -1413,6 +1640,102 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
             <p className="text-[13px] font-semibold text-slate-900">Send Campaign</p>
           </div>
           <div className="p-5 space-y-4">
+
+            {/* ── Campaign Score panel ─────────────────────────── */}
+            {channel === "direct_mail" && (
+              <div className={cn(
+                "rounded-[var(--radius)] border-2 overflow-hidden transition-all",
+                campaignScore
+                  ? campaignScore.riskLevel === "high"
+                    ? "border-red-200 bg-red-50/30"
+                    : campaignScore.riskLevel === "medium"
+                    ? "border-amber-200 bg-amber-50/30"
+                    : "border-emerald-200 bg-emerald-50/30"
+                  : "border-slate-200 bg-white"
+              )}>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <BarChart2 className={cn("w-4 h-4", campaignScore
+                      ? campaignScore.riskLevel === "high" ? "text-red-500"
+                      : campaignScore.riskLevel === "medium" ? "text-amber-500"
+                      : "text-emerald-600"
+                      : "text-slate-400")} />
+                    <p className="text-[13px] font-semibold text-slate-900">Campaign Score</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {campaignScore && (
+                      <span className={cn(
+                        "text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full",
+                        campaignScore.riskLevel === "high" ? "bg-red-100 text-red-700"
+                        : campaignScore.riskLevel === "medium" ? "bg-amber-100 text-amber-700"
+                        : "bg-emerald-100 text-emerald-700"
+                      )}>
+                        {campaignScore.riskLevel} risk
+                      </span>
+                    )}
+                    <button
+                      onClick={() => fetchCampaignScore(previewResult?.content)}
+                      disabled={campaignScoreLoading}
+                      className="text-[10px] font-semibold text-indigo-500 hover:text-indigo-700 flex items-center gap-1"
+                    >
+                      {campaignScoreLoading
+                        ? <><Loader2 className="w-3 h-3 animate-spin" />Scoring…</>
+                        : <><RefreshCw className="w-3 h-3" />Rescore</>}
+                    </button>
+                  </div>
+                </div>
+
+                {campaignScoreLoading && !campaignScore && (
+                  <div className="px-4 py-4 flex items-center gap-2 text-slate-500 text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin" />Scoring campaign…
+                  </div>
+                )}
+
+                {campaignScore && (
+                  <div className="px-4 py-3 space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="text-center">
+                        <p className={cn(
+                          "text-2xl font-bold tabular-nums",
+                          campaignScore.overallScore >= 75 ? "text-emerald-600"
+                          : campaignScore.overallScore >= 50 ? "text-amber-600"
+                          : "text-red-600"
+                        )}>{campaignScore.overallScore}</p>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mt-0.5">Overall</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-indigo-600 tabular-nums">{campaignScore.estimatedResponseRate}%</p>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mt-0.5">Est. Response</p>
+                      </div>
+                      <div className="text-center">
+                        <p className={cn(
+                          "text-2xl font-bold tabular-nums",
+                          campaignScore.complianceScore >= 90 ? "text-emerald-600"
+                          : campaignScore.complianceScore >= 70 ? "text-amber-600"
+                          : "text-red-600"
+                        )}>{campaignScore.complianceScore}</p>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mt-0.5">Compliance</p>
+                      </div>
+                    </div>
+                    {(campaignScore.warnings.length > 0 || campaignScore.suggestions.length > 0) && (
+                      <div className="space-y-1.5">
+                        {campaignScore.warnings.map((w, i) => (
+                          <div key={i} className="flex items-start gap-1.5 text-[11px] text-red-700">
+                            <AlertCircle className="w-3 h-3 mt-0.5 shrink-0 text-red-500" />{w}
+                          </div>
+                        ))}
+                        {campaignScore.suggestions.slice(0, 2).map((s, i) => (
+                          <div key={i} className="flex items-start gap-1.5 text-[11px] text-slate-600">
+                            <TrendingUp className="w-3 h-3 mt-0.5 shrink-0 text-indigo-400" />{s}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Summary bar */}
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <div className="p-3 sm:p-4 bg-indigo-50/60 rounded-[var(--radius)] border border-indigo-100 text-center">

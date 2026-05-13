@@ -81,7 +81,7 @@ export async function runOptimizationAgent(
     let query = supabase
       .from("mail_pieces")
       .select(
-        "id, template_type, variables, status, scanned_count, cost_cents, sent_at, created_at"
+        "id, template_type, variables, personalized_text, status, scanned_count, cost_cents, sent_at, created_at"
       )
       .eq("dealership_id", input.context.dealershipId)
       .neq("status", "pending");
@@ -138,12 +138,18 @@ export async function runOptimizationAgent(
       vehicle_segment: string; // model token only e.g. "F-150", "Camry"
       service_type: string;
       offer_preview: string;   // first 60 chars of offer — no names/addresses
+      // Anonymized copy opening (first 45 chars, names/PII stripped)
+      copy_snippet: string;
+      // A/B variant breakdown — populated when ab_variant is present in variables
+      ab_variant?: string;
       sent: number;
       scans: number;
       delivered: number;
     };
 
     const buckets = new Map<string, Bucket>();
+    // Separate A/B variant tracking for cross-variant comparison
+    const abBuckets = new Map<string, { variant: string; sent: number; scans: number }>();
 
     for (const piece of sentPieces) {
       const vars = (piece.variables ?? {}) as Record<string, string>;
@@ -152,7 +158,17 @@ export async function runOptimizationAgent(
       const vehicleSegment = vehicleParts[vehicleParts.length - 1] ?? "";
       const serviceType = vars.service_type ?? "";
       const offerPreview = (vars.offer ?? "general offer").slice(0, 60);
-      const key = `${piece.template_type}||${vehicleSegment}||${serviceType}`;
+      const abVariant = vars.ab_variant ?? undefined;
+
+      // Anonymize the copy opening — strip first/last name tokens, keep structure
+      const rawText = (piece.personalized_text ?? "") as string;
+      const copySnippet = rawText
+        .replace(/\b[A-Z][a-z]+\b/g, "■")  // strip proper nouns (names)
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 45);
+
+      const key = `${piece.template_type}||${vehicleSegment}||${serviceType}${abVariant ? `||${abVariant}` : ""}`;
 
       if (!buckets.has(key)) {
         buckets.set(key, {
@@ -160,6 +176,8 @@ export async function runOptimizationAgent(
           vehicle_segment: vehicleSegment,
           service_type: serviceType,
           offer_preview: offerPreview,
+          copy_snippet: copySnippet,
+          ab_variant: abVariant,
           sent: 0,
           scans: 0,
           delivered: 0,
@@ -170,6 +188,15 @@ export async function runOptimizationAgent(
       b.sent++;
       b.scans += piece.scanned_count ?? 0;
       if (piece.status === "delivered") b.delivered++;
+
+      // Track A/B variants separately for comparison patterns
+      if (abVariant) {
+        const abKey = `${piece.template_type}||${vehicleSegment}||${abVariant}`;
+        const ab = abBuckets.get(abKey) ?? { variant: abVariant, sent: 0, scans: 0 };
+        ab.sent++;
+        ab.scans += piece.scanned_count ?? 0;
+        abBuckets.set(abKey, ab);
+      }
     }
 
     const statsRows = Array.from(buckets.values()).map((b) => ({
@@ -177,6 +204,15 @@ export async function runOptimizationAgent(
       scan_rate_pct: b.sent > 0 ? +((b.scans / b.sent) * 100).toFixed(2) : 0,
       delivery_rate_pct: b.sent > 0 ? +((b.delivered / b.sent) * 100).toFixed(2) : 0,
     }));
+
+    // A/B comparison rows — only populated when experiments were run
+    const abRows = Array.from(abBuckets.values()).map((ab) => ({
+      variant: ab.variant,
+      sent: ab.sent,
+      scans: ab.scans,
+      scan_rate_pct: ab.sent > 0 ? +((ab.scans / ab.sent) * 100).toFixed(2) : 0,
+    }));
+    const hasABData = abRows.length >= 2;
 
     const totalScans = sentPieces.reduce((s, p) => s + (p.scanned_count ?? 0), 0);
     const overallScanRatePct = +((totalScans / sentPieces.length) * 100).toFixed(2);
@@ -199,13 +235,18 @@ STRICT RULES:
 - Every pattern must be specific enough to be injected into a Creative Agent system prompt and immediately actionable
 - Flag confidence < 0.5 for groups with fewer than 3 pieces
 - Do not duplicate existing global_learnings unless new data materially changes the confidence
-- Pattern types: "offer_performance" | "template_performance" | "vehicle_segment" | "copy_element" | "timing"
+- Pattern types: "offer_performance" | "template_performance" | "vehicle_segment" | "copy_element" | "timing" | "ab_test_result"
+- For "copy_element" patterns: the copy_snippet field contains anonymized opening text — identify structural or tonal patterns that correlate with higher scan rates
+- For "ab_test_result" patterns: only write if A/B data is present and one variant outperforms the other by ≥2 percentage points with n≥3 per variant
 
 Strong pattern (accept):
   "postcard_6x9 with 15%-off service headline for F-150 owners → 9.2% QR scan rate, 3× the 3% network baseline"
+  "copy_element: opening with specific vehicle model name (e.g. '■ ■ Camry') → 7.1% scan rate vs 2.9% for generic openers (n=18)"
+  "ab_test_result: Variant A (relationship tone) outperformed Variant B (offer-first) 8.2% vs 4.1% scan rate for Camry segment (n=12)"
 
 Weak pattern (reject):
   "Postcards work better than letters" — too vague, not actionable
+  "Customers with recent visits respond better" — obvious, not novel
 
 Return a JSON array (empty [] is valid if data is insufficient):
 [
@@ -233,6 +274,7 @@ Pieces analyzed: ${sentPieces.length} | Total QR scans: ${totalScans} | Overall 
 
 SEGMENT BREAKDOWN (anonymized — no PII):
 ${JSON.stringify(statsRows, null, 2)}
+${hasABData ? `\nA/B VARIANT COMPARISON:\n${JSON.stringify(abRows, null, 2)}` : ""}
 
 EXISTING GLOBAL PATTERNS (do not duplicate without new supporting evidence):
 ${

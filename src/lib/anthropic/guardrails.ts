@@ -156,7 +156,7 @@ const VIOLATION_PATTERNS: {
   },
 ];
 
-function scanViolations(
+export function scanViolations(
   text: string
 ): { label: string; severity: "block" | "rewrite" }[] {
   const found: { label: string; severity: "block" | "rewrite" }[] = [];

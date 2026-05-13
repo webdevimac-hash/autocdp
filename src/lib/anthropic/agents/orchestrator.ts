@@ -251,6 +251,8 @@ export interface DirectMailOrchestratorInput {
   includeBookNow?: boolean;
   designStyle?: DesignStyle;
   applyCadenceFilter?: boolean;
+  /** A/B test config — when enabled, customers are split and B-group gets a different creative style. */
+  abTestConfig?: import("@/types").ABTestConfig;
 }
 
 export interface DirectMailResult {
@@ -418,6 +420,16 @@ export async function runDirectMailOrchestrator(
 
     const results: DirectMailResult[] = [];
 
+    // Pre-compute A/B variant assignments (deterministic by customer index)
+    const abConfig = input.abTestConfig?.enabled ? input.abTestConfig : null;
+    const abVariantMap = new Map<string, "A" | "B">();
+    if (abConfig) {
+      const splitCount = Math.round(cadenceFiltered.length * abConfig.splitRatio);
+      cadenceFiltered.forEach((c, i) => {
+        abVariantMap.set(c.id, i < splitCount ? "A" : "B");
+      });
+    }
+
     // Process each customer — each gets its own tool-use conversation
     for (const customer of cadenceFiltered) {
       const lastVisit = visitsByCustomer.get(customer.id);
@@ -459,6 +471,13 @@ export async function runDirectMailOrchestrator(
             : "")
         : "";
 
+      const abVariant = abVariantMap.get(customer.id);
+      const abTestNote = abConfig && abVariant
+        ? abVariant === "B"
+          ? `\nA/B TEST — VARIANT B (${abConfig.variantBLabel}): ${abConfig.variantBStyle}\nIMPORTANT: Include "ab_variant": "B" in the variables field of your send_direct_mail call.\n`
+          : `\nA/B TEST — VARIANT A (${abConfig.variantALabel}): Use your standard creative approach as the control.\nIMPORTANT: Include "ab_variant": "A" in the variables field of your send_direct_mail call.\n`
+        : "";
+
       const systemPrompt =
         `You are the AutoCDP Orchestrator for ${input.context.dealershipName}.\n` +
         `You have one tool available: send_direct_mail.\n\n` +
@@ -481,6 +500,7 @@ export async function runDirectMailOrchestrator(
         bookNowSystemNote +
         disclaimerNote +
         designStyleNote +
+        abTestNote +
         `\nPostcard guidelines (50–100 words, warm, personal, ends with soft CTA):\n` +
         `- Reference specific vehicle or service if known\n` +
         `- Include a clear offer or reason to return\n` +

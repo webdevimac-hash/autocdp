@@ -350,6 +350,28 @@ export interface SendEmailToolResult {
 // Campaign type (standard, aged inventory, or manufacturer co-op)
 export type CampaignType = "standard" | "aged_inventory" | "coop";
 
+// A/B test configuration for campaign splits
+export type ABVariant = "A" | "B";
+
+export interface ABTestConfig {
+  enabled: boolean;
+  variantALabel: string;   // e.g. "Relationship"
+  variantBLabel: string;   // e.g. "Value Offer"
+  variantBStyle: string;   // creative style hint passed to agent for B-group customers
+  splitRatio: number;      // fraction getting variant A (0.5 = 50/50)
+}
+
+// Campaign pre-send scoring
+export interface CampaignScoreResult {
+  overallScore: number;             // 0–100
+  estimatedResponseRate: number;    // percent
+  riskLevel: "low" | "medium" | "high";
+  complianceScore: number;          // 0–100
+  audienceScore: number;            // 0–100
+  warnings: string[];
+  suggestions: string[];
+}
+
 // Vehicle interest extracted from visit history
 export interface CustomerVehicleInterest {
   customerId: string;
