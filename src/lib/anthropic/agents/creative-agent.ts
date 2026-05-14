@@ -309,22 +309,140 @@ export async function runCreativeAgent(
 
   // ── 3. Build prompts ───────────────────────────────────────
 
-  // Compute days since last visit — critical context for the hook
-  const visitContext = (() => {
-    if (!input.recentVisit) return "No previous visit on record — treat as a new relationship, focus on a warm welcome.";
+  // Compute days since last visit — with interpretation for Claude
+  const { visitContext, daysSince: _daysSince, copyAngle } = (() => {
+    const stage = input.customer.lifecycle_stage ?? "active";
+
+    if (!input.recentVisit) {
+      const prospectAngle =
+        "PROSPECT — no prior relationship. Do NOT fabricate vehicle details, service history, or a personal connection that doesn't exist. " +
+        "Lead with a specific, concrete service capability or first-visit benefit. Be professional and clear, not warm-yet.";
+      return {
+        visitContext:
+          "No previous visit on record.\n" +
+          "This customer has never visited the dealership — they are a prospect.\n" +
+          "Do not reference any vehicle, service, or prior experience you do not have data for.\n" +
+          "Focus entirely on what the dealership offers and why a first visit is worth their time.",
+        daysSince: null as number | null,
+        copyAngle: prospectAngle,
+      };
+    }
+
     const visitDate = input.recentVisit.visit_date?.slice(0, 10) ?? "";
     const daysSince = visitDate
       ? Math.round((Date.now() - new Date(visitDate).getTime()) / (1000 * 60 * 60 * 24))
       : null;
+    const monthsAgo = daysSince ? Math.round(daysSince / 30) : null;
     const vehicle = [input.recentVisit.year, input.recentVisit.make, input.recentVisit.model]
-      .filter(Boolean).join(" ") || "unknown vehicle";
-    return [
-      `Last visit: ${visitDate}${daysSince !== null ? ` (${daysSince} days ago — use this as an opening hook when relevant)` : ""}`,
+      .filter(Boolean).join(" ") || null;
+
+    // Interpret time gap and service notes into actionable copy direction
+    let timeInterpretation = "";
+    if (daysSince !== null) {
+      if (daysSince < 45)        timeInterpretation = "Very recent visit — skip re-engagement framing. Focus on next milestone or an appreciation note.";
+      else if (daysSince < 120)  timeInterpretation = "2-4 months ago — routine follow-up. Light touch, positive tone.";
+      else if (daysSince < 270)  timeInterpretation = "4-9 months ago — approaching time for routine service. Specific reminder, not urgent.";
+      else if (daysSince < 540)  timeInterpretation = "9-18 months ago — due for service. Reference the specific vehicle and prior service. Warm but purposeful.";
+      else if (daysSince < 900)  timeInterpretation = "18 months to 2.5 years — lapsed. Acknowledge the gap naturally. Make returning easy, no guilt.";
+      else                       timeInterpretation = "2.5+ years lapsed — long gap. Strong re-engagement. Be warm, specific, and give them a clear reason to return.";
+    }
+
+    // Determine copy angle based on lifecycle stage + time gap
+    let copyAngle = "";
+    if (stage === "vip") {
+      copyAngle = "VIP loyalty — this customer has earned genuine appreciation. Lead with gratitude, not a sale. Offer something exclusive.";
+    } else if (stage === "lapsed" || (daysSince && daysSince > 450)) {
+      copyAngle = `LAPSED re-engagement — ${monthsAgo ? `${monthsAgo} months since last visit.` : ""} Reference their specific vehicle and what was done. Make returning frictionless.`;
+    } else if (stage === "at_risk") {
+      copyAngle = "AT-RISK retention — positive history but declining engagement. Specific service reminder tied to their vehicle's timeline. Low pressure.";
+    } else if (stage === "active") {
+      copyAngle = "ACTIVE customer — good relationship. Next service milestone, vehicle health check, or relevant upgrade angle.";
+    } else {
+      copyAngle = "SERVICE REMINDER — reference their vehicle and last service specifically. Concrete offer.";
+    }
+
+    const serviceNoteInterpretation = input.recentVisit.service_notes
+      ? `Service notes (use any actionable items as natural hooks — e.g., worn pads, recommended fluid, upcoming milestone): ${input.recentVisit.service_notes}`
+      : null;
+
+    const visitContext = [
+      vehicle ? `Vehicle: ${vehicle}` : null,
+      visitDate ? `Last visit: ${visitDate}${monthsAgo !== null ? ` (${monthsAgo} month${monthsAgo === 1 ? "" : "s"} ago)` : ""}` : null,
+      timeInterpretation ? `Time-gap context: ${timeInterpretation}` : null,
       `Service performed: ${input.recentVisit.service_type || "general service"}`,
-      `Vehicle serviced: ${vehicle}`,
       input.recentVisit.mileage ? `Mileage at last service: ${input.recentVisit.mileage.toLocaleString()} miles` : null,
-      input.recentVisit.service_notes ? `Service notes: ${input.recentVisit.service_notes}` : null,
-    ].filter(Boolean).join(" | ");
+      serviceNoteInterpretation,
+    ].filter(Boolean).join("\n");
+
+    return { visitContext, daysSince, copyAngle };
+  })();
+
+  // Template label for context in the channel guide
+  const _ds = input.designStyle ?? "standard";
+  const templateLabel =
+    _ds === "conquest"            ? "Conquest Postcard (new customer acquisition)" :
+    _ds === "premium-fluorescent" ? "Premium Fluorescent Card (bold event / VIP / urgent offer)" :
+    _ds === "complex-fold"        ? "Folded Self-Mailer — Tri-fold (lapsed win-back)" :
+    input.channel === "direct_mail" && (input as { templateType?: string }).templateType === "letter_8.5x11"
+                                  ? "Premium Letter — 8.5×11 in envelope (formal / VIP)" :
+                                    "Classic Postcard 6×9 (handwritten advisor note)";
+
+  // Template-specific copy structure and voice
+  const templateCopyGuide = (() => {
+    if (_ds === "conquest") return [
+      "TEMPLATE: Conquest Postcard — written for a prospect who has never visited.",
+      "Voice: Professional, clear, welcoming — but no assumed warmth. You are introducing the dealership, not reconnecting.",
+      "Structure:",
+      "  • Para 1 (2 sentences): State a specific service capability or named benefit. Why this dealership, specifically.",
+      "  • Para 2 (1–2 sentences): A concrete first-visit offer. Named service + dollar amount or named complimentary item.",
+      "  • Para 3 (1 sentence): Easy, low-pressure CTA. Call, stop in, or book online.",
+      "Word count: 45–65 words in body.",
+      "Do NOT reference a vehicle you have no data on. Do NOT use 'I'd love to meet you' or any relationship language.",
+    ].join("\n");
+
+    if (_ds === "premium-fluorescent") return [
+      "TEMPLATE: Premium Fluorescent Card — high-impact, event-style or urgent retention.",
+      "Voice: Confident, direct, slightly elevated energy — but NOT pushy. Think: a concierge calling to confirm a reservation, not a salesperson.",
+      "Structure:",
+      "  • Para 1 (1–2 sentences): Bold, specific hook. Vehicle + time since visit, OR an event invitation with a date.",
+      "  • Para 2 (1 sentence): The offer — concrete, named, with a value. No vague 'great deals'.",
+      "  • Para 3 (1 sentence): Clear CTA with phone or booking link.",
+      "Word count: 35–55 words in body. Shorter sentences. More punch per word.",
+    ].join("\n");
+
+    if (_ds === "complex-fold") return [
+      "TEMPLATE: Folded Self-Mailer (Tri-fold) — three-panel format for lapsed win-back.",
+      "The 'content' field is the INNER PANEL personalized story (80–100 words). The cover panel headline is NOT part of content.",
+      "Voice: Warm, personal, a bit more narrative. This is your chance to tell a story in 3 paragraphs.",
+      "Structure:",
+      "  • Para 1 (2 sentences): Reference their specific vehicle and the time gap. Make it feel like the advisor noticed they were missing.",
+      "  • Para 2 (2 sentences): What's changed, what's available, or what they might be missing. A specific named offer.",
+      "  • Para 3 (1–2 sentences): Easy re-engagement CTA. Frictionless return.",
+      "Word count: 80–100 words in body.",
+    ].join("\n");
+
+    // Default: Classic Postcard (standard) or Premium Letter
+    const isLetter = (input as { templateType?: string }).templateType === "letter_8.5x11";
+    if (isLetter) return [
+      "TEMPLATE: Premium Letter (8.5×11 in envelope).",
+      "Voice: More formal than a postcard, but still warm and personal. This is a letter from an advisor, not a form letter.",
+      "Structure:",
+      "  • Para 1 (2–3 sentences): Personal hook. Vehicle, service history, or relationship milestone.",
+      "  • Para 2 (2 sentences): The specific offer or service need. Named and concrete.",
+      "  • Para 3 (1–2 sentences): Formal but warm CTA. Dealership phone or website.",
+      "  • Sign-off: 'Sincerely,' or 'Warmly,' followed by a single first name and title.",
+      "Word count: 100–150 words in body.",
+    ].join("\n");
+
+    return [
+      "TEMPLATE: Classic Postcard 6×9 — the handwritten advisor note.",
+      "Voice: Warm, direct, personal. This note is printed by a robotic pen on card stock. Every word costs space. Be economical.",
+      "Structure:",
+      "  • Para 1 (1–2 sentences): Open with something specific and real — the vehicle name, time since last visit, or a noted service item. No generic openers.",
+      "  • Para 2 (1–2 sentences): The offer — a named service, a dollar amount, a complimentary item. Something the customer can picture and value.",
+      "  • Para 3 (1 sentence): Low-pressure CTA. Call, text, or book online. Never urgent.",
+      "Word count: 60–80 words in body (greeting and sign-off not counted).",
+    ].join("\n");
   })();
 
   const channelGuide = {
@@ -343,48 +461,56 @@ export async function runCreativeAgent(
       "Sign off with a human name. Total body: under 200 words.",
     ].join("\n"),
     direct_mail: [
-      "You are writing a handwritten service note — printed by a robotic pen and mailed by a premium automotive dealership.",
-      "Think of yourself as a trusted, long-tenured service advisor writing to a client you genuinely care about.",
-      "You are NOT a salesperson. You are NOT a marketing department. You are NOT running a promotion.",
-      "Your copy should make the dealership's General Manager proud. If it sounds like a car commercial, a big-box mailer, or anything that belongs in a spam folder — rewrite it.",
+      // === WHO YOU ARE ===
+      "You are a seasoned service advisor at a premium automotive dealership.",
+      "You are writing a handwritten note — printed by a robotic pen on real card stock and mailed to a real customer.",
+      "You have been at this dealership for 12 years. You know these customers by name. You know their vehicles. You are not a marketing department.",
+      "You write the way a trusted advisor actually talks to a client: direct, warm, specific, honest.",
+      "If anything you write sounds like ad copy, a promotion, or a used-car-lot flyer — delete it and start over.",
       "",
-      "EXACT OUTPUT FORMAT (reproduce this structure precisely in the JSON 'content' field):",
-      "  [First name only — never 'Dear [name]'],",
-      "  [blank line — \\n\\n]",
-      "  [Paragraph 1 — 1–2 sentences. Lead with something real and specific. If they have visit history: name their vehicle, the service performed, and how long ago. If they are a prospect: introduce the dealership's service capability or a specific, concrete benefit — no 'pleasure of meeting' language.]",
-      "  [blank line — \\n\\n]",
-      "  [Paragraph 2 — 1–2 sentences. A concrete, specific offer. Named service, dollar amount, or specific perk. Never 'great deals', 'special savings', or vague language.]",
-      "  [blank line — \\n\\n]",
-      "  [Paragraph 3 — 1 sentence. A low-pressure, easy CTA. Never urgent, never countdown language.]",
-      "  [blank line — \\n\\n]",
-      "  [Sign-off: 'Warmly,' or 'Best,']",
-      "  [A single advisor first name]",
+      // === FORMAT ===
+      "OUTPUT FORMAT — reproduce exactly in the JSON 'content' field:",
+      "  [First name only],",
+      "  [blank line]",
+      "  [Paragraph 1]",
+      "  [blank line]",
+      "  [Paragraph 2]",
+      "  [blank line]",
+      "  [Paragraph 3]",
+      "  [blank line]",
+      "  [Warmly, / Best, / Sincerely,]",
+      "  [Single first name — the advisor's name. One name only.]",
       "",
-      "STRICT RULES:",
-      "  • Max 12 words per sentence. Body (greeting and sign-off excluded): 50–75 words.",
-      "  • Write in first person as the advisor. Never refer to 'the dealership' in the third person.",
-      "  • Every sentence ends with punctuation. No lists. No bullet points.",
-      "  • Do NOT use the word 'just' as a minimizer ('just a quick look', 'just wanted to reach out').",
-      "  • Do NOT open with 'I'd love to...' — it reads as desperate and unprofessional.",
-      "  • Do NOT use 'no strings' or any variation — it's a used-car-lot phrase.",
-      "  • Do NOT use 'pleasure of meeting' or 'haven't had the pleasure' — it's a cliché.",
-      "  • Do NOT use 'take advantage of' — sounds manipulative.",
-      "  • The offer must be genuinely specific: '$45 off', 'complimentary cabin air filter', 'free tire rotation' — never 'great savings'.",
+      // === TEMPLATE-SPECIFIC GUIDANCE ===
+      templateCopyGuide,
       "",
-      "TONE BENCHMARKS — write at this level of quality:",
-      "  • Professional but warm. The advisor knows the customer's name and vehicle. He's not trying to sell anything; he's following up.",
-      "  • Confident, not apologetic. Don't minimize yourself ('just wanted to say hi', 'just a quick note').",
-      "  • Honest. No hype, no urgency theater, no false scarcity.",
-      "  • The kind of note a customer would keep on their fridge, not throw away.",
+      // === VOICE PRINCIPLES ===
+      "VOICE PRINCIPLES — internalize these before writing a single word:",
+      "  1. Specific beats vague, always. '18 months' beats 'a while'. 'Brake pads at 40% life' beats 'service reminder'. '$35 oil change' beats 'great value'.",
+      "  2. Short sentences feel handwritten. Long sentences feel corporate. Max 14 words per sentence.",
+      "  3. Confident, not apologetic. Never open with an apology for writing.",
+      "  4. Honest, not salesy. If you don't know their vehicle, don't reference one. If the offer is a $29 oil change, say $29 — don't dress it up.",
+      "  5. The offer must have a name. 'Complimentary multi-point inspection', '$40 toward any service', 'complimentary cabin air filter with your next oil change'. Never 'special savings' or 'great offer'.",
+      "  6. The CTA must be easy. One action. One path. 'Call us at [phone]' or 'book online at [url]' — never both in the same sentence with urgency language.",
+      "  7. Sign off with one human first name. Never 'The Team', 'Service Department', or the dealership name.",
       "",
-      "EXAMPLE A — 14 months since last service, brake wear noted at last visit:",
-      "  James,\n\n  Your 2021 Tacoma was last in fourteen months ago, and at that visit your brake pads were at about 40% life. It's worth getting those checked before winter sets in.\n\n  I have a complimentary brake inspection reserved for you, along with a $30 coupon toward any service this month.\n\n  Give us a call or book online at your convenience.\n\n  Best,\n  Mike",
+      // === PREMIUM BENCHMARKS ===
+      "PREMIUM COPY BENCHMARKS — these are the quality level to match or exceed:",
       "",
-      "EXAMPLE B — Prospect, no visit history, service introduction:",
-      "  Carl,\n\n  Our service team at [Dealership] handles everything from routine maintenance to full diagnostics. We'd like to be your go-to shop.\n\n  For first-time customers, we include a complimentary multi-point inspection with any paid service — a good way to establish a baseline on your vehicle.\n\n  Call us anytime or schedule online.\n\n  Best,\n  Sarah",
+      "BENCHMARK 1 — Lapsed customer, 16 months, oil change + brake wear noted:",
+      `  Sandra,\n\n  Your 2019 Accord was last in sixteen months ago for an oil change. At that visit, your rear brake pads had about 35% life left — they're worth checking soon.\n\n  I have a complimentary brake inspection reserved for you, plus $40 off any service over $150 this month.\n\n  Call us at [phone] or book online at your convenience — I'll make sure you're taken care of.\n\n  Warmly,\n  Carlos`,
       "",
-      "EXAMPLE C — VIP, 8-year customer, loyalty appreciation:",
-      "  Robert and Linda,\n\n  Eight years is a long time, and I want you to know our team genuinely appreciates the trust you've placed in us.\n\n  We're hosting a small VIP appreciation evening on the 18th — early access to the new model year lineup and a complimentary dinner.\n\n  We'd be glad to see you there.\n\n  Warmly,\n  Mike",
+      "BENCHMARK 2 — Active customer, 5 months, approaching 30k miles:",
+      `  David,\n\n  Your 2022 Silverado is coming up on 30,000 miles — a good time to stay ahead of things with the factory 30k service.\n\n  I can get you in any Tuesday or Wednesday this month. I'll also check your tires and top off fluids at no charge.\n\n  Give us a call when you're ready.\n\n  Best,\n  Mike`,
+      "",
+      "BENCHMARK 3 — Prospect, no visit, service introduction:",
+      `  Jennifer,\n\n  Our service team handles everything from routine maintenance to full diagnostics, and we're accepting new customers for service appointments.\n\n  First-time customers receive a complimentary multi-point inspection with any oil change — a thorough look at your vehicle's condition at no additional cost.\n\n  Call us at [phone] or schedule online when it's convenient.\n\n  Best,\n  Sarah`,
+      "",
+      "BENCHMARK 4 — VIP customer, 6-year relationship, loyalty note:",
+      `  Richard,\n\n  Six years of trusting us with your vehicles — I want you to know that means a great deal to our entire team.\n\n  We're hosting a private service appreciation evening on the 22nd: complimentary tire rotation, light refreshments, and first access to the new model year lineup.\n\n  We'd be glad to see you there. RSVP to [phone] or reply to this card.\n\n  Warmly,\n  Lisa`,
+      "",
+      "BENCHMARK 5 — At-risk customer, 10 months, transmission service due:",
+      `  Marcus,\n\n  Your 2018 Explorer is getting close to the mileage interval for a transmission fluid service — something that's easy to overlook but makes a real difference long-term.\n\n  I have a $30 coupon set aside for you toward any service over $100, good through the end of the month.\n\n  Give us a call whenever works for you.\n\n  Best,\n  Tom`,
     ].join("\n"),
   }[input.channel];
 
@@ -460,6 +586,11 @@ export async function runCreativeAgent(
       `Panel 2 (Inner left): Personalized story — reference their vehicle, service history, specific offer. 80–100 words.`,
       `Panel 3 (Inner right / Action): Offer details + QR code + CTA + business card info.`,
       `Include fold instructions for the print house in your layoutSpec.foldInstructions.`,
+    ].join("\n"),
+    conquest: [
+      `DESIGN STYLE: Conquest Postcard — clean, modern design for new customer acquisition.`,
+      `Bold headline (6–8 words) + short personalized message (40–60 words) + prominent CTA.`,
+      `No assumed relationship — professional, welcoming, specific value proposition.`,
     ].join("\n"),
   };
 
@@ -620,21 +751,46 @@ export async function runCreativeAgent(
     "printNotes": "Use Pantone 801 U for neon accent, ensure 1/8in bleed on all edges"
   },` : "";
 
-  const userPrompt =
-    `Write a personalized ${channelGuide} message.\n\n` +
-    `CUSTOMER: ${input.customer.first_name} ${input.customer.last_name}\n` +
-    `LIFECYCLE: ${input.customer.lifecycle_stage} | VISITS: ${input.customer.total_visits} | SPEND: $${input.customer.total_spend.toFixed(0)}\n` +
-    `${visitContext}\n\n` +
-    `CAMPAIGN GOAL: ${input.campaignGoal}\n` +
-    (input.template ? `BASE TEMPLATE:\n${input.template}\n` : "") +
-    `\nRespond with JSON:\n` +
-    `{\n` +
-    `  "subject": "email subject line (null for sms/mail)",\n` +
-    `  "content": "the full message text (front-panel body for advanced designs)",\n` +
-    (isAdvancedDesign ? layoutSpecSchema + "\n" : "") +
-    `  "reasoning": "why this angle — mention which learnings you applied",\n` +
-    `  "confidence": 0.85\n` +
-    `}`;
+  const userPrompt = [
+    `Write a personalized direct mail piece for the customer below.`,
+    ``,
+    `═══════════════════════════════════════`,
+    `CUSTOMER`,
+    `═══════════════════════════════════════`,
+    `Name: ${input.customer.first_name} ${input.customer.last_name}`,
+    `Lifecycle stage: ${input.customer.lifecycle_stage ?? "unknown"}`,
+    `Total visits: ${input.customer.total_visits} | Total spend: $${input.customer.total_spend.toFixed(0)}`,
+    ``,
+    `═══════════════════════════════════════`,
+    `VISIT HISTORY & VEHICLE`,
+    `═══════════════════════════════════════`,
+    visitContext,
+    ``,
+    `═══════════════════════════════════════`,
+    `COPY ANGLE (pre-computed — follow this)`,
+    `═══════════════════════════════════════`,
+    copyAngle,
+    ``,
+    `═══════════════════════════════════════`,
+    `CAMPAIGN GOAL`,
+    `═══════════════════════════════════════`,
+    input.campaignGoal,
+    ``,
+    `TEMPLATE: ${templateLabel}`,
+    input.template ? `BASE TEMPLATE:\n${input.template}` : null,
+    ``,
+    `═══════════════════════════════════════`,
+    `OUTPUT`,
+    `═══════════════════════════════════════`,
+    `Respond with valid JSON only — no preamble, no markdown code fences:`,
+    `{`,
+    `  "subject": null,`,
+    `  "content": "the full handwritten note — greeting through sign-off, exact format from your instructions",`,
+    isAdvancedDesign ? layoutSpecSchema : null,
+    `  "reasoning": "2–3 sentences: what specific data points drove your hook, offer, and CTA choices",`,
+    `  "confidence": 0.9`,
+    `}`,
+  ].filter((s): s is string => s !== null && s !== undefined).join("\n");
 
   // ── 4. Generate copy ───────────────────────────────────────
   const response = await client.messages.create({
