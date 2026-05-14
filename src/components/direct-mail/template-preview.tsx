@@ -502,24 +502,24 @@ function OfferCallout({ offer, accent, expiresText, conditionsText }: { offer: s
       <div style={{ padding: "10px 14px 11px", display: "flex", alignItems: "center", gap: "14px" }}>
       {(savingsAmount || isFree) && (
         <div style={{
-          background: "rgba(0,0,0,0.24)",
+          background: "rgba(255,255,255,0.96)",
           borderRadius: "6px", padding: "7px 10px", textAlign: "center",
-          flexShrink: 0, minWidth: "54px",
-          border: "1px solid rgba(255,255,255,0.18)",
+          flexShrink: 0, minWidth: "60px",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.22)",
         }}>
           {savingsAmount ? (
             <>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 800, color: "rgba(255,255,255,0.82)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "30px", fontWeight: 900, color: "#fff", lineHeight: 1, margin: "2px 0" }}>${savingsAmount}</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 800, color: "rgba(255,255,255,0.82)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 900, color: accent.header, letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "30px", fontWeight: 900, color: accent.header, lineHeight: 1, margin: "2px 0" }}>${savingsAmount}</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 900, color: accent.header, letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
             </>
           ) : (
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "17px", fontWeight: 900, color: "#fff", lineHeight: 1.1 }}>FREE</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "17px", fontWeight: 900, color: accent.header, lineHeight: 1.1 }}>FREE</div>
           )}
         </div>
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 900, color: "#fff", lineHeight: 1.25, letterSpacing: "-0.01em" }}>{offer}</div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 900, color: "#fff", lineHeight: 1.22, letterSpacing: "-0.01em" }}>{offer}</div>
         {expiresText && (
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", color: "rgba(255,255,255,0.80)", marginTop: "4px", fontWeight: 700 }}>🕐 {expiresText}</div>
         )}
@@ -544,9 +544,9 @@ function OfferBadge({ offer, accent }: { offer: string; accent: AccentConfig }) 
     <div style={{
       position: "absolute", top: "10px", right: "10px", zIndex: 10,
       width: "80px", height: "80px", borderRadius: "50%",
-      background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -28)} 100%)`,
-      boxShadow: "0 8px 24px rgba(0,0,0,0.50), 0 0 0 4px rgba(255,255,255,0.28)",
-      border: "3px solid rgba(255,255,255,0.50)",
+      background: `radial-gradient(circle at 38% 36%, ${adjustBrightness(accent.header, 18)} 0%, ${accent.header} 45%, ${adjustBrightness(accent.header, -30)} 100%)`,
+      boxShadow: `0 8px 28px rgba(0,0,0,0.55), 0 0 0 3px rgba(255,255,255,0.55), 0 0 0 6px ${accent.header}44`,
+      border: "2.5px solid rgba(255,255,255,0.60)",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
     }}>
       {amount ? (
@@ -794,9 +794,9 @@ function RealPostcardFront({
         }}>
           {headline && (
             <div style={{
-              fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "27px",
-              color: "#fff", lineHeight: 1.08, letterSpacing: "-0.03em",
-              textShadow: "0 3px 12px rgba(0,0,0,0.70), 0 1px 3px rgba(0,0,0,0.50)",
+              fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "33px",
+              color: "#fff", lineHeight: 1.04, letterSpacing: "-0.035em",
+              textShadow: "0 4px 16px rgba(0,0,0,0.75), 0 1px 4px rgba(0,0,0,0.55)",
             }}>
               {headline}
             </div>
@@ -819,25 +819,7 @@ function RealPostcardFront({
       </div>
 
       {/* Dealer identity bar */}
-      <div style={{ background: accent.header, padding: "7px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-          {logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt={dealershipName}
-              style={{ height: "14px", width: "auto", maxWidth: "52px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
-              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-            />
-          )}
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, color: "white", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-            {dealershipName}
-          </span>
-        </div>
-        {dealershipPhone && (
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 700, color: "rgba(255,255,255,0.92)", flexShrink: 0, letterSpacing: "0.01em" }}>
-            {dealershipPhone}
-          </span>
-        )}
-      </div>
+      <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
 
       {/* Urgency strip — branded accent, not generic amber */}
       {urgencyLine && (
@@ -1048,8 +1030,14 @@ function RealLetterPreview({
       boxShadow: "0 2px 8px rgba(0,0,0,0.08), 0 16px 48px rgba(0,0,0,0.14)",
       width: "100%",
     }}>
-      <div style={{ background: accent.header, padding: "12px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      <div style={{
+        background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -22)} 100%)`,
+        padding: "12px 22px", display: "flex", alignItems: "center", justifyContent: "space-between",
+        position: "relative", overflow: "hidden",
+      }}>
+        <div style={{ position: "absolute", top: 0, right: "14%", width: "26%", height: "100%", background: "rgba(255,255,255,0.09)", transform: "skewX(-12deg)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: 0, right: "44%", width: "12%", height: "100%", background: "rgba(255,255,255,0.04)", transform: "skewX(-12deg)", pointerEvents: "none" }} />
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", position: "relative" }}>
           {logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt={dealershipName}
@@ -1057,12 +1045,13 @@ function RealLetterPreview({
               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
             />
           )}
+          {logoUrl && <div style={{ width: "1px", height: is8511 ? "22px" : "17px", background: "rgba(255,255,255,0.30)" }} />}
           <div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: is8511 ? "13px" : "11px", fontWeight: 800, color: "white", lineHeight: 1 }}>{dealershipName}</div>
-            {dealershipPhone && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7.5px", color: "rgba(255,255,255,0.75)", marginTop: "2px" }}>{dealershipPhone}</div>}
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: is8511 ? "13px" : "11px", fontWeight: 900, color: "white", lineHeight: 1, letterSpacing: "0.02em" }}>{dealershipName}</div>
+            {dealershipPhone && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7.5px", color: "rgba(255,255,255,0.82)", marginTop: "2px" }}>{dealershipPhone}</div>}
           </div>
         </div>
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7.5px", color: "rgba(255,255,255,0.65)", textAlign: "right" }}>{today}</div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7.5px", color: "rgba(255,255,255,0.70)", textAlign: "right", position: "relative" }}>{today}</div>
       </div>
 
       {(dAddrLines.line1 || dAddrLines.line2) && (
@@ -1984,7 +1973,7 @@ function ComplexFoldPreview({
           )}
           {activePanel === "inner-right" && (
             <div style={{ background: "#fff", padding: "20px 22px", minHeight: "300px" }}>
-              <div style={{ fontSize: "19px", fontWeight: 900, color: "#1e293b", marginBottom: "14px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.015em", lineHeight: 1.18 }}>
+              <div style={{ fontSize: "26px", fontWeight: 900, color: "#1e293b", marginBottom: "14px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.025em", lineHeight: 1.1 }}>
                 {innerRight?.headline ?? "Ready when you are."}
               </div>
               {offer && (() => {
@@ -2165,24 +2154,15 @@ function RealConquestFront({
     }}>
       <div style={{ height: "6px", background: `linear-gradient(90deg, ${accent.header} 0%, ${adjustBrightness(accent.header, 20)} 100%)` }} />
       <div style={{ position: "relative" }}>
-        <VehiclePhotoZone heroBg={accent.header} height="175px" imageUrl={vehiclePhotoUrl} showLabel={false} />
+        <VehiclePhotoZone heroBg={accent.header} height="190px" imageUrl={vehiclePhotoUrl} showLabel={false} />
         {offer && <OfferBadge offer={offer} accent={accent} />}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "36px 14px 10px", background: "linear-gradient(to top, rgba(0,0,0,0.84) 0%, rgba(0,0,0,0.38) 65%, transparent 100%)", pointerEvents: "none" }}>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.72)", marginBottom: "3px" }}>EXCLUSIVE OFFER · {dealershipName}</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "20px", color: "#fff", lineHeight: 1.10, letterSpacing: "-0.02em", textShadow: "0 2px 8px rgba(0,0,0,0.65)" }}>{headline}</div>
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "46px 14px 12px", background: "linear-gradient(to top, rgba(0,0,0,0.90) 0%, rgba(0,0,0,0.48) 60%, transparent 100%)", pointerEvents: "none" }}>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.78)", marginBottom: "4px" }}>EXCLUSIVE OFFER · {dealershipName}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "27px", color: "#fff", lineHeight: 1.06, letterSpacing: "-0.03em", textShadow: "0 3px 14px rgba(0,0,0,0.72)" }}>{headline}</div>
         </div>
       </div>
       {/* Dealer identity bar */}
-      <div style={{ background: accent.header, padding: "6px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-          {logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt={dealershipName} style={{ height: "13px", width: "auto", maxWidth: "48px", objectFit: "contain", filter: "brightness(0) invert(1)" }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-          )}
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: "white", letterSpacing: "0.06em", textTransform: "uppercase" }}>{dealershipName}</span>
-        </div>
-        {dealershipPhone && <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7.5px", fontWeight: 700, color: "rgba(255,255,255,0.90)", flexShrink: 0 }}>{dealershipPhone}</span>}
-      </div>
+      <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
       {urgencyLine && (
         <div style={{
           background: adjustBrightness(accent.header, -14),
