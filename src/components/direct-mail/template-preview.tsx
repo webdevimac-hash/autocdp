@@ -341,7 +341,7 @@ function VehiclePhotoZone({
             objectPosition: "center 55%",
             display: "block",
             // Print-like tone: slight desaturation + contrast boost
-            filter: "brightness(0.78) contrast(1.10) saturate(1.08)",
+            filter: "brightness(0.74) contrast(1.14) saturate(1.10)",
           }}
         />
       ) : (
@@ -376,10 +376,10 @@ function VehiclePhotoZone({
 
       {/* Gradient overlay — text readability + depth */}
       <div style={{
-        position: "absolute", bottom: 0, left: 0, right: 0, height: "70%",
+        position: "absolute", bottom: 0, left: 0, right: 0, height: "82%",
         background: hasRealPhoto
-          ? "linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.56) 45%, transparent 100%)"
-          : `linear-gradient(to top, ${heroBg}f2 0%, ${heroBg}66 50%, transparent 100%)`,
+          ? "linear-gradient(to top, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.68) 50%, transparent 100%)"
+          : `linear-gradient(to top, ${heroBg}f6 0%, ${heroBg}72 52%, transparent 100%)`,
         pointerEvents: "none",
       }} />
       {/* Top shadow for realistic photo depth */}
@@ -602,9 +602,9 @@ function BoldHeaderBand({
       </div>
       {dealershipPhone ? (
         <div style={{
-          background: "rgba(255,255,255,0.18)", borderRadius: "4px", padding: "4px 10px",
-          fontFamily: "'Inter', sans-serif", fontSize: "9.5px", fontWeight: 800,
-          color: "rgba(255,255,255,0.97)", letterSpacing: "0.03em", flexShrink: 0, position: "relative",
+          background: "rgba(255,255,255,0.95)", borderRadius: "4px", padding: "4px 12px",
+          fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900,
+          color: accent.header, letterSpacing: "0.02em", flexShrink: 0, position: "relative",
         }}>
           {dealershipPhone}
         </div>
@@ -793,7 +793,7 @@ function RealPostcardFront({
       <div style={{ position: "relative" }}>
         <VehiclePhotoZone
           heroBg={accent.header}
-          height="220px"
+          height="238px"
           dealershipName={headline ? undefined : dealershipName}
           imageUrl={vehiclePhotoUrl}
           showLabel={!headline}
@@ -889,7 +889,7 @@ function RealPostcardFront({
               <span style={{ opacity: 0.75, fontSize: "15px", lineHeight: 1 }}>→</span>
             </div>
             {dealershipPhone && (
-              <div style={{ fontSize: "9.5px", fontWeight: 700, color: "rgba(255,255,255,0.85)", letterSpacing: "0.03em" }}>{dealershipPhone}</div>
+              <div style={{ fontSize: "11px", fontWeight: 800, color: "rgba(255,255,255,0.88)", letterSpacing: "0.02em" }}>{dealershipPhone}</div>
             )}
           </div>
         </div>
@@ -1087,11 +1087,11 @@ function RealLetterPreview({
       )}
 
       {headline && (
-        <div style={{ background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -26)} 100%)`, padding: is8511 ? "16px 22px" : "13px 22px", margin: "14px 0 0", position: "relative", overflow: "hidden" }}>
+        <div style={{ background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -26)} 100%)`, padding: is8511 ? "20px 22px" : "16px 22px", margin: "14px 0 0", position: "relative", overflow: "hidden" }}>
           {/* Sheen stripe */}
           <div style={{ position: "absolute", top: 0, right: "18%", width: "28%", height: "100%", background: "rgba(255,255,255,0.08)", transform: "skewX(-12deg)", pointerEvents: "none" }} />
           <div style={{ position: "absolute", top: 0, right: "50%", width: "14%", height: "100%", background: "rgba(255,255,255,0.04)", transform: "skewX(-12deg)", pointerEvents: "none" }} />
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: is8511 ? "28px" : "22px", fontWeight: 900, color: "#fff", lineHeight: 1.08, letterSpacing: "-0.028em", textShadow: "0 2px 10px rgba(0,0,0,0.45)", position: "relative" }}>{headline}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: is8511 ? "34px" : "27px", fontWeight: 900, color: "#fff", lineHeight: 1.08, letterSpacing: "-0.028em", textShadow: "0 2px 10px rgba(0,0,0,0.45)", position: "relative" }}>{headline}</div>
         </div>
       )}
 
@@ -1262,7 +1262,7 @@ function Postcard6x9Preview({
               <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
               {/* Vehicle photo — tall hero with offer badge + headline overlay */}
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={accent.header} height="188px" imageUrl={vehiclePhotoUrl} showLabel={!headline} dealershipName={headline ? undefined : dealershipName} />
+                <VehiclePhotoZone heroBg={accent.header} height="204px" imageUrl={vehiclePhotoUrl} showLabel={!headline} dealershipName={headline ? undefined : dealershipName} />
                 {offer && <OfferBadge offer={offer} accent={accent} />}
                 <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "52px 14px 10px", background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.52) 60%, transparent 100%)", pointerEvents: "none" }}>
                   {headline ? (
@@ -1326,7 +1326,7 @@ function Postcard6x9Preview({
                       <span style={{ opacity: 0.80, fontSize: "16px", lineHeight: 1 }}>→</span>
                     </div>
                     {dealershipPhone && (
-                      <div style={{ fontSize: "9.5px", fontWeight: 700, color: "rgba(255,255,255,0.85)", letterSpacing: "0.03em" }}>{dealershipPhone}</div>
+                      <div style={{ fontSize: "11px", fontWeight: 800, color: "rgba(255,255,255,0.88)", letterSpacing: "0.02em" }}>{dealershipPhone}</div>
                     )}
                   </div>
                 </div>
@@ -1461,7 +1461,7 @@ function LetterPreview({
           {headline && (
             <div style={{ background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -24)} 100%)`, padding: templateType === "letter_8.5x11" ? "13px 28px" : "10px 20px", margin: "14px 0 0", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", top: 0, right: "20%", width: "20%", height: "100%", background: "rgba(255,255,255,0.08)", transform: "skewX(-12deg)", pointerEvents: "none" }} />
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: templateType === "letter_8.5x11" ? "22px" : "17px", fontWeight: 900, color: "#fff", lineHeight: 1.1, letterSpacing: "-0.02em", position: "relative" }}>{headline}</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: templateType === "letter_8.5x11" ? "26px" : "21px", fontWeight: 900, color: "#fff", lineHeight: 1.1, letterSpacing: "-0.02em", position: "relative" }}>{headline}</div>
             </div>
           )}
 
@@ -1541,9 +1541,10 @@ function MultiPanelPreview({
             <div className="w-full rounded-xl border border-slate-200 shadow-xl overflow-hidden" style={{ maxWidth: "420px", background: "#fff" }}>
               <BoldHeaderBand dealershipName={dealershipName} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} logoUrl={logoUrl} dealershipPhone={undefined} />
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={heroBg} height="212px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                <VehiclePhotoZone heroBg={heroBg} height="228px" showLabel={false} imageUrl={vehiclePhotoUrl} />
                 {offer && <OfferBadge offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex, offerBg: accent.offerBg, offerText: accent.offerText, letterBorder: accent.letterBorder, highlightGlow: accent.highlightGlow, isHighlight: accent.isHighlight }} />}
                 <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "60px 16px 13px", background: `linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.58) 55%, transparent 100%)`, pointerEvents: "none" }}>
+                  {offer && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5px", fontWeight: 900, letterSpacing: "0.22em", color: accentHex, textTransform: "uppercase", marginBottom: "4px", lineHeight: 1 }}>★ EXCLUSIVE OFFER</div>}
                   <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "34px", color: "#fff", lineHeight: 1.02, letterSpacing: "-0.036em", textShadow: "0 3px 18px rgba(0,0,0,0.78)" }}>{resolvedHeadline}</div>
                   <div style={{ width: "42px", height: "4px", background: accentHex, borderRadius: "2px", marginTop: "9px", boxShadow: `0 0 10px ${accentHex}cc` }} />
                 </div>
@@ -1600,9 +1601,10 @@ function MultiPanelPreview({
                     <div className="w-full rounded-xl border border-slate-200 shadow-xl overflow-hidden" style={{ maxWidth: "520px", background: "#fff" }}>
                       <BoldHeaderBand dealershipName={dealershipName} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} logoUrl={logoUrl} dealershipPhone={undefined} />
                       <div style={{ position: "relative" }}>
-                        <VehiclePhotoZone heroBg={heroBg} height="224px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                        <VehiclePhotoZone heroBg={heroBg} height="240px" showLabel={false} imageUrl={vehiclePhotoUrl} />
                         {offer && <OfferBadge offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex, offerBg: accent.offerBg, offerText: accent.offerText, letterBorder: accent.letterBorder, highlightGlow: accent.highlightGlow, isHighlight: accent.isHighlight }} />}
                         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "62px 16px 13px", background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.60) 55%, transparent 100%)", pointerEvents: "none" }}>
+                          {offer && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5px", fontWeight: 900, letterSpacing: "0.22em", color: accentHex, textTransform: "uppercase", marginBottom: "4px", lineHeight: 1 }}>★ EXCLUSIVE OFFER</div>}
                           <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "36px", color: "#fff", lineHeight: 1.02, letterSpacing: "-0.038em", textShadow: "0 4px 22px rgba(0,0,0,0.82)" }}>{resolvedHeadline}</div>
                           <div style={{ width: "42px", height: "4px", background: accentHex, borderRadius: "2px", marginTop: "9px", boxShadow: `0 0 10px ${accentHex}cc` }} />
                         </div>
@@ -1728,7 +1730,7 @@ function PremiumFluorescentPreview({
               </div>
               {/* Hero — photo with headline overlaid at bottom */}
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={bg} height="204px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                <VehiclePhotoZone heroBg={bg} height="236px" showLabel={false} imageUrl={vehiclePhotoUrl} />
                 {/* Dominant headline overlaid at bottom of hero */}
                 <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "60px 16px 12px", background: `linear-gradient(to top, ${bg} 0%, ${bg}d0 44%, transparent 100%)`, pointerEvents: "none" }}>
                   <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "32px", color: textCol, lineHeight: 1.02, letterSpacing: "-0.034em", textShadow: "0 2px 16px rgba(0,0,0,0.75)" }}>{resolvedHeadline}</div>
@@ -1743,7 +1745,7 @@ function PremiumFluorescentPreview({
                   display: "flex", alignItems: "center", gap: "7px",
                 }}>
                   <span style={{ fontSize: "10px" }}>⚡</span>
-                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: isNeon ? "#000" : bg, letterSpacing: "0.06em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, color: isNeon ? "#000" : bg, letterSpacing: "0.06em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
                   <div style={{ background: "rgba(0,0,0,0.22)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 900, color: isNeon ? "#000" : bg, letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
                 </div>
               )}
@@ -1824,7 +1826,7 @@ function PremiumFluorescentPreview({
                       </div>
                       {/* Hero — photo with headline overlaid at bottom */}
                       <div style={{ position: "relative" }}>
-                        <VehiclePhotoZone heroBg={bg} height="220px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                        <VehiclePhotoZone heroBg={bg} height="236px" showLabel={false} imageUrl={vehiclePhotoUrl} />
                         {/* Dominant headline overlaid at bottom of hero */}
                         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "66px 18px 12px", background: `linear-gradient(to top, ${bg} 0%, ${bg}d0 46%, transparent 100%)`, pointerEvents: "none" }}>
                           <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "36px", color: textCol, lineHeight: 1.0, letterSpacing: "-0.038em", textShadow: "0 3px 18px rgba(0,0,0,0.78)" }}>{resolvedHeadline}</div>
@@ -1839,7 +1841,7 @@ function PremiumFluorescentPreview({
                           display: "flex", alignItems: "center", gap: "7px",
                         }}>
                           <span style={{ fontSize: "10px" }}>⚡</span>
-                          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: isNeon ? "#000" : bg, letterSpacing: "0.06em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
+                          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, color: isNeon ? "#000" : bg, letterSpacing: "0.06em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
                           <div style={{ background: "rgba(0,0,0,0.22)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 900, color: isNeon ? "#000" : bg, letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
                         </div>
                       )}
@@ -1960,7 +1962,7 @@ function ComplexFoldPreview({
               </div>
               {/* Hero — taller with headline overlaid at bottom */}
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={bg} height="228px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                <VehiclePhotoZone heroBg={bg} height="244px" showLabel={false} imageUrl={vehiclePhotoUrl} />
                 {/* Dominant headline overlaid at bottom of photo */}
                 <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "66px 18px 12px", background: "linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.58) 55%, transparent 100%)", pointerEvents: "none" }}>
                   <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "36px", color: "#fff", lineHeight: 1.0, letterSpacing: "-0.038em", textShadow: "0 4px 20px rgba(0,0,0,0.82)" }}>
@@ -2090,7 +2092,7 @@ function ConquestFront({
       {/* Dealer identity bar — always at top */}
       <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
       <div style={{ position: "relative" }}>
-        <VehiclePhotoZone heroBg={accent.header} height="182px" imageUrl={vehiclePhotoUrl} showLabel={false} />
+        <VehiclePhotoZone heroBg={accent.header} height="198px" imageUrl={vehiclePhotoUrl} showLabel={false} />
         {offer && <OfferBadge offer={offer} accent={accent} />}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "56px 16px 13px", background: "linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.58) 55%, transparent 100%)", pointerEvents: "none" }}>
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.82)", marginBottom: "5px" }}>EXCLUSIVE OFFER · {dealershipName}</div>
@@ -2135,7 +2137,7 @@ function ConquestFront({
               <span style={{ opacity: 0.80, fontSize: "16px", lineHeight: 1 }}>→</span>
             </div>
             {dealershipPhone && (
-              <div style={{ fontSize: "9.5px", fontWeight: 700, color: "rgba(255,255,255,0.85)", letterSpacing: "0.03em" }}>{dealershipPhone}</div>
+              <div style={{ fontSize: "11px", fontWeight: 800, color: "rgba(255,255,255,0.88)", letterSpacing: "0.02em" }}>{dealershipPhone}</div>
             )}
           </div>
         </div>
@@ -2189,7 +2191,7 @@ function RealConquestFront({
       {/* Dealer identity bar — always at top */}
       <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
       <div style={{ position: "relative" }}>
-        <VehiclePhotoZone heroBg={accent.header} height="212px" imageUrl={vehiclePhotoUrl} showLabel={false} />
+        <VehiclePhotoZone heroBg={accent.header} height="228px" imageUrl={vehiclePhotoUrl} showLabel={false} />
         {offer && <OfferBadge offer={offer} accent={accent} />}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "62px 14px 13px", background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.60) 55%, transparent 100%)", pointerEvents: "none" }}>
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.84)", marginBottom: "5px" }}>EXCLUSIVE OFFER · {dealershipName}</div>
@@ -2234,7 +2236,7 @@ function RealConquestFront({
               <span style={{ opacity: 0.80, fontSize: "16px", lineHeight: 1 }}>→</span>
             </div>
             {dealershipPhone && (
-              <div style={{ fontSize: "9.5px", fontWeight: 700, color: "rgba(255,255,255,0.85)", letterSpacing: "0.03em" }}>{dealershipPhone}</div>
+              <div style={{ fontSize: "11px", fontWeight: 800, color: "rgba(255,255,255,0.88)", letterSpacing: "0.02em" }}>{dealershipPhone}</div>
             )}
           </div>
         </div>
