@@ -489,20 +489,20 @@ function OfferBadge({ offer, accent }: { offer: string; accent: AccentConfig }) 
   return (
     <div style={{
       position: "absolute", top: "10px", right: "10px", zIndex: 10,
-      width: "54px", height: "54px", borderRadius: "50%",
-      background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -24)} 100%)`,
-      boxShadow: "0 4px 14px rgba(0,0,0,0.40), 0 0 0 2.5px rgba(255,255,255,0.30)",
-      border: "2px solid rgba(255,255,255,0.40)",
+      width: "66px", height: "66px", borderRadius: "50%",
+      background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -28)} 100%)`,
+      boxShadow: "0 6px 18px rgba(0,0,0,0.45), 0 0 0 3px rgba(255,255,255,0.32)",
+      border: "2.5px solid rgba(255,255,255,0.45)",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
     }}>
       {amount ? (
         <>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, color: "rgba(255,255,255,0.82)", letterSpacing: "0.10em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "18px", fontWeight: 900, color: "#fff", lineHeight: 1, margin: "1px 0" }}>${amount}</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, color: "rgba(255,255,255,0.82)", letterSpacing: "0.10em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 800, color: "rgba(255,255,255,0.85)", letterSpacing: "0.10em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "22px", fontWeight: 900, color: "#fff", lineHeight: 1, margin: "1px 0" }}>${amount}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 800, color: "rgba(255,255,255,0.85)", letterSpacing: "0.10em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
         </>
       ) : (
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 900, color: "#fff", lineHeight: 1 }}>FREE</div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 900, color: "#fff", lineHeight: 1 }}>FREE</div>
       )}
     </div>
   );
@@ -733,9 +733,9 @@ function RealPostcardFront({
         }}>
           {headline && (
             <div style={{
-              fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "19px",
-              color: "#fff", lineHeight: 1.15, letterSpacing: "-0.02em",
-              textShadow: "0 2px 8px rgba(0,0,0,0.60), 0 1px 2px rgba(0,0,0,0.40)",
+              fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "22px",
+              color: "#fff", lineHeight: 1.12, letterSpacing: "-0.025em",
+              textShadow: "0 2px 10px rgba(0,0,0,0.65), 0 1px 3px rgba(0,0,0,0.45)",
             }}>
               {headline}
             </div>
@@ -788,11 +788,10 @@ function RealPostcardFront({
       )}
 
       {/* Content area */}
-      <div style={{ padding: "10px 14px 12px", flex: 1, display: "flex", gap: "12px" }}>
-        {/* Left: handwritten copy + coupon */}
+      <div style={{ padding: "10px 14px 8px", flex: 1, display: "flex", gap: "12px" }}>
+        {/* Left: handwritten copy */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <HandwrittenContent text={content} fontSize={13} lineHeight={1.82} />
-          {offer && <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />}
         </div>
 
         {/* Right: framed QR card */}
@@ -814,6 +813,13 @@ function RealPostcardFront({
           </div>
         </div>
       </div>
+
+      {/* Featured Offer — full-width coupon strip */}
+      {offer && (
+        <div style={{ padding: "0 14px 8px" }}>
+          <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
+        </div>
+      )}
 
       {/* CTA button — always prominent, full-width */}
       <div style={{ padding: "0 14px 11px" }}>
@@ -1047,7 +1053,7 @@ function RealLetterPreview({
 
       {ctaText && (
         <div style={{ padding: "0 22px 16px" }}>
-          <div style={{ background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", padding: "8px 14px", borderRadius: "3px", textAlign: "center", display: "inline-block" }}>
+          <div style={{ background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", padding: "10px 14px", borderRadius: "3px", textAlign: "center", display: "block", boxShadow: `0 4px 12px ${accent.header}55` }}>
             {ctaText}
           </div>
         </div>
@@ -1196,10 +1202,9 @@ function Postcard6x9Preview({
               )}
 
               {/* Message + QR */}
-              <div style={{ padding: "11px 16px 12px", display: "flex", gap: "10px" }}>
+              <div style={{ padding: "11px 16px 8px", display: "flex", gap: "10px" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <HandwrittenContent text={content} fontSize={15} lineHeight={1.88} />
-                  {offer && <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />}
                 </div>
                 <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", paddingTop: "4px" }}>
                   <div style={{ background: "white", border: `2px solid ${accent.header}`, borderRadius: "8px", padding: "4px", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}>
@@ -1211,6 +1216,12 @@ function Postcard6x9Preview({
                   </div>
                 </div>
               </div>
+              {/* Featured Offer — full-width */}
+              {offer && (
+                <div style={{ padding: "0 16px 8px" }}>
+                  <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
+                </div>
+              )}
               {/* CTA — always prominent */}
               <div style={{ padding: "0 16px 14px" }}>
                 <div style={{
@@ -1445,20 +1456,24 @@ function MultiPanelPreview({
                   <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
                 </div>
               )}
-              <div style={{ padding: "14px 18px 16px" }}>
+              <div style={{ padding: "14px 18px 8px" }}>
                 <HandwrittenContent text={content} fontSize={15} lineHeight={1.82} />
-                {offer && <CouponStrip offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />}
-                <div style={{ marginTop: "14px" }}>
-                  <div style={{ background: accentHex, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "9px 16px", borderRadius: "3px", letterSpacing: "0.06em", textTransform: "uppercase", textAlign: "center", boxShadow: `0 4px 12px ${accentHex}55`, marginBottom: "8px" }}>
-                    {ctaText ?? front?.cta ?? "Schedule Now"}
+              </div>
+              {offer && (
+                <div style={{ padding: "0 18px 10px" }}>
+                  <CouponStrip offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
+                </div>
+              )}
+              <div style={{ padding: "0 18px 16px" }}>
+                <div style={{ background: accentHex, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "9px 16px", borderRadius: "3px", letterSpacing: "0.06em", textTransform: "uppercase", textAlign: "center", boxShadow: `0 4px 12px ${accentHex}55`, marginBottom: "8px" }}>
+                  {ctaText ?? front?.cta ?? "Schedule Now"}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                  <div style={{ background: "white", border: `2px solid ${accentHex}`, borderRadius: "6px", padding: "3px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={qrPreviewUrl} alt="QR" width={46} height={46} style={{ borderRadius: "3px" }} />
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                    <div style={{ background: "white", border: `2px solid ${accentHex}`, borderRadius: "6px", padding: "3px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={qrPreviewUrl} alt="QR" width={46} height={46} style={{ borderRadius: "3px" }} />
-                    </div>
-                    <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 700, color: accentHex, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO<br />BOOK</div>
-                  </div>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 700, color: accentHex, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO<br />BOOK</div>
                 </div>
               </div>
             </div>
@@ -1494,20 +1509,24 @@ function MultiPanelPreview({
                           <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
                         </div>
                       )}
-                      <div style={{ padding: "14px 18px 16px" }}>
+                      <div style={{ padding: "14px 18px 8px" }}>
                         <HandwrittenContent text={content} fontSize={15} lineHeight={1.82} />
-                        {offer && <CouponStrip offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />}
-                        <div style={{ marginTop: "14px" }}>
-                          <div style={{ background: accentHex, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "9px 16px", borderRadius: "3px", letterSpacing: "0.06em", textTransform: "uppercase", textAlign: "center", boxShadow: `0 4px 12px ${accentHex}55`, marginBottom: "8px" }}>
-                            {ctaText ?? front?.cta ?? "Schedule Now"}
+                      </div>
+                      {offer && (
+                        <div style={{ padding: "0 18px 10px" }}>
+                          <CouponStrip offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
+                        </div>
+                      )}
+                      <div style={{ padding: "0 18px 16px" }}>
+                        <div style={{ background: accentHex, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "9px 16px", borderRadius: "3px", letterSpacing: "0.06em", textTransform: "uppercase", textAlign: "center", boxShadow: `0 4px 12px ${accentHex}55`, marginBottom: "8px" }}>
+                          {ctaText ?? front?.cta ?? "Schedule Now"}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                          <div style={{ background: "white", border: `2px solid ${accentHex}`, borderRadius: "6px", padding: "3px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={qrPreviewUrl} alt="QR" width={46} height={46} style={{ borderRadius: "3px" }} />
                           </div>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                            <div style={{ background: "white", border: `2px solid ${accentHex}`, borderRadius: "6px", padding: "3px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={qrPreviewUrl} alt="QR" width={46} height={46} style={{ borderRadius: "3px" }} />
-                            </div>
-                            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 700, color: accentHex, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO<br />BOOK</div>
-                          </div>
+                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 700, color: accentHex, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO<br />BOOK</div>
                         </div>
                       </div>
                     </div>
@@ -1741,7 +1760,7 @@ function ComplexFoldPreview({
           {activePanel === "cover" && (
             <div style={{ background: bg, minHeight: "300px", position: "relative", overflow: "hidden" }}>
               <VehiclePhotoZone heroBg={bg} height="160px" showLabel={false} imageUrl={vehiclePhotoUrl} />
-              <div style={{ padding: "18px 22px", position: "relative" }}>
+              <div style={{ padding: "18px 22px 14px", position: "relative" }}>
                 {logoUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={logoUrl} alt={dealershipName}
@@ -1753,9 +1772,15 @@ function ComplexFoldPreview({
                 <div style={{ fontSize: "22px", fontWeight: 900, color: "#fff", lineHeight: 1.1, marginBottom: "6px", fontFamily: "'Inter', sans-serif" }}>
                   {headline ?? cover?.headline ?? "We'd love to see you again."}
                 </div>
-                <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.55)", fontFamily: "'Inter', sans-serif" }}>
+                <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.55)", fontFamily: "'Inter', sans-serif", marginBottom: urgencyLine ? "14px" : 0 }}>
                   {cover?.subheadline ?? "A personal note from your service team."}
                 </div>
+                {urgencyLine && (
+                  <div style={{ background: "#FEF3C7", borderRadius: "3px", padding: "5px 10px", display: "flex", alignItems: "center", gap: "5px", marginRight: "16px" }}>
+                    <span style={{ fontSize: "9px" }}>⚡</span>
+                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
+                  </div>
+                )}
               </div>
               <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "8px", background: accent }} />
             </div>
@@ -1849,12 +1874,17 @@ function ConquestFront({
           <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "18px", color: "#fff", lineHeight: 1.12, letterSpacing: "-0.02em", textShadow: "0 2px 8px rgba(0,0,0,0.60)" }}>{headline}</div>
         </div>
       </div>
-      <div style={{ padding: "10px 16px 14px" }}>
+      {urgencyLine && (
+        <div style={{ background: "#FEF3C7", borderBottom: "1px solid #F59E0B", padding: "4px 16px", display: "flex", alignItems: "center", gap: "5px" }}>
+          <span style={{ fontSize: "9px" }}>⚡</span>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
+        </div>
+      )}
+      <div style={{ padding: "10px 16px 8px" }}>
         {/* Copy + QR side by side */}
         <div style={{ display: "flex", gap: "10px" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <HandwrittenContent text={content} fontSize={14} lineHeight={1.78} />
-            {offer && <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />}
           </div>
           <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", paddingTop: "2px" }}>
             <div style={{ background: "white", border: `2px solid ${accent.header}`, borderRadius: "7px", padding: "4px", boxShadow: "0 2px 8px rgba(0,0,0,0.10)" }}>
@@ -1866,13 +1896,15 @@ function ConquestFront({
             </div>
           </div>
         </div>
+        {/* Featured Offer — full-width */}
+        {offer && (
+          <div style={{ marginTop: "8px" }}>
+            <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
+          </div>
+        )}
         {/* Full-width CTA */}
-        <div style={{ marginTop: "11px", background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", padding: "9px 14px", borderRadius: "3px", textAlign: "center", boxShadow: `0 4px 12px ${accent.header}55` }}>
+        <div style={{ marginTop: "10px", background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", padding: "9px 14px", borderRadius: "3px", textAlign: "center", boxShadow: `0 4px 12px ${accent.header}55` }}>
           {cta}
-        </div>
-        {/* Urgency subline */}
-        <div style={{ textAlign: "center", marginTop: "4px", fontFamily: "'Inter', sans-serif", fontSize: "6px", color: "#9CA3AF", letterSpacing: "0.04em" }}>
-          {urgencyLine ?? "Limited time offer · Present this card to redeem"}
         </div>
       </div>
       {(addrLines.line1 || addrLines.line2) && (
@@ -1941,11 +1973,16 @@ function RealConquestFront({
         </div>
         {dealershipPhone && <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7.5px", fontWeight: 700, color: "rgba(255,255,255,0.90)", flexShrink: 0 }}>{dealershipPhone}</span>}
       </div>
-      <div style={{ padding: "10px 14px 12px", flex: 1, display: "flex", flexDirection: "column" }}>
+      {urgencyLine && (
+        <div style={{ background: "#FEF3C7", borderBottom: "1px solid #F59E0B", padding: "4px 14px", display: "flex", alignItems: "center", gap: "5px" }}>
+          <span style={{ fontSize: "9px" }}>⚡</span>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
+        </div>
+      )}
+      <div style={{ padding: "10px 14px 8px", flex: 1, display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", gap: "12px", flex: 1 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <HandwrittenContent text={content} fontSize={13} lineHeight={1.80} />
-            {offer && <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />}
           </div>
           <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "5px", paddingTop: "2px" }}>
             <div style={{ background: "white", border: `2px solid ${accent.header}`, borderRadius: "7px", padding: "5px", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}>
@@ -1955,8 +1992,12 @@ function RealConquestFront({
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 900, color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>SCAN TO<br />VIEW OFFER</div>
           </div>
         </div>
-        <div style={{ marginTop: "11px", background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", padding: "9px 14px", borderRadius: "3px", textAlign: "center", boxShadow: `0 4px 12px ${accent.header}55` }}>{cta}</div>
-        <div style={{ textAlign: "center", marginTop: "4px", fontFamily: "'Inter', sans-serif", fontSize: "5.5px", color: "#9CA3AF", letterSpacing: "0.04em" }}>{urgencyLine ?? "Limited time offer · Present this card to redeem"}</div>
+        {offer && (
+          <div style={{ marginTop: "8px" }}>
+            <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
+          </div>
+        )}
+        <div style={{ marginTop: "10px", background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", padding: "9px 14px", borderRadius: "3px", textAlign: "center", boxShadow: `0 4px 12px ${accent.header}55` }}>{cta}</div>
       </div>
       {(addrLines.line1 || addrLines.line2) && (
         <div style={{ padding: "5px 14px", borderTop: "1px solid #EDE8D8", background: "rgba(254,252,243,0.97)", display: "flex", alignItems: "center", gap: "6px" }}>
