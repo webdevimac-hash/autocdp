@@ -495,26 +495,27 @@ function OfferCallout({ offer, accent, expiresText, conditionsText }: { offer: s
       {/* Eyebrow — "★ EXCLUSIVE OFFER" */}
       <div style={{
         borderBottom: "1px solid rgba(255,255,255,0.22)",
-        padding: "6px 14px 5px",
-        fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 900,
-        color: "rgba(255,255,255,0.95)", letterSpacing: "0.24em", textTransform: "uppercase",
+        padding: "8px 14px 7px",
+        fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900,
+        color: "rgba(255,255,255,0.95)", letterSpacing: "0.22em", textTransform: "uppercase",
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <span>★&nbsp;&nbsp;EXCLUSIVE OFFER</span>
+        <span style={{ background: "rgba(255,255,255,0.20)", borderRadius: "3px", padding: "1px 8px", fontSize: "6.5px", letterSpacing: "0.16em", fontWeight: 900 }}>LIMITED TIME</span>
       </div>
       <div style={{ padding: "11px 14px 12px", display: "flex", alignItems: "center", gap: "14px" }}>
       {(savingsAmount || isFree) && (
         <div style={{
           background: "rgba(255,255,255,0.97)",
-          borderRadius: "7px", padding: "8px 11px", textAlign: "center",
-          flexShrink: 0, minWidth: "64px",
-          boxShadow: "0 3px 12px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,1)",
+          borderRadius: "9px", padding: "9px 13px", textAlign: "center",
+          flexShrink: 0, minWidth: "70px",
+          boxShadow: "0 4px 18px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,1)",
         }}>
           {savingsAmount ? (
             <>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 900, color: accent.header, letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "32px", fontWeight: 900, color: accent.header, lineHeight: 1, margin: "2px 0" }}>${savingsAmount}</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 900, color: accent.header, letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: accent.header, letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "40px", fontWeight: 900, color: accent.header, lineHeight: 1, margin: "3px 0" }}>${savingsAmount}</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: accent.header, letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
             </>
           ) : (
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "19px", fontWeight: 900, color: accent.header, lineHeight: 1.1 }}>FREE</div>
@@ -522,7 +523,7 @@ function OfferCallout({ offer, accent, expiresText, conditionsText }: { offer: s
         </div>
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 900, color: "#fff", lineHeight: 1.2, letterSpacing: "-0.01em" }}>{offer}</div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "17px", fontWeight: 900, color: "#fff", lineHeight: 1.17, letterSpacing: "-0.015em" }}>{offer}</div>
         {expiresText && (
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", color: "rgba(255,255,255,0.85)", marginTop: "5px", fontWeight: 700 }}>🕐 {expiresText}</div>
         )}
@@ -546,17 +547,17 @@ function OfferBadge({ offer, accent }: { offer: string; accent: AccentConfig }) 
   return (
     <div style={{
       position: "absolute", top: "8px", right: "8px", zIndex: 10,
-      width: "90px", height: "90px", borderRadius: "50%",
-      background: `radial-gradient(circle at 36% 34%, ${adjustBrightness(accent.header, 24)} 0%, ${accent.header} 44%, ${adjustBrightness(accent.header, -36)} 100%)`,
-      boxShadow: `0 10px 32px rgba(0,0,0,0.60), 0 0 0 3px rgba(255,255,255,0.60), 0 0 0 7px ${accent.header}44`,
-      border: "3px solid rgba(255,255,255,0.65)",
+      width: "108px", height: "108px", borderRadius: "50%",
+      background: `radial-gradient(circle at 36% 34%, ${adjustBrightness(accent.header, 28)} 0%, ${accent.header} 44%, ${adjustBrightness(accent.header, -40)} 100%)`,
+      boxShadow: `0 12px 36px rgba(0,0,0,0.65), 0 0 0 3.5px rgba(255,255,255,0.65), 0 0 0 8px ${accent.header}44`,
+      border: "3.5px solid rgba(255,255,255,0.70)",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
     }}>
       {amount ? (
         <>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7.5px", fontWeight: 900, color: "rgba(255,255,255,0.90)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "29px", fontWeight: 900, color: "#fff", lineHeight: 1, margin: "2px 0" }}>${amount}</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7.5px", fontWeight: 900, color: "rgba(255,255,255,0.90)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, color: "rgba(255,255,255,0.92)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "34px", fontWeight: 900, color: "#fff", lineHeight: 1, margin: "3px 0" }}>${amount}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, color: "rgba(255,255,255,0.92)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
         </>
       ) : (
         <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "18px", fontWeight: 900, color: "#fff", lineHeight: 1 }}>FREE</div>
@@ -575,7 +576,7 @@ function BoldHeaderBand({
   return (
     <div style={{
       background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -20)} 100%)`,
-      padding: "10px 14px", position: "relative", overflow: "hidden",
+      padding: "12px 14px", position: "relative", overflow: "hidden",
       display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px",
       borderBottom: "2px solid rgba(0,0,0,0.18)",
     }}>
@@ -601,8 +602,8 @@ function BoldHeaderBand({
       </div>
       {dealershipPhone && (
         <div style={{
-          background: "rgba(255,255,255,0.18)", borderRadius: "4px", padding: "3px 8px",
-          fontFamily: "'Inter', sans-serif", fontSize: "8.5px", fontWeight: 800,
+          background: "rgba(255,255,255,0.18)", borderRadius: "4px", padding: "4px 10px",
+          fontFamily: "'Inter', sans-serif", fontSize: "9.5px", fontWeight: 800,
           color: "rgba(255,255,255,0.97)", letterSpacing: "0.03em", flexShrink: 0, position: "relative",
         }}>
           {dealershipPhone}
@@ -800,13 +801,13 @@ function RealPostcardFront({
           {headline && (
             <>
               <div style={{
-                fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "36px",
-                color: "#fff", lineHeight: 1.02, letterSpacing: "-0.038em",
-                textShadow: "0 4px 20px rgba(0,0,0,0.80), 0 1px 4px rgba(0,0,0,0.55)",
+                fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "42px",
+                color: "#fff", lineHeight: 1.0, letterSpacing: "-0.042em",
+                textShadow: "0 4px 24px rgba(0,0,0,0.85), 0 1px 4px rgba(0,0,0,0.60)",
               }}>
                 {headline}
               </div>
-              <div style={{ width: "36px", height: "3px", background: accent.header, borderRadius: "2px", marginTop: "8px", boxShadow: `0 0 8px ${accent.header}` }} />
+              <div style={{ width: "54px", height: "4px", background: accent.header, borderRadius: "2px", marginTop: "9px", boxShadow: `0 0 10px ${accent.header}cc` }} />
             </>
           )}
           {subHeadline && (
@@ -1080,7 +1081,7 @@ function RealLetterPreview({
           {/* Sheen stripe */}
           <div style={{ position: "absolute", top: 0, right: "18%", width: "28%", height: "100%", background: "rgba(255,255,255,0.08)", transform: "skewX(-12deg)", pointerEvents: "none" }} />
           <div style={{ position: "absolute", top: 0, right: "50%", width: "14%", height: "100%", background: "rgba(255,255,255,0.04)", transform: "skewX(-12deg)", pointerEvents: "none" }} />
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: is8511 ? "24px" : "20px", fontWeight: 900, color: "#fff", lineHeight: 1.12, letterSpacing: "-0.025em", textShadow: "0 2px 8px rgba(0,0,0,0.40)", position: "relative" }}>{headline}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: is8511 ? "28px" : "22px", fontWeight: 900, color: "#fff", lineHeight: 1.08, letterSpacing: "-0.028em", textShadow: "0 2px 10px rgba(0,0,0,0.45)", position: "relative" }}>{headline}</div>
         </div>
       )}
 
@@ -1115,11 +1116,11 @@ function RealLetterPreview({
         <div style={{ padding: "0 22px 16px" }}>
           <div style={{
             background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`,
-            color: "white", fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 900,
-            letterSpacing: "0.07em", textTransform: "uppercase", padding: "14px 16px",
+            color: "white", fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 900,
+            letterSpacing: "0.07em", textTransform: "uppercase", padding: "16px 20px",
             borderRadius: "5px", textAlign: "center", display: "flex", alignItems: "center",
             justifyContent: "center", gap: "8px",
-            boxShadow: `0 8px 24px ${accent.header}55, 0 2px 6px rgba(0,0,0,0.14)`,
+            boxShadow: `0 10px 28px ${accent.header}60, 0 2px 6px rgba(0,0,0,0.16)`,
           }}>
             <span>{ctaText ?? (dealershipPhone ? `Call ${dealershipPhone}` : "Call Us Today")}</span>
             <span style={{ opacity: 0.75, fontSize: "13px", lineHeight: 1 }}>→</span>
@@ -1251,10 +1252,10 @@ function Postcard6x9Preview({
               <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
               {/* Vehicle photo — tall hero with offer badge + headline overlay */}
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={accent.header} height="170px" imageUrl={vehiclePhotoUrl} showLabel={!headline} dealershipName={headline ? undefined : dealershipName} />
+                <VehiclePhotoZone heroBg={accent.header} height="188px" imageUrl={vehiclePhotoUrl} showLabel={!headline} dealershipName={headline ? undefined : dealershipName} />
                 {offer && <OfferBadge offer={offer} accent={accent} />}
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "40px 14px 10px", background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.45) 60%, transparent 100%)", pointerEvents: "none" }}>
-                  {headline && <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "21px", color: "#fff", lineHeight: 1.1, letterSpacing: "-0.025em", textShadow: "0 3px 10px rgba(0,0,0,0.65)" }}>{headline}</div>}
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "52px 14px 10px", background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.52) 60%, transparent 100%)", pointerEvents: "none" }}>
+                  {headline && <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "27px", color: "#fff", lineHeight: 1.03, letterSpacing: "-0.030em", textShadow: "0 3px 14px rgba(0,0,0,0.72)" }}>{headline}</div>}
                   {subHeadline && <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: "11px", color: "rgba(255,255,255,0.90)", lineHeight: 1.3, marginTop: "4px", textShadow: "0 1px 5px rgba(0,0,0,0.55)" }}>{subHeadline}</div>}
                   {!headline && !subHeadline && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "rgba(255,255,255,0.70)", letterSpacing: "0.10em", textTransform: "uppercase" }}>{dealershipName}</div>}
                 </div>
@@ -1442,7 +1443,7 @@ function LetterPreview({
           {headline && (
             <div style={{ background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -24)} 100%)`, padding: templateType === "letter_8.5x11" ? "13px 28px" : "10px 20px", margin: "14px 0 0", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", top: 0, right: "20%", width: "20%", height: "100%", background: "rgba(255,255,255,0.08)", transform: "skewX(-12deg)", pointerEvents: "none" }} />
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: templateType === "letter_8.5x11" ? "18px" : "14px", fontWeight: 900, color: "#fff", lineHeight: 1.2, letterSpacing: "-0.015em", position: "relative" }}>{headline}</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: templateType === "letter_8.5x11" ? "22px" : "17px", fontWeight: 900, color: "#fff", lineHeight: 1.1, letterSpacing: "-0.02em", position: "relative" }}>{headline}</div>
             </div>
           )}
 
@@ -1522,11 +1523,11 @@ function MultiPanelPreview({
             <div className="w-full rounded-xl border border-slate-200 shadow-xl overflow-hidden" style={{ maxWidth: "420px", background: "#fff" }}>
               <BoldHeaderBand dealershipName={dealershipName} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} logoUrl={logoUrl} dealershipPhone={undefined} />
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={heroBg} height="200px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                <VehiclePhotoZone heroBg={heroBg} height="212px" showLabel={false} imageUrl={vehiclePhotoUrl} />
                 {offer && <OfferBadge offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex, offerBg: accent.offerBg, offerText: accent.offerText, letterBorder: accent.letterBorder, highlightGlow: accent.highlightGlow, isHighlight: accent.isHighlight }} />}
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "52px 16px 13px", background: `linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 55%, transparent 100%)`, pointerEvents: "none" }}>
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "30px", color: "#fff", lineHeight: 1.04, letterSpacing: "-0.030em", textShadow: "0 3px 14px rgba(0,0,0,0.72)" }}>{resolvedHeadline}</div>
-                  <div style={{ width: "32px", height: "3px", background: accentHex, borderRadius: "2px", marginTop: "8px", boxShadow: `0 0 8px ${accentHex}` }} />
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "60px 16px 13px", background: `linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.58) 55%, transparent 100%)`, pointerEvents: "none" }}>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "34px", color: "#fff", lineHeight: 1.02, letterSpacing: "-0.036em", textShadow: "0 3px 18px rgba(0,0,0,0.78)" }}>{resolvedHeadline}</div>
+                  <div style={{ width: "42px", height: "4px", background: accentHex, borderRadius: "2px", marginTop: "9px", boxShadow: `0 0 10px ${accentHex}cc` }} />
                 </div>
               </div>
               {urgencyLine && (
@@ -1581,11 +1582,11 @@ function MultiPanelPreview({
                     <div className="w-full rounded-xl border border-slate-200 shadow-xl overflow-hidden" style={{ maxWidth: "520px", background: "#fff" }}>
                       <BoldHeaderBand dealershipName={dealershipName} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} logoUrl={logoUrl} dealershipPhone={undefined} />
                       <div style={{ position: "relative" }}>
-                        <VehiclePhotoZone heroBg={heroBg} height="210px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                        <VehiclePhotoZone heroBg={heroBg} height="224px" showLabel={false} imageUrl={vehiclePhotoUrl} />
                         {offer && <OfferBadge offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex, offerBg: accent.offerBg, offerText: accent.offerText, letterBorder: accent.letterBorder, highlightGlow: accent.highlightGlow, isHighlight: accent.isHighlight }} />}
-                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "52px 16px 13px", background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 55%, transparent 100%)", pointerEvents: "none" }}>
-                          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "30px", color: "#fff", lineHeight: 1.04, letterSpacing: "-0.030em", textShadow: "0 3px 14px rgba(0,0,0,0.72)" }}>{resolvedHeadline}</div>
-                          <div style={{ width: "32px", height: "3px", background: accentHex, borderRadius: "2px", marginTop: "8px", boxShadow: `0 0 8px ${accentHex}` }} />
+                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "62px 16px 13px", background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.60) 55%, transparent 100%)", pointerEvents: "none" }}>
+                          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "34px", color: "#fff", lineHeight: 1.02, letterSpacing: "-0.036em", textShadow: "0 4px 20px rgba(0,0,0,0.80)" }}>{resolvedHeadline}</div>
+                          <div style={{ width: "42px", height: "4px", background: accentHex, borderRadius: "2px", marginTop: "9px", boxShadow: `0 0 10px ${accentHex}cc` }} />
                         </div>
                       </div>
                       {urgencyLine && (
@@ -1709,10 +1710,10 @@ function PremiumFluorescentPreview({
               </div>
               {/* Hero — photo with headline overlaid at bottom */}
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={bg} height="188px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                <VehiclePhotoZone heroBg={bg} height="204px" showLabel={false} imageUrl={vehiclePhotoUrl} />
                 {/* Dominant headline overlaid at bottom of hero */}
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "54px 16px 12px", background: `linear-gradient(to top, ${bg} 0%, ${bg}d0 42%, transparent 100%)`, pointerEvents: "none" }}>
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "30px", color: textCol, lineHeight: 1.04, letterSpacing: "-0.03em", textShadow: "0 2px 14px rgba(0,0,0,0.70)" }}>{resolvedHeadline}</div>
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "60px 16px 12px", background: `linear-gradient(to top, ${bg} 0%, ${bg}d0 44%, transparent 100%)`, pointerEvents: "none" }}>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "32px", color: textCol, lineHeight: 1.02, letterSpacing: "-0.034em", textShadow: "0 2px 16px rgba(0,0,0,0.75)" }}>{resolvedHeadline}</div>
                   {resolvedSubheadline && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: `${textCol}cc`, lineHeight: 1.35, marginTop: "5px", fontWeight: 500 }}>{resolvedSubheadline}</div>}
                 </div>
               </div>
@@ -1805,10 +1806,10 @@ function PremiumFluorescentPreview({
                       </div>
                       {/* Hero — photo with headline overlaid at bottom */}
                       <div style={{ position: "relative" }}>
-                        <VehiclePhotoZone heroBg={bg} height="200px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                        <VehiclePhotoZone heroBg={bg} height="220px" showLabel={false} imageUrl={vehiclePhotoUrl} />
                         {/* Dominant headline overlaid at bottom of hero */}
-                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "58px 18px 12px", background: `linear-gradient(to top, ${bg} 0%, ${bg}d0 44%, transparent 100%)`, pointerEvents: "none" }}>
-                          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "32px", color: textCol, lineHeight: 1.03, letterSpacing: "-0.03em", textShadow: "0 2px 14px rgba(0,0,0,0.70)" }}>{resolvedHeadline}</div>
+                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "66px 18px 12px", background: `linear-gradient(to top, ${bg} 0%, ${bg}d0 46%, transparent 100%)`, pointerEvents: "none" }}>
+                          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "36px", color: textCol, lineHeight: 1.0, letterSpacing: "-0.038em", textShadow: "0 3px 18px rgba(0,0,0,0.78)" }}>{resolvedHeadline}</div>
                           {resolvedSubheadline && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: `${textCol}cc`, lineHeight: 1.35, marginTop: "5px", fontWeight: 500 }}>{resolvedSubheadline}</div>}
                         </div>
                       </div>
@@ -1941,10 +1942,10 @@ function ComplexFoldPreview({
               </div>
               {/* Hero — taller with headline overlaid at bottom */}
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={bg} height="215px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                <VehiclePhotoZone heroBg={bg} height="228px" showLabel={false} imageUrl={vehiclePhotoUrl} />
                 {/* Dominant headline overlaid at bottom of photo */}
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "58px 18px 12px", background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 55%, transparent 100%)", pointerEvents: "none" }}>
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "32px", color: "#fff", lineHeight: 1.03, letterSpacing: "-0.03em", textShadow: "0 3px 16px rgba(0,0,0,0.75)" }}>
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "66px 18px 12px", background: "linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.58) 55%, transparent 100%)", pointerEvents: "none" }}>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "36px", color: "#fff", lineHeight: 1.0, letterSpacing: "-0.038em", textShadow: "0 4px 20px rgba(0,0,0,0.82)" }}>
                     {headline ?? cover?.headline ?? "We'd love to see you again."}
                   </div>
                   <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.72)", lineHeight: 1.4, marginTop: "5px", fontWeight: 400 }}>
@@ -1986,7 +1987,7 @@ function ComplexFoldPreview({
           )}
           {activePanel === "inner-right" && (
             <div style={{ background: "#fff", padding: "20px 22px", minHeight: "300px" }}>
-              <div style={{ fontSize: "26px", fontWeight: 900, color: "#1e293b", marginBottom: "14px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.025em", lineHeight: 1.1 }}>
+              <div style={{ fontSize: "32px", fontWeight: 900, color: "#1e293b", marginBottom: "14px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.034em", lineHeight: 1.05 }}>
                 {innerRight?.headline ?? "Ready when you are."}
               </div>
               {offer && (() => {
@@ -2071,12 +2072,12 @@ function ConquestFront({
       {/* Dealer identity bar — always at top */}
       <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
       <div style={{ position: "relative" }}>
-        <VehiclePhotoZone heroBg={accent.header} height="162px" imageUrl={vehiclePhotoUrl} showLabel={false} />
+        <VehiclePhotoZone heroBg={accent.header} height="182px" imageUrl={vehiclePhotoUrl} showLabel={false} />
         {offer && <OfferBadge offer={offer} accent={accent} />}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "44px 16px 13px", background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 55%, transparent 100%)", pointerEvents: "none" }}>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.80)", marginBottom: "5px" }}>EXCLUSIVE OFFER · {dealershipName}</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "28px", color: "#fff", lineHeight: 1.04, letterSpacing: "-0.030em", textShadow: "0 3px 14px rgba(0,0,0,0.72)" }}>{headline}</div>
-          <div style={{ width: "28px", height: "3px", background: accent.header, borderRadius: "2px", marginTop: "7px", boxShadow: `0 0 8px ${accent.header}` }} />
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "56px 16px 13px", background: "linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.58) 55%, transparent 100%)", pointerEvents: "none" }}>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.82)", marginBottom: "5px" }}>EXCLUSIVE OFFER · {dealershipName}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "33px", color: "#fff", lineHeight: 1.02, letterSpacing: "-0.034em", textShadow: "0 3px 16px rgba(0,0,0,0.76)" }}>{headline}</div>
+          <div style={{ width: "36px", height: "4px", background: accent.header, borderRadius: "2px", marginTop: "8px", boxShadow: `0 0 10px ${accent.header}cc` }} />
         </div>
       </div>
       {urgencyLine && (
@@ -2170,12 +2171,12 @@ function RealConquestFront({
       {/* Dealer identity bar — always at top */}
       <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
       <div style={{ position: "relative" }}>
-        <VehiclePhotoZone heroBg={accent.header} height="190px" imageUrl={vehiclePhotoUrl} showLabel={false} />
+        <VehiclePhotoZone heroBg={accent.header} height="212px" imageUrl={vehiclePhotoUrl} showLabel={false} />
         {offer && <OfferBadge offer={offer} accent={accent} />}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "50px 14px 13px", background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.58) 55%, transparent 100%)", pointerEvents: "none" }}>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.82)", marginBottom: "5px" }}>EXCLUSIVE OFFER · {dealershipName}</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "30px", color: "#fff", lineHeight: 1.03, letterSpacing: "-0.032em", textShadow: "0 3px 16px rgba(0,0,0,0.76)" }}>{headline}</div>
-          <div style={{ width: "28px", height: "3px", background: accent.header, borderRadius: "2px", marginTop: "8px", boxShadow: `0 0 8px ${accent.header}` }} />
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "62px 14px 13px", background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.60) 55%, transparent 100%)", pointerEvents: "none" }}>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.84)", marginBottom: "5px" }}>EXCLUSIVE OFFER · {dealershipName}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "36px", color: "#fff", lineHeight: 1.0, letterSpacing: "-0.038em", textShadow: "0 4px 20px rgba(0,0,0,0.80)" }}>{headline}</div>
+          <div style={{ width: "44px", height: "4px", background: accent.header, borderRadius: "2px", marginTop: "9px", boxShadow: `0 0 12px ${accent.header}cc` }} />
         </div>
       </div>
       {urgencyLine && (
