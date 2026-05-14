@@ -378,8 +378,8 @@ function VehiclePhotoZone({
       <div style={{
         position: "absolute", bottom: 0, left: 0, right: 0, height: "82%",
         background: hasRealPhoto
-          ? "linear-gradient(to top, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.68) 50%, transparent 100%)"
-          : `linear-gradient(to top, ${heroBg}f6 0%, ${heroBg}72 52%, transparent 100%)`,
+          ? "linear-gradient(to top, rgba(0,0,0,0.98) 0%, rgba(0,0,0,0.80) 32%, rgba(0,0,0,0.44) 62%, transparent 100%)"
+          : `linear-gradient(to top, ${heroBg}f8 0%, ${heroBg}b8 40%, ${heroBg}60 62%, transparent 100%)`,
         pointerEvents: "none",
       }} />
       {/* Top shadow for realistic photo depth */}
@@ -491,7 +491,7 @@ function OfferCallout({ offer, accent, expiresText, conditionsText }: { offer: s
   const savingsAmount = dollarMatch ? dollarMatch[1].replace(/\.00$/, "") : null;
 
   return (
-    <div style={{ background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -22)} 100%)` }}>
+    <div style={{ background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -22)} 100%)`, boxShadow: "inset 0 -4px 0 rgba(0,0,0,0.18)" }}>
       {/* Eyebrow — "★ EXCLUSIVE OFFER" */}
       <div style={{
         borderBottom: "1px solid rgba(255,255,255,0.22)",
@@ -503,7 +503,7 @@ function OfferCallout({ offer, accent, expiresText, conditionsText }: { offer: s
         <span>★&nbsp;&nbsp;EXCLUSIVE OFFER</span>
         <span style={{ background: "rgba(255,255,255,0.20)", borderRadius: "3px", padding: "1px 8px", fontSize: "6.5px", letterSpacing: "0.16em", fontWeight: 900 }}>LIMITED TIME</span>
       </div>
-      <div style={{ padding: "11px 14px 12px", display: "flex", alignItems: "center", gap: "14px" }}>
+      <div style={{ padding: "14px 16px 15px", display: "flex", alignItems: "center", gap: "14px" }}>
       {(savingsAmount || isFree) && (
         <div style={{
           background: "rgba(255,255,255,0.98)",
@@ -588,13 +588,13 @@ function BoldHeaderBand({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={logoUrl} alt={dealershipName}
-            style={{ height: "20px", width: "auto", maxWidth: "66px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+            style={{ height: "22px", width: "auto", maxWidth: "70px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
           />
         )}
         {logoUrl && <div style={{ width: "1px", height: "17px", background: "rgba(255,255,255,0.35)" }} />}
         <span style={{
-          fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 900,
+          fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 900,
           color: "white", letterSpacing: "0.05em", textTransform: "uppercase",
         }}>
           {dealershipName}
@@ -840,8 +840,8 @@ function RealPostcardFront({
       {/* Urgency strip — branded accent, not generic amber */}
       {urgencyLine && (
         <div style={{
-          background: adjustBrightness(accent.header, -18),
-          borderLeft: "6px solid rgba(255,255,255,0.70)",
+          background: adjustBrightness(accent.header, -50),
+          borderLeft: `6px solid ${accent.header}`,
           padding: "12px 16px", display: "flex", alignItems: "center", gap: "7px",
         }}>
           <span style={{ fontSize: "11px" }}>⚡</span>
@@ -857,7 +857,7 @@ function RealPostcardFront({
 
       {/* Body copy — clean campaign sans-serif */}
       <div style={{ padding: "11px 14px 10px", borderTop: offer ? `2px solid ${accent.header}18` : undefined }}>
-        <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "12.5px", lineHeight: 1.70, color: "#374151", margin: 0, fontWeight: 400 }}>
+        <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "12.5px", lineHeight: 1.70, color: "#1F2937", margin: 0, fontWeight: 400 }}>
           {(() => { const max = offer ? 90 : 150; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
         </p>
       </div>
@@ -868,7 +868,7 @@ function RealPostcardFront({
         <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
           <div style={{ background: "white", border: `3px solid ${accent.header}`, borderRadius: "9px", padding: "4px", boxShadow: `0 4px 14px ${accent.header}44` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrPreviewUrl} alt="Scan to schedule" width={68} height={68} style={{ display: "block", borderRadius: "5px" }} />
+            <img src={qrPreviewUrl} alt="Scan to schedule" width={76} height={76} style={{ display: "block", borderRadius: "5px" }} />
           </div>
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 900, color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>
             SCAN TO<br />SCHEDULE
@@ -886,7 +886,7 @@ function RealPostcardFront({
           }}>
             <div style={{ fontSize: "14px", letterSpacing: "0.05em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "6px" }}>
               <span>{ctaText ?? "Call to Schedule Today"}</span>
-              <span style={{ opacity: 0.75, fontSize: "15px", lineHeight: 1 }}>→</span>
+              <span style={{ opacity: 0.85, fontSize: "18px", lineHeight: 1 }}>→</span>
             </div>
             {dealershipPhone && (
               <div style={{ fontSize: "11px", fontWeight: 800, color: "rgba(255,255,255,0.88)", letterSpacing: "0.02em" }}>{dealershipPhone}</div>
@@ -1133,7 +1133,7 @@ function RealLetterPreview({
             boxShadow: `0 10px 28px ${accent.header}60, 0 2px 6px rgba(0,0,0,0.16)`,
           }}>
             <span>{ctaText ?? (dealershipPhone ? `Call ${dealershipPhone}` : "Call Us Today")}</span>
-            <span style={{ opacity: 0.75, fontSize: "13px", lineHeight: 1 }}>→</span>
+            <span style={{ opacity: 0.85, fontSize: "16px", lineHeight: 1 }}>→</span>
           </div>
         </div>
       )}
@@ -1299,7 +1299,7 @@ function Postcard6x9Preview({
 
               {/* Body copy — clean campaign sans-serif */}
               <div style={{ padding: "11px 16px 10px", borderTop: offer ? `2px solid ${accent.header}18` : undefined }}>
-                <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "12.5px", lineHeight: 1.70, color: "#374151", margin: 0, fontWeight: 400 }}>
+                <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "12.5px", lineHeight: 1.70, color: "#1F2937", margin: 0, fontWeight: 400 }}>
                   {(() => { const max = offer ? 90 : 150; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
                 </p>
               </div>
@@ -1566,7 +1566,7 @@ function MultiPanelPreview({
               )}
               {/* Body copy — clean campaign sans-serif */}
               <div style={{ padding: "11px 18px 10px" }}>
-                <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "12.5px", lineHeight: 1.70, color: "#374151", margin: 0, fontWeight: 400 }}>
+                <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "12.5px", lineHeight: 1.70, color: "#1F2937", margin: 0, fontWeight: 400 }}>
                   {(() => { const max = offer ? 90 : 150; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
                 </p>
               </div>
@@ -1582,7 +1582,7 @@ function MultiPanelPreview({
                 <div style={{ flex: 1, display: "flex" }}>
                   <div style={{ flex: 1, background: `linear-gradient(135deg, ${accentHex} 0%, ${adjustBrightness(accentHex, -16)} 100%)`, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "13px", letterSpacing: "0.06em", textTransform: "uppercase", borderRadius: "6px", padding: "0 20px", minHeight: "76px", boxShadow: `0 6px 16px ${accentHex}55`, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
                     <span>{ctaText ?? front?.cta ?? "Schedule Now"}</span>
-                    <span style={{ opacity: 0.75, fontSize: "15px", lineHeight: 1 }}>→</span>
+                    <span style={{ opacity: 0.85, fontSize: "18px", lineHeight: 1 }}>→</span>
                   </div>
                 </div>
               </div>
@@ -1642,7 +1642,7 @@ function MultiPanelPreview({
                         <div style={{ flex: 1, display: "flex" }}>
                           <div style={{ flex: 1, background: `linear-gradient(135deg, ${accentHex} 0%, ${adjustBrightness(accentHex, -16)} 100%)`, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "13px", letterSpacing: "0.06em", textTransform: "uppercase", borderRadius: "6px", padding: "0 20px", minHeight: "76px", boxShadow: `0 6px 16px ${accentHex}55`, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
                             <span>{ctaText ?? front?.cta ?? "Schedule Now"}</span>
-                            <span style={{ opacity: 0.75, fontSize: "15px", lineHeight: 1 }}>→</span>
+                            <span style={{ opacity: 0.85, fontSize: "18px", lineHeight: 1 }}>→</span>
                           </div>
                         </div>
                       </div>
@@ -1784,7 +1784,7 @@ function PremiumFluorescentPreview({
                   <div style={{ flex: 1, background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "14px", padding: "16px 20px", borderRadius: "6px", minHeight: "76px", letterSpacing: "0.05em", textTransform: "uppercase", boxShadow: `0 8px 24px ${accentCol}77`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       <span>{ctaText ?? front?.cta ?? "Book Your Appointment"}</span>
-                      <span style={{ fontSize: "15px", lineHeight: 1, opacity: 0.75 }}>→</span>
+                      <span style={{ fontSize: "18px", lineHeight: 1, opacity: 0.85 }}>→</span>
                     </div>
                   </div>
                   <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
@@ -1881,7 +1881,7 @@ function PremiumFluorescentPreview({
                           <div style={{ flex: 1, background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "14px", padding: "16px 20px", borderRadius: "6px", minHeight: "76px", letterSpacing: "0.05em", textTransform: "uppercase", boxShadow: `0 8px 24px ${accentCol}77`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2px" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                               <span>{ctaText ?? front?.cta ?? "Book Your Appointment"}</span>
-                              <span style={{ fontSize: "15px", lineHeight: 1, opacity: 0.75 }}>→</span>
+                              <span style={{ fontSize: "18px", lineHeight: 1, opacity: 0.85 }}>→</span>
                             </div>
                           </div>
                           <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
@@ -2020,7 +2020,7 @@ function ComplexFoldPreview({
                   <div style={{ background: `${accent}1e`, border: `2.5px solid ${accent}`, borderRadius: "7px", padding: "14px 16px", marginBottom: "16px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "6px" }}>
                       {sa ? (
-                        <div style={{ background: accent, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontSize: "28px", fontWeight: 900, padding: "6px 10px", borderRadius: "5px", lineHeight: 1, flexShrink: 0 }}>${sa}</div>
+                        <div style={{ background: accent, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontSize: "40px", fontWeight: 900, padding: "8px 14px", borderRadius: "5px", lineHeight: 1, flexShrink: 0 }}>${sa}</div>
                       ) : isFr ? (
                         <div style={{ background: accent, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontSize: "18px", fontWeight: 900, padding: "6px 10px", borderRadius: "5px", lineHeight: 1, flexShrink: 0 }}>FREE</div>
                       ) : (
@@ -2037,7 +2037,7 @@ function ComplexFoldPreview({
               <div style={{ marginBottom: "14px" }}>
                 <div style={{ background: accent, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "14px", padding: "16px 20px", borderRadius: "6px", minHeight: "76px", letterSpacing: "0.05em", textTransform: "uppercase", textAlign: "center", boxShadow: `0 10px 28px ${accent}60`, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
                   <span>{ctaText ?? innerRight?.cta ?? "Book Now"}</span>
-                  <span style={{ fontSize: "15px", lineHeight: 1, opacity: 0.75 }}>→</span>
+                  <span style={{ fontSize: "18px", lineHeight: 1, opacity: 0.85 }}>→</span>
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -2104,8 +2104,8 @@ function ConquestFront({
       </div>
       {urgencyLine && (
         <div style={{
-          background: adjustBrightness(accent.header, -18),
-          borderLeft: "6px solid rgba(255,255,255,0.70)",
+          background: adjustBrightness(accent.header, -50),
+          borderLeft: `6px solid ${accent.header}`,
           padding: "12px 16px", display: "flex", alignItems: "center", gap: "6px",
         }}>
           <span style={{ fontSize: "11px" }}>⚡</span>
@@ -2119,7 +2119,7 @@ function ConquestFront({
       )}
       {/* Body copy — clean campaign sans-serif */}
       <div style={{ padding: "11px 16px 10px", borderTop: offer ? `2px solid ${accent.header}18` : undefined }}>
-        <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "12.5px", lineHeight: 1.70, color: "#374151", margin: 0, fontWeight: 400 }}>
+        <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "12.5px", lineHeight: 1.70, color: "#1F2937", margin: 0, fontWeight: 400 }}>
           {(() => { const max = offer ? 90 : 150; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
         </p>
       </div>
@@ -2203,8 +2203,8 @@ function RealConquestFront({
       </div>
       {urgencyLine && (
         <div style={{
-          background: adjustBrightness(accent.header, -18),
-          borderLeft: "6px solid rgba(255,255,255,0.70)",
+          background: adjustBrightness(accent.header, -50),
+          borderLeft: `6px solid ${accent.header}`,
           padding: "12px 16px", display: "flex", alignItems: "center", gap: "6px",
         }}>
           <span style={{ fontSize: "11px" }}>⚡</span>
@@ -2218,7 +2218,7 @@ function RealConquestFront({
       )}
       {/* Body copy — clean campaign sans-serif */}
       <div style={{ padding: "11px 14px 10px", borderTop: offer ? `2px solid ${accent.header}18` : undefined }}>
-        <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "12.5px", lineHeight: 1.70, color: "#374151", margin: 0, fontWeight: 400 }}>
+        <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "12.5px", lineHeight: 1.70, color: "#1F2937", margin: 0, fontWeight: 400 }}>
           {(() => { const max = offer ? 90 : 150; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
         </p>
       </div>
