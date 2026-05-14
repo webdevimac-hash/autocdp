@@ -440,15 +440,15 @@ function CouponStrip({ offer, accent, expiresText, conditionsText }: { offer: st
       <div style={{ display: "flex", border: `2px solid ${accent.offerBorder}`, borderRadius: "5px", overflow: "hidden", background: "white", boxShadow: `0 2px 8px ${accent.header}22` }}>
         <div style={{
           background: `linear-gradient(160deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -20)} 100%)`,
-          color: "white", padding: "12px 14px",
+          color: "white", padding: "14px 16px",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          minWidth: "76px", flexShrink: 0, gap: "2px",
+          minWidth: "88px", flexShrink: 0, gap: "2px",
         }}>
           {savingsAmount ? (
             <>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, letterSpacing: "0.10em", textTransform: "uppercase", opacity: 0.92 }}>SAVE</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "30px", fontWeight: 900, lineHeight: 1, margin: "2px 0" }}>${savingsAmount}</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, letterSpacing: "0.10em", textTransform: "uppercase", opacity: 0.92 }}>OFF</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, letterSpacing: "0.10em", textTransform: "uppercase", opacity: 0.92 }}>SAVE</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "38px", fontWeight: 900, lineHeight: 1, margin: "1px 0" }}>${savingsAmount}</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, letterSpacing: "0.10em", textTransform: "uppercase", opacity: 0.92 }}>OFF</div>
             </>
           ) : isFree ? (
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 900, lineHeight: 1 }}>FREE</div>
@@ -464,7 +464,7 @@ function CouponStrip({ offer, accent, expiresText, conditionsText }: { offer: st
         {/* Perforation divider */}
         <div style={{ width: "2px", background: "repeating-linear-gradient(180deg, white 0px, white 4px, transparent 4px, transparent 8px)", flexShrink: 0 }} />
         <div style={{ flex: 1, padding: "9px 11px", background: accent.offerBg }}>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 800, color: accent.offerText, lineHeight: 1.22 }}>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 800, color: accent.offerText, lineHeight: 1.2 }}>
             {offer}
           </div>
           {expiresText && (
@@ -507,23 +507,23 @@ function OfferCallout({ offer, accent, expiresText, conditionsText }: { offer: s
       {(savingsAmount || isFree) && (
         <div style={{
           background: "rgba(255,255,255,0.98)",
-          borderRadius: "10px", padding: "12px 18px", textAlign: "center",
-          flexShrink: 0, minWidth: "92px",
-          boxShadow: "0 5px 20px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,1)",
+          borderRadius: "10px", padding: "14px 20px", textAlign: "center",
+          flexShrink: 0, minWidth: "104px",
+          boxShadow: "0 6px 24px rgba(0,0,0,0.46), inset 0 1px 0 rgba(255,255,255,1)",
         }}>
           {savingsAmount ? (
             <>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: accent.header, letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "44px", fontWeight: 900, color: accent.header, lineHeight: 1, margin: "3px 0" }}>${savingsAmount}</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: accent.header, letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, color: accent.header, letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "56px", fontWeight: 900, color: accent.header, lineHeight: 1, margin: "2px 0" }}>${savingsAmount}</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, color: accent.header, letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
             </>
           ) : (
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "19px", fontWeight: 900, color: accent.header, lineHeight: 1.1 }}>FREE</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "22px", fontWeight: 900, color: accent.header, lineHeight: 1.1 }}>FREE</div>
           )}
         </div>
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "20px", fontWeight: 900, color: "#fff", lineHeight: 1.14, letterSpacing: "-0.018em" }}>{offer}</div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "24px", fontWeight: 900, color: "#fff", lineHeight: 1.1, letterSpacing: "-0.022em" }}>{offer}</div>
         {expiresText && (
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", color: "rgba(255,255,255,0.85)", marginTop: "5px", fontWeight: 700 }}>🕐 {expiresText}</div>
         )}
@@ -547,20 +547,20 @@ function OfferBadge({ offer, accent }: { offer: string; accent: AccentConfig }) 
   return (
     <div style={{
       position: "absolute", top: "8px", right: "8px", zIndex: 10,
-      width: "116px", height: "116px", borderRadius: "50%",
-      background: `radial-gradient(circle at 36% 34%, ${adjustBrightness(accent.header, 32)} 0%, ${accent.header} 44%, ${adjustBrightness(accent.header, -40)} 100%)`,
-      boxShadow: `0 14px 40px rgba(0,0,0,0.70), 0 0 0 3.5px rgba(255,255,255,0.70), 0 0 0 10px ${accent.header}44`,
-      border: "3.5px solid rgba(255,255,255,0.70)",
+      width: "128px", height: "128px", borderRadius: "50%",
+      background: `radial-gradient(circle at 36% 34%, ${adjustBrightness(accent.header, 36)} 0%, ${accent.header} 44%, ${adjustBrightness(accent.header, -44)} 100%)`,
+      boxShadow: `0 16px 48px rgba(0,0,0,0.76), 0 0 0 4px rgba(255,255,255,0.75), 0 0 0 11px ${accent.header}44`,
+      border: "4px solid rgba(255,255,255,0.75)",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
     }}>
       {amount ? (
         <>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, color: "rgba(255,255,255,0.92)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "34px", fontWeight: 900, color: "#fff", lineHeight: 1, margin: "3px 0" }}>${amount}</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, color: "rgba(255,255,255,0.92)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 900, color: "rgba(255,255,255,0.95)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "42px", fontWeight: 900, color: "#fff", lineHeight: 1, margin: "2px 0" }}>${amount}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 900, color: "rgba(255,255,255,0.95)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
         </>
       ) : (
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "18px", fontWeight: 900, color: "#fff", lineHeight: 1 }}>FREE</div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "20px", fontWeight: 900, color: "#fff", lineHeight: 1 }}>FREE</div>
       )}
     </div>
   );
@@ -576,7 +576,7 @@ function BoldHeaderBand({
   return (
     <div style={{
       background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -20)} 100%)`,
-      padding: "13px 14px", position: "relative", overflow: "hidden",
+      padding: "15px 14px", position: "relative", overflow: "hidden",
       display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px",
       borderBottom: "2px solid rgba(0,0,0,0.18)",
     }}>
@@ -809,15 +809,15 @@ function RealPostcardFront({
         }}>
           {headline && (
             <>
-              {offer && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 900, letterSpacing: "0.22em", color: accent.header, textTransform: "uppercase", marginBottom: "5px", lineHeight: 1 }}>★ EXCLUSIVE OFFER</div>}
+              {offer && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 900, letterSpacing: "0.22em", color: accent.header, textTransform: "uppercase", marginBottom: "5px", lineHeight: 1 }}>★ EXCLUSIVE OFFER</div>}
               <div style={{
-                fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "46px",
-                color: "#fff", lineHeight: 1.0, letterSpacing: "-0.044em",
-                textShadow: "0 4px 26px rgba(0,0,0,0.88), 0 1px 4px rgba(0,0,0,0.65)",
+                fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "52px",
+                color: "#fff", lineHeight: 0.98, letterSpacing: "-0.046em",
+                textShadow: "0 4px 28px rgba(0,0,0,0.92), 0 1px 4px rgba(0,0,0,0.70)",
               }}>
                 {headline}
               </div>
-              <div style={{ width: "72px", height: "4px", background: accent.header, borderRadius: "2px", marginTop: "10px", boxShadow: `0 0 14px ${accent.header}dd` }} />
+              <div style={{ width: "84px", height: "5px", background: accent.header, borderRadius: "2px", marginTop: "10px", boxShadow: `0 0 18px ${accent.header}ee` }} />
             </>
           )}
           {subHeadline && (
@@ -842,11 +842,11 @@ function RealPostcardFront({
         <div style={{
           background: adjustBrightness(accent.header, -18),
           borderLeft: "6px solid rgba(255,255,255,0.70)",
-          padding: "10px 16px", display: "flex", alignItems: "center", gap: "7px",
+          padding: "12px 16px", display: "flex", alignItems: "center", gap: "7px",
         }}>
           <span style={{ fontSize: "11px" }}>⚡</span>
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
-          <div style={{ background: "rgba(255,255,255,0.20)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 900, color: "#fff", letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
+          <div style={{ background: "rgba(255,255,255,0.20)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "7.5px", fontWeight: 900, color: "#fff", letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
         </div>
       )}
 
@@ -1287,8 +1287,8 @@ function Postcard6x9Preview({
                   padding: "10px 16px", display: "flex", alignItems: "center", gap: "7px",
                 }}>
                   <span style={{ fontSize: "11px" }}>⚡</span>
-                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
-                  <div style={{ background: "rgba(255,255,255,0.20)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 900, color: "#fff", letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
+                  <div style={{ background: "rgba(255,255,255,0.20)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "7.5px", fontWeight: 900, color: "#fff", letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
                 </div>
               )}
 
@@ -1556,8 +1556,8 @@ function MultiPanelPreview({
                   padding: "10px 18px", display: "flex", alignItems: "center", gap: "6px",
                 }}>
                   <span style={{ fontSize: "11px" }}>⚡</span>
-                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
-                  <div style={{ background: "rgba(255,255,255,0.20)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 900, color: "#fff", letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
+                  <div style={{ background: "rgba(255,255,255,0.20)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "7.5px", fontWeight: 900, color: "#fff", letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
                 </div>
               )}
               {/* Offer banner — above body copy */}
@@ -1616,8 +1616,8 @@ function MultiPanelPreview({
                           padding: "10px 18px", display: "flex", alignItems: "center", gap: "6px",
                         }}>
                           <span style={{ fontSize: "11px" }}>⚡</span>
-                          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
-                          <div style={{ background: "rgba(255,255,255,0.20)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 900, color: "#fff", letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
+                          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
+                          <div style={{ background: "rgba(255,255,255,0.20)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "7.5px", fontWeight: 900, color: "#fff", letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
                         </div>
                       )}
                       {/* Offer banner — above body copy */}
@@ -2095,20 +2095,20 @@ function ConquestFront({
         <VehiclePhotoZone heroBg={accent.header} height="198px" imageUrl={vehiclePhotoUrl} showLabel={false} />
         {offer && <OfferBadge offer={offer} accent={accent} />}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "56px 16px 13px", background: "linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.58) 55%, transparent 100%)", pointerEvents: "none" }}>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.82)", marginBottom: "5px" }}>EXCLUSIVE OFFER · {dealershipName}</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "36px", color: "#fff", lineHeight: 1.0, letterSpacing: "-0.038em", textShadow: "0 4px 20px rgba(0,0,0,0.80)" }}>{headline}</div>
-          <div style={{ width: "36px", height: "4px", background: accent.header, borderRadius: "2px", marginTop: "8px", boxShadow: `0 0 10px ${accent.header}cc` }} />
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.88)", marginBottom: "5px" }}>EXCLUSIVE OFFER · {dealershipName}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "42px", color: "#fff", lineHeight: 0.98, letterSpacing: "-0.042em", textShadow: "0 4px 22px rgba(0,0,0,0.86)" }}>{headline}</div>
+          <div style={{ width: "44px", height: "5px", background: accent.header, borderRadius: "2px", marginTop: "9px", boxShadow: `0 0 14px ${accent.header}dd` }} />
         </div>
       </div>
       {urgencyLine && (
         <div style={{
           background: adjustBrightness(accent.header, -18),
           borderLeft: "6px solid rgba(255,255,255,0.70)",
-          padding: "10px 16px", display: "flex", alignItems: "center", gap: "6px",
+          padding: "12px 16px", display: "flex", alignItems: "center", gap: "6px",
         }}>
           <span style={{ fontSize: "11px" }}>⚡</span>
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
-          <div style={{ background: "rgba(255,255,255,0.20)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 900, color: "#fff", letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
+          <div style={{ background: "rgba(255,255,255,0.20)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "7.5px", fontWeight: 900, color: "#fff", letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
         </div>
       )}
       {/* Offer banner — dominant accent block (above body copy) */}
@@ -2194,20 +2194,20 @@ function RealConquestFront({
         <VehiclePhotoZone heroBg={accent.header} height="228px" imageUrl={vehiclePhotoUrl} showLabel={false} />
         {offer && <OfferBadge offer={offer} accent={accent} />}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "62px 14px 13px", background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.60) 55%, transparent 100%)", pointerEvents: "none" }}>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.84)", marginBottom: "5px" }}>EXCLUSIVE OFFER · {dealershipName}</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "39px", color: "#fff", lineHeight: 1.0, letterSpacing: "-0.040em", textShadow: "0 4px 22px rgba(0,0,0,0.84)" }}>{headline}</div>
-          <div style={{ width: "44px", height: "4px", background: accent.header, borderRadius: "2px", marginTop: "9px", boxShadow: `0 0 12px ${accent.header}cc` }} />
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.88)", marginBottom: "5px" }}>EXCLUSIVE OFFER · {dealershipName}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "46px", color: "#fff", lineHeight: 0.98, letterSpacing: "-0.044em", textShadow: "0 4px 24px rgba(0,0,0,0.90)" }}>{headline}</div>
+          <div style={{ width: "52px", height: "5px", background: accent.header, borderRadius: "2px", marginTop: "9px", boxShadow: `0 0 16px ${accent.header}dd` }} />
         </div>
       </div>
       {urgencyLine && (
         <div style={{
           background: adjustBrightness(accent.header, -18),
           borderLeft: "6px solid rgba(255,255,255,0.70)",
-          padding: "10px 16px", display: "flex", alignItems: "center", gap: "6px",
+          padding: "12px 16px", display: "flex", alignItems: "center", gap: "6px",
         }}>
           <span style={{ fontSize: "11px" }}>⚡</span>
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
-          <div style={{ background: "rgba(255,255,255,0.20)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 900, color: "#fff", letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
+          <div style={{ background: "rgba(255,255,255,0.20)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "7.5px", fontWeight: 900, color: "#fff", letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
         </div>
       )}
       {/* Offer banner — dominant accent block (above body copy) */}
