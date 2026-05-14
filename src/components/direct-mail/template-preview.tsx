@@ -479,6 +479,52 @@ function CouponStrip({ offer, accent, expiresText, conditionsText }: { offer: st
   );
 }
 
+// ── Offer Callout ─────────────────────────────────────────────
+// Full-width accent-colored offer banner used on postcards.
+// CouponStrip (above) is kept for letter templates where a cut-out coupon is appropriate.
+
+function OfferCallout({ offer, accent, expiresText, conditionsText }: { offer: string; accent: AccentConfig; expiresText?: string; conditionsText?: string }) {
+  const dollarMatch = offer.match(/\$(\d+(?:\.\d{2})?)/);
+  const isFree = /free/i.test(offer);
+  const savingsAmount = dollarMatch ? dollarMatch[1].replace(/\.00$/, "") : null;
+
+  return (
+    <div style={{
+      background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -22)} 100%)`,
+      padding: "11px 14px",
+      display: "flex", alignItems: "center", gap: "14px",
+    }}>
+      {(savingsAmount || isFree) && (
+        <div style={{
+          background: "rgba(0,0,0,0.24)",
+          borderRadius: "6px", padding: "7px 10px", textAlign: "center",
+          flexShrink: 0, minWidth: "54px",
+          border: "1px solid rgba(255,255,255,0.18)",
+        }}>
+          {savingsAmount ? (
+            <>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 800, color: "rgba(255,255,255,0.82)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "30px", fontWeight: 900, color: "#fff", lineHeight: 1, margin: "2px 0" }}>${savingsAmount}</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 800, color: "rgba(255,255,255,0.82)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
+            </>
+          ) : (
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "17px", fontWeight: 900, color: "#fff", lineHeight: 1.1 }}>FREE</div>
+          )}
+        </div>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 900, color: "#fff", lineHeight: 1.25, letterSpacing: "-0.01em" }}>{offer}</div>
+        {expiresText && (
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", color: "rgba(255,255,255,0.80)", marginTop: "4px", fontWeight: 700 }}>🕐 {expiresText}</div>
+        )}
+        {conditionsText && (
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", color: "rgba(255,255,255,0.52)", marginTop: "3px", letterSpacing: "0.03em", lineHeight: 1.4 }}>{conditionsText}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Offer Badge ───────────────────────────────────────────────
 // Floating circular badge overlaid on the vehicle photo hero
 
@@ -787,55 +833,42 @@ function RealPostcardFront({
         </div>
       )}
 
-      {/* Content area — left accent rail */}
-      <div style={{ padding: "11px 14px 9px", flex: 1, display: "flex", gap: "12px" }}>
-        {/* 3px color rail on the left edge */}
-        <div style={{ width: "3px", borderRadius: "2px", background: `linear-gradient(180deg, ${accent.header} 0%, ${accent.header}44 100%)`, flexShrink: 0, alignSelf: "stretch" }} />
-        {/* Handwritten copy */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <HandwrittenContent text={content} fontSize={13} lineHeight={1.82} />
-        </div>
-
-        {/* Right: framed QR card */}
-        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", paddingTop: "2px" }}>
-          <div style={{
-            background: "white", border: `2.5px solid ${accent.header}`,
-            borderRadius: "9px", padding: "5px",
-            boxShadow: `0 3px 10px ${accent.header}33, 0 1px 3px rgba(0,0,0,0.10)`,
-          }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrPreviewUrl} alt="Scan to schedule" width={68} height={68} style={{ display: "block", borderRadius: "5px" }} />
-          </div>
-          <div style={{
-            fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 900,
-            color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase",
-            textAlign: "center", lineHeight: 1.3,
-          }}>
-            <>SCAN TO<br />SCHEDULE</>
-          </div>
-        </div>
+      {/* Body copy — full-width, kept brief (postcards are not letters) */}
+      <div style={{ padding: "11px 14px 10px" }}>
+        <HandwrittenContent text={content.length > 160 ? content.slice(0, 157) + "…" : content} fontSize={13} lineHeight={1.80} />
       </div>
 
-      {/* Featured Offer — full-width coupon strip */}
+      {/* Offer Banner — dominant full-width accent block */}
       {offer && (
-        <div style={{ padding: "0 14px 9px" }}>
-          <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
-        </div>
+        <OfferCallout offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
       )}
 
-      {/* CTA button — always prominent, full-width */}
-      <div style={{ padding: "0 14px 12px" }}>
-        <div style={{
-          background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`,
-          color: "white",
-          fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px",
-          letterSpacing: "0.08em", textTransform: "uppercase",
-          padding: "11px 14px", borderRadius: "4px", textAlign: "center",
-          boxShadow: `0 6px 16px ${accent.header}55, 0 2px 4px rgba(0,0,0,0.12)`,
-          display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-        }}>
-          <span>{ctaText ?? "Call to Schedule Today"}</span>
-          <span style={{ opacity: 0.75, fontSize: "13px", lineHeight: 1 }}>→</span>
+      {/* Action row: QR scan + CTA button side by side */}
+      <div style={{ padding: "10px 14px 12px", display: "flex", gap: "10px", alignItems: "stretch" }}>
+        {/* QR code */}
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
+          <div style={{ background: "white", border: `2.5px solid ${accent.header}`, borderRadius: "8px", padding: "4px", boxShadow: `0 3px 10px ${accent.header}33` }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrPreviewUrl} alt="Scan to schedule" width={56} height={56} style={{ display: "block", borderRadius: "4px" }} />
+          </div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5px", fontWeight: 900, color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>
+            SCAN TO<br />SCHEDULE
+          </div>
+        </div>
+        {/* CTA — fills remaining width, matches QR height */}
+        <div style={{ flex: 1, display: "flex" }}>
+          <div style={{
+            flex: 1,
+            background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`,
+            color: "white", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "11px",
+            letterSpacing: "0.07em", textTransform: "uppercase",
+            borderRadius: "4px", padding: "0 12px",
+            boxShadow: `0 6px 16px ${accent.header}55`,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+          }}>
+            <span>{ctaText ?? "Call to Schedule Today"}</span>
+            <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
+          </div>
         </div>
       </div>
 
@@ -1216,39 +1249,36 @@ function Postcard6x9Preview({
                 </div>
               )}
 
-              {/* Message + QR */}
-              <div style={{ padding: "11px 16px 8px", display: "flex", gap: "10px" }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <HandwrittenContent text={content} fontSize={15} lineHeight={1.88} />
-                </div>
-                <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", paddingTop: "4px" }}>
-                  <div style={{ background: "white", border: `2px solid ${accent.header}`, borderRadius: "8px", padding: "4px", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={qrPreviewUrl} alt="QR" width={68} height={68} style={{ display: "block", borderRadius: "4px", border: "1px solid #D1C9B0" }} />
-                  </div>
-                  <div style={{ fontSize: "6px", color: accent.header, fontFamily: "'Inter', sans-serif", fontWeight: 800, letterSpacing: "0.08em", textAlign: "center", textTransform: "uppercase" }}>
-                    <>SCAN TO<br />SCHEDULE</>
-                  </div>
-                </div>
+              {/* Body copy — full-width */}
+              <div style={{ padding: "11px 16px 10px" }}>
+                <HandwrittenContent text={content.length > 160 ? content.slice(0, 157) + "…" : content} fontSize={15} lineHeight={1.80} />
               </div>
-              {/* Featured Offer — full-width */}
+              {/* Offer Banner */}
               {offer && (
-                <div style={{ padding: "0 16px 8px" }}>
-                  <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
-                </div>
+                <OfferCallout offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
               )}
-              {/* CTA — always prominent */}
-              <div style={{ padding: "0 16px 14px" }}>
-                <div style={{
-                  background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`,
-                  color: "white", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px",
-                  letterSpacing: "0.08em", textTransform: "uppercase",
-                  padding: "11px 14px", borderRadius: "4px", textAlign: "center",
-                  boxShadow: `0 6px 16px ${accent.header}55, 0 2px 4px rgba(0,0,0,0.12)`,
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                }}>
-                  <span>{ctaText ?? "Call to Schedule Today"}</span>
-                  <span style={{ opacity: 0.75, fontSize: "13px", lineHeight: 1 }}>→</span>
+              {/* Action row: QR + CTA */}
+              <div style={{ padding: "10px 16px 14px", display: "flex", gap: "10px", alignItems: "stretch" }}>
+                <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
+                  <div style={{ background: "white", border: `2.5px solid ${accent.header}`, borderRadius: "8px", padding: "4px", boxShadow: `0 3px 10px ${accent.header}33` }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={qrPreviewUrl} alt="QR" width={56} height={56} style={{ display: "block", borderRadius: "4px" }} />
+                  </div>
+                  <div style={{ fontSize: "5px", color: accent.header, fontFamily: "'Inter', sans-serif", fontWeight: 900, letterSpacing: "0.08em", textAlign: "center", textTransform: "uppercase", lineHeight: 1.3 }}>SCAN TO<br />SCHEDULE</div>
+                </div>
+                <div style={{ flex: 1, display: "flex" }}>
+                  <div style={{
+                    flex: 1,
+                    background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`,
+                    color: "white", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "11px",
+                    letterSpacing: "0.07em", textTransform: "uppercase",
+                    borderRadius: "4px", padding: "0 12px",
+                    boxShadow: `0 6px 16px ${accent.header}55`,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+                  }}>
+                    <span>{ctaText ?? "Call to Schedule Today"}</span>
+                    <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1473,24 +1503,28 @@ function MultiPanelPreview({
                   <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
                 </div>
               )}
-              <div style={{ padding: "14px 18px 8px" }}>
-                <HandwrittenContent text={content} fontSize={15} lineHeight={1.82} />
+              {/* Body copy — full-width */}
+              <div style={{ padding: "12px 18px 10px" }}>
+                <HandwrittenContent text={content.length > 160 ? content.slice(0, 157) + "…" : content} fontSize={15} lineHeight={1.82} />
               </div>
+              {/* Offer banner */}
               {offer && (
-                <div style={{ padding: "0 18px 10px" }}>
-                  <CouponStrip offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
-                </div>
+                <OfferCallout offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex, offerBg: accent.offerBg, offerText: accent.offerText, letterBorder: accent.letterBorder, highlightGlow: accent.highlightGlow, isHighlight: accent.isHighlight }} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
               )}
-              <div style={{ padding: "0 18px 16px" }}>
-                <div style={{ background: accentHex, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "9px 16px", borderRadius: "3px", letterSpacing: "0.06em", textTransform: "uppercase", textAlign: "center", boxShadow: `0 4px 12px ${accentHex}55`, marginBottom: "8px" }}>
-                  {ctaText ?? front?.cta ?? "Schedule Now"}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                  <div style={{ background: "white", border: `2px solid ${accentHex}`, borderRadius: "6px", padding: "3px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+              {/* Action row: QR + CTA */}
+              <div style={{ padding: "10px 18px 16px", display: "flex", gap: "10px", alignItems: "stretch" }}>
+                <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
+                  <div style={{ background: "white", border: `2.5px solid ${accentHex}`, borderRadius: "8px", padding: "4px", boxShadow: `0 3px 10px ${accentHex}33` }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={qrPreviewUrl} alt="QR" width={46} height={46} style={{ borderRadius: "3px" }} />
+                    <img src={qrPreviewUrl} alt="QR" width={52} height={52} style={{ display: "block", borderRadius: "4px" }} />
                   </div>
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 700, color: accentHex, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO<br />BOOK</div>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5px", fontWeight: 900, color: accentHex, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>SCAN TO<br />BOOK</div>
+                </div>
+                <div style={{ flex: 1, display: "flex" }}>
+                  <div style={{ flex: 1, background: `linear-gradient(135deg, ${accentHex} 0%, ${adjustBrightness(accentHex, -16)} 100%)`, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "11px", letterSpacing: "0.07em", textTransform: "uppercase", borderRadius: "4px", padding: "0 12px", boxShadow: `0 6px 16px ${accentHex}55`, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                    <span>{ctaText ?? front?.cta ?? "Schedule Now"}</span>
+                    <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1526,24 +1560,28 @@ function MultiPanelPreview({
                           <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
                         </div>
                       )}
-                      <div style={{ padding: "14px 18px 8px" }}>
-                        <HandwrittenContent text={content} fontSize={15} lineHeight={1.82} />
+                      {/* Body copy — full-width */}
+                      <div style={{ padding: "12px 18px 10px" }}>
+                        <HandwrittenContent text={content.length > 160 ? content.slice(0, 157) + "…" : content} fontSize={15} lineHeight={1.82} />
                       </div>
+                      {/* Offer banner */}
                       {offer && (
-                        <div style={{ padding: "0 18px 10px" }}>
-                          <CouponStrip offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
-                        </div>
+                        <OfferCallout offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex, offerBg: accent.offerBg, offerText: accent.offerText, letterBorder: accent.letterBorder, highlightGlow: accent.highlightGlow, isHighlight: accent.isHighlight }} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
                       )}
-                      <div style={{ padding: "0 18px 16px" }}>
-                        <div style={{ background: accentHex, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "9px 16px", borderRadius: "3px", letterSpacing: "0.06em", textTransform: "uppercase", textAlign: "center", boxShadow: `0 4px 12px ${accentHex}55`, marginBottom: "8px" }}>
-                          {ctaText ?? front?.cta ?? "Schedule Now"}
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                          <div style={{ background: "white", border: `2px solid ${accentHex}`, borderRadius: "6px", padding: "3px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+                      {/* Action row: QR + CTA */}
+                      <div style={{ padding: "10px 18px 16px", display: "flex", gap: "10px", alignItems: "stretch" }}>
+                        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
+                          <div style={{ background: "white", border: `2.5px solid ${accentHex}`, borderRadius: "8px", padding: "4px", boxShadow: `0 3px 10px ${accentHex}33` }}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={qrPreviewUrl} alt="QR" width={46} height={46} style={{ borderRadius: "3px" }} />
+                            <img src={qrPreviewUrl} alt="QR" width={52} height={52} style={{ display: "block", borderRadius: "4px" }} />
                           </div>
-                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 700, color: accentHex, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO<br />BOOK</div>
+                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5px", fontWeight: 900, color: accentHex, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>SCAN TO<br />BOOK</div>
+                        </div>
+                        <div style={{ flex: 1, display: "flex" }}>
+                          <div style={{ flex: 1, background: `linear-gradient(135deg, ${accentHex} 0%, ${adjustBrightness(accentHex, -16)} 100%)`, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "11px", letterSpacing: "0.07em", textTransform: "uppercase", borderRadius: "4px", padding: "0 12px", boxShadow: `0 6px 16px ${accentHex}55`, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                            <span>{ctaText ?? front?.cta ?? "Schedule Now"}</span>
+                            <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1905,31 +1943,28 @@ function ConquestFront({
           <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
         </div>
       )}
-      <div style={{ padding: "10px 16px 8px" }}>
-        {/* Copy + QR side by side */}
-        <div style={{ display: "flex", gap: "10px" }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <HandwrittenContent text={content} fontSize={14} lineHeight={1.78} />
+      {/* Body copy — full-width */}
+      <div style={{ padding: "11px 16px 10px" }}>
+        <HandwrittenContent text={content.length > 160 ? content.slice(0, 157) + "…" : content} fontSize={14} lineHeight={1.78} />
+      </div>
+      {/* Offer banner — dominant accent block */}
+      {offer && (
+        <OfferCallout offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
+      )}
+      {/* Action row: QR + CTA */}
+      <div style={{ padding: "10px 16px 12px", display: "flex", gap: "10px", alignItems: "stretch" }}>
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
+          <div style={{ background: "white", border: `2.5px solid ${accent.header}`, borderRadius: "8px", padding: "4px", boxShadow: `0 3px 10px ${accent.header}33` }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrPreviewUrl} alt="Scan to view offer" width={56} height={56} style={{ display: "block", borderRadius: "4px" }} />
           </div>
-          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", paddingTop: "2px" }}>
-            <div style={{ background: "white", border: `2px solid ${accent.header}`, borderRadius: "7px", padding: "4px", boxShadow: "0 2px 8px rgba(0,0,0,0.10)" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qrPreviewUrl} alt="QR" width={64} height={64} style={{ display: "block", borderRadius: "3px", border: "1px solid #D1C9B0" }} />
-            </div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>
-              SCAN TO<br />VIEW OFFER
-            </div>
-          </div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5px", fontWeight: 900, color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>SCAN TO<br />VIEW OFFER</div>
         </div>
-        {/* Featured Offer — full-width */}
-        {offer && (
-          <div style={{ marginTop: "8px" }}>
-            <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
+        <div style={{ flex: 1, display: "flex" }}>
+          <div style={{ flex: 1, background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`, color: "white", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "11px", letterSpacing: "0.07em", textTransform: "uppercase", borderRadius: "4px", padding: "0 12px", boxShadow: `0 6px 16px ${accent.header}55`, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+            <span>{cta}</span>
+            <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
           </div>
-        )}
-        {/* Full-width CTA */}
-        <div style={{ marginTop: "10px", background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", padding: "9px 14px", borderRadius: "3px", textAlign: "center", boxShadow: `0 4px 12px ${accent.header}55` }}>
-          {cta}
         </div>
       </div>
       {(addrLines.line1 || addrLines.line2) && (
@@ -2004,25 +2039,29 @@ function RealConquestFront({
           <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
         </div>
       )}
-      <div style={{ padding: "10px 14px 8px", flex: 1, display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", gap: "12px", flex: 1 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <HandwrittenContent text={content} fontSize={13} lineHeight={1.80} />
+      {/* Body copy — full-width */}
+      <div style={{ padding: "11px 14px 10px" }}>
+        <HandwrittenContent text={content.length > 160 ? content.slice(0, 157) + "…" : content} fontSize={13} lineHeight={1.80} />
+      </div>
+      {/* Offer banner — dominant accent block */}
+      {offer && (
+        <OfferCallout offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
+      )}
+      {/* Action row: QR + CTA */}
+      <div style={{ padding: "10px 14px 12px", display: "flex", gap: "10px", alignItems: "stretch" }}>
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
+          <div style={{ background: "white", border: `2.5px solid ${accent.header}`, borderRadius: "8px", padding: "4px", boxShadow: `0 3px 10px ${accent.header}33` }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrPreviewUrl} alt="Scan to view offer" width={56} height={56} style={{ display: "block", borderRadius: "4px" }} />
           </div>
-          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "5px", paddingTop: "2px" }}>
-            <div style={{ background: "white", border: `2px solid ${accent.header}`, borderRadius: "7px", padding: "5px", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qrPreviewUrl} alt="Scan to view offer" width={68} height={68} style={{ display: "block", borderRadius: "4px" }} />
-            </div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 900, color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>SCAN TO<br />VIEW OFFER</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5px", fontWeight: 900, color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>SCAN TO<br />VIEW OFFER</div>
+        </div>
+        <div style={{ flex: 1, display: "flex" }}>
+          <div style={{ flex: 1, background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`, color: "white", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "11px", letterSpacing: "0.07em", textTransform: "uppercase", borderRadius: "4px", padding: "0 12px", boxShadow: `0 6px 16px ${accent.header}55`, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+            <span>{cta}</span>
+            <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
           </div>
         </div>
-        {offer && (
-          <div style={{ marginTop: "8px" }}>
-            <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
-          </div>
-        )}
-        <div style={{ marginTop: "10px", background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", padding: "9px 14px", borderRadius: "3px", textAlign: "center", boxShadow: `0 4px 12px ${accent.header}55` }}>{cta}</div>
       </div>
       {(addrLines.line1 || addrLines.line2) && (
         <div style={{ padding: "5px 14px", borderTop: "1px solid #EDE8D8", background: "rgba(254,252,243,0.97)", display: "flex", alignItems: "center", gap: "6px" }}>
