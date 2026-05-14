@@ -172,6 +172,9 @@ export async function POST(req: NextRequest) {
       vehicle: vehicleString,
       vehiclePhotoUrl,
       lastVisitDate: recentVisit?.visit_date ?? null,
+      offer: creative.offer ?? null,
+      headline: creative.headline ?? null,
+      structured: creative.structured ?? null,
       // Convenience — cleaned SMS body (strip HTML if any)
       smsBody: resolvedChannel === "sms" ? creative.content.replace(/<[^>]+>/g, "").slice(0, 160) : null,
     });

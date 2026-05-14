@@ -483,6 +483,8 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
     channel: BuilderChannel;
     designStyle?: DesignStyle;
     layoutSpec?: import("@/types").LayoutSpec;
+    offer: string | null;
+    headline: string | null;
   } | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
@@ -540,7 +542,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
   const [testTemplateType, setTestTemplateType] = useState<MailTemplateType>("postcard_6x9");
   const [testGoal, setTestGoal] = useState("Win back this customer with a personalized service reminder and special offer.");
   const [testLoading, setTestLoading] = useState(false);
-  const [testPreview, setTestPreview] = useState<{ content: string; previewQrUrl: string | null; vehicle: string | null; vehiclePhotoUrl: string | null; reasoning: string } | null>(null);
+  const [testPreview, setTestPreview] = useState<{ content: string; previewQrUrl: string | null; vehicle: string | null; vehiclePhotoUrl: string | null; reasoning: string; offer: string | null; headline: string | null } | null>(null);
   const [testLiveResult, setTestLiveResult] = useState<ChannelResult | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
   const testCustomer = customers.find((c) => c.id === testCustomerId) ?? customers[0] ?? null;
@@ -560,7 +562,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Preview failed");
-      setTestPreview({ content: data.content, previewQrUrl: data.previewQrUrl, vehicle: data.vehicle, vehiclePhotoUrl: data.vehiclePhotoUrl ?? null, reasoning: data.reasoning });
+      setTestPreview({ content: data.content, previewQrUrl: data.previewQrUrl, vehicle: data.vehicle, vehiclePhotoUrl: data.vehiclePhotoUrl ?? null, reasoning: data.reasoning, offer: data.offer ?? null, headline: data.headline ?? null });
     } catch (err) {
       setTestError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -702,6 +704,8 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
         channel,
         designStyle: data.designStyle ?? designStyle,
         layoutSpec: data.layoutSpec,
+        offer: data.offer ?? null,
+        headline: data.headline ?? null,
       });
       setCurrentStep(4);
     } catch (err) {
@@ -1142,6 +1146,8 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                   customerAddress={testCustomer?.address ?? null}
                   dealershipAddress={dealershipAddress}
                   dealershipPhone={dealershipPhone}
+                  offer={testPreview.offer}
+                  headline={testPreview.headline}
                   initialMode="realistic"
                 />
                 <div className="p-3.5 bg-amber-50 border border-amber-100 rounded-[var(--radius)] flex items-start gap-2">
@@ -1763,6 +1769,8 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                           channel: previewResult.channel,
                           designStyle: v.designStyle,
                           layoutSpec: previewResult.layoutSpec,
+                          offer: previewResult.offer,
+                          headline: previewResult.headline,
                         });
                       }}
                       className={cn(
@@ -1879,6 +1887,8 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                 customerAddress={previewCustomer?.address ?? null}
                 dealershipAddress={dealershipAddress}
                 dealershipPhone={dealershipPhone}
+                offer={previewResult.offer}
+                headline={previewResult.headline}
               />
             )}
 

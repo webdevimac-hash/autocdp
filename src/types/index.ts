@@ -298,6 +298,21 @@ export interface PersonalizedMessage {
   confidence: number;
 }
 
+export interface StructuredMailContent {
+  headline: string;
+  subHeadline?: string;
+  bodyCopy: string[];
+  couponBlock?: {
+    offerText: string;
+    expiresText?: string;
+    conditionsText?: string;
+  };
+  ctaText?: string;
+  urgencyLine?: string;
+  featuredVehicle?: string;
+  recommendedTemplateReason?: string;
+}
+
 // send_direct_mail Anthropic tool input/output shapes
 export interface SendDirectMailToolInput {
   customer_id: string;

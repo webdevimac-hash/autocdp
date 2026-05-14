@@ -629,11 +629,12 @@ function PrintReadyFrame({
 // ── Realistic Postcard Front ──────────────────────────────────
 
 function RealPostcardFront({
-  content, dealershipName, offer, qrPreviewUrl, logoUrl, accent, dealershipAddress, dealershipPhone, vehiclePhotoUrl,
+  content, dealershipName, offer, headline, qrPreviewUrl, logoUrl, accent, dealershipAddress, dealershipPhone, vehiclePhotoUrl,
 }: {
   content: string;
   dealershipName: string;
   offer?: string | null;
+  headline?: string | null;
   qrPreviewUrl: string;
   logoUrl?: string | null;
   accent: AccentConfig;
@@ -659,14 +660,31 @@ function RealPostcardFront({
       display: "flex",
       flexDirection: "column",
     }}>
-      {/* Hero vehicle photo */}
-      <VehiclePhotoZone
-        heroBg={accent.header}
-        height="138px"
-        dealershipName={dealershipName}
-        imageUrl={vehiclePhotoUrl}
-        showLabel
-      />
+      {/* Hero vehicle photo with optional headline overlay */}
+      <div style={{ position: "relative" }}>
+        <VehiclePhotoZone
+          heroBg={accent.header}
+          height="138px"
+          dealershipName={dealershipName}
+          imageUrl={vehiclePhotoUrl}
+          showLabel
+        />
+        {headline && (
+          <div style={{
+            position: "absolute", bottom: 0, left: 0, right: 0,
+            padding: "24px 12px 8px",
+            background: "linear-gradient(to top, rgba(0,0,0,0.72) 0%, transparent 100%)",
+          }}>
+            <div style={{
+              fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "13px",
+              color: "#fff", lineHeight: 1.2, letterSpacing: "-0.01em",
+              textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+            }}>
+              {headline}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Bold header band */}
       <div style={{ background: accent.header, padding: "7px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginTop: "-1px" }}>
@@ -980,13 +998,14 @@ function PostcardBack({
 // ── Postcard 6x9 Preview ──────────────────────────────────────
 
 function Postcard6x9Preview({
-  content, dealershipName, customerName, offer, qrPreviewUrl, logoUrl, accent,
+  content, dealershipName, customerName, offer, headline, qrPreviewUrl, logoUrl, accent,
   customerAddress, dealershipAddress, dealershipPhone, vehiclePhotoUrl, initialMode,
 }: {
   content: string;
   dealershipName: string;
   customerName?: string;
   offer?: string | null;
+  headline?: string | null;
   qrPreviewUrl: string;
   logoUrl?: string | null;
   accent: AccentConfig;
@@ -1064,7 +1083,7 @@ function Postcard6x9Preview({
                 <div style={{ transform: "rotate(-0.4deg)", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.22))" }}>
                   {!showBack ? (
                     <RealPostcardFront
-                      content={content} dealershipName={dealershipName} offer={offer}
+                      content={content} dealershipName={dealershipName} offer={offer} headline={headline}
                       qrPreviewUrl={qrPreviewUrl} logoUrl={logoUrl} accent={accent}
                       dealershipAddress={dealershipAddress} dealershipPhone={dealershipPhone}
                       vehiclePhotoUrl={vehiclePhotoUrl}
@@ -1827,6 +1846,7 @@ interface TemplatePreviewProps {
   customerName?: string;
   vehicle?: string | null;
   offer?: string | null;
+  headline?: string | null;
   qrPreviewUrl?: string;
   logoUrl?: string | null;
   accentColor?: AccentColor;
@@ -1845,6 +1865,7 @@ export function TemplatePreview({
   dealershipName,
   customerName,
   offer,
+  headline,
   qrPreviewUrl: qrPropUrl,
   logoUrl,
   accentColor = "indigo",
@@ -1940,7 +1961,7 @@ export function TemplatePreview({
         <div className="w-full" style={{ maxWidth: "420px" }}>
           <Postcard6x9Preview
             content={content} dealershipName={dealershipName} customerName={customerName}
-            offer={offer} qrPreviewUrl={qrUrl} logoUrl={logoUrl} accent={accent}
+            offer={offer} headline={headline} qrPreviewUrl={qrUrl} logoUrl={logoUrl} accent={accent}
             customerAddress={customerAddress} dealershipAddress={dealershipAddress}
             dealershipPhone={dealershipPhone} vehiclePhotoUrl={vehiclePhotoUrl}
             initialMode={initialMode}

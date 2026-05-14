@@ -12,7 +12,7 @@ import { getAnthropicClient, MODELS } from "../client";
 import { createServiceClient } from "@/lib/supabase/server";
 import { applyGuardrails } from "../guardrails";
 import { appendDisclaimer } from "@/lib/compliance/disclaimers";
-import type { AgentContext, Customer, Visit, PersonalizedMessage, CommunicationChannel, InventoryVehicle, DesignStyle, LayoutSpec } from "@/types";
+import type { AgentContext, Customer, Visit, PersonalizedMessage, CommunicationChannel, InventoryVehicle, DesignStyle, LayoutSpec, StructuredMailContent } from "@/types";
 
 export interface DealershipProfile {
   phone?: string | null;
@@ -64,6 +64,9 @@ export interface CreativeAgentOutput extends PersonalizedMessage {
   guardrailsApplied: boolean;
   guardrailViolations: string[];
   layoutSpec?: LayoutSpec;
+  headline?: string | null;
+  offer?: string | null;
+  structured?: StructuredMailContent;
 }
 
 // Extract model token from visit (e.g. year=2019, make="Ford", model="F-150" → "F-150")
@@ -785,7 +788,22 @@ export async function runCreativeAgent(
     `Respond with valid JSON only — no preamble, no markdown code fences:`,
     `{`,
     `  "subject": null,`,
-    `  "content": "the full handwritten note — greeting through sign-off, exact format from your instructions",`,
+    `  "headline": "6-10 word hook — the bold header printed on the postcard (e.g. 'Your F-150 is due for an oil change')",`,
+    `  "subHeadline": "Optional 10-15 word supporting line — only include if it adds value",`,
+    `  "bodyCopy": [`,
+    `    "Opening paragraph — specific vehicle + time hook or, for prospects, a named capability. 1-3 sentences.",`,
+    `    "Middle paragraph — the value, safety concern, or savings angle. 1-2 sentences.",`,
+    `    "Closing paragraph — low-pressure CTA with phone number or URL. 1 sentence."`,
+    `  ],`,
+    `  "couponBlock": {`,
+    `    "offerText": "Specific dollar or named-service offer — e.g. '$40 off brake service' or 'Free multi-point inspection'. Omit the key entirely if no genuine offer fits.",`,
+    `    "expiresText": "Expires Month YYYY",`,
+    `    "conditionsText": "One per customer. Not combinable with other offers."`,
+    `  },`,
+    `  "ctaText": "Short CTA — e.g. 'Call 555-1234 or book at anytown.com/service'",`,
+    `  "urgencyLine": "One-line urgency hook — omit entirely if no genuine urgency",`,
+    `  "featuredVehicle": "Year Make Model from visit or inventory — null if unknown",`,
+    `  "recommendedTemplateReason": "1 sentence on why this template fits this customer",`,
     isAdvancedDesign ? layoutSpecSchema : null,
     `  "reasoning": "2–3 sentences: what specific data points drove your hook, offer, and CTA choices",`,
     `  "confidence": 0.9`,
@@ -795,7 +813,7 @@ export async function runCreativeAgent(
   // ── 4. Generate copy ───────────────────────────────────────
   const response = await client.messages.create({
     model: MODELS.standard,
-    max_tokens: isAdvancedDesign ? 1024 : (input.channel === "direct_mail" ? 800 : 512),
+    max_tokens: isAdvancedDesign ? 1400 : (input.channel === "direct_mail" ? 1100 : 600),
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
   });
@@ -809,7 +827,14 @@ export async function runCreativeAgent(
   const parsed = JSON.parse(jsonMatch[0]);
 
   // ── 5. Post-process copy ───────────────────────────────────
-  const cleanedContent = postProcessMailCopy(parsed.content ?? "", input.channel);
+  // Derive flat content string from structured bodyCopy array when present
+  const rawContent = Array.isArray(parsed.bodyCopy) && parsed.bodyCopy.length > 0
+    ? (parsed.bodyCopy as string[]).join("\n\n")
+    : (parsed.content ?? "");
+  const rawOffer = (parsed.couponBlock as { offerText?: string } | null)?.offerText ?? null;
+  const rawHeadline = typeof parsed.headline === "string" ? parsed.headline : null;
+
+  const cleanedContent = postProcessMailCopy(rawContent, input.channel);
 
   // ── 6. Guardrails ──────────────────────────────────────────
   const guardrail = await applyGuardrails(
@@ -835,6 +860,19 @@ export async function runCreativeAgent(
       })
     : guardrail.content;
 
+  const structured: StructuredMailContent | undefined = Array.isArray(parsed.bodyCopy) && parsed.bodyCopy.length > 0
+    ? {
+        headline: rawHeadline ?? "",
+        subHeadline: typeof parsed.subHeadline === "string" ? parsed.subHeadline : undefined,
+        bodyCopy: parsed.bodyCopy as string[],
+        couponBlock: parsed.couponBlock as StructuredMailContent["couponBlock"] | undefined,
+        ctaText: typeof parsed.ctaText === "string" ? parsed.ctaText : undefined,
+        urgencyLine: typeof parsed.urgencyLine === "string" ? parsed.urgencyLine : undefined,
+        featuredVehicle: typeof parsed.featuredVehicle === "string" ? parsed.featuredVehicle : undefined,
+        recommendedTemplateReason: typeof parsed.recommendedTemplateReason === "string" ? parsed.recommendedTemplateReason : undefined,
+      }
+    : undefined;
+
   return {
     customerId: input.customer.id,
     channel: input.channel,
@@ -846,5 +884,8 @@ export async function runCreativeAgent(
     guardrailsApplied: guardrail.rewritten,
     guardrailViolations: guardrail.violations,
     layoutSpec: parsed.layoutSpec as LayoutSpec | undefined,
+    headline: rawHeadline,
+    offer: rawOffer,
+    structured,
   };
 }
