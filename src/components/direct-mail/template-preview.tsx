@@ -772,8 +772,8 @@ function RealPostcardFront({
       display: "flex",
       flexDirection: "column",
     }}>
-      {/* Thin top accent bar */}
-      <div style={{ height: "5px", background: `linear-gradient(90deg, ${accent.header} 0%, ${adjustBrightness(accent.header, 22)} 100%)` }} />
+      {/* Dealer identity bar — always at top */}
+      <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
       {/* Hero vehicle photo — tall, with offer badge + headline overlay */}
       <div style={{ position: "relative" }}>
         <VehiclePhotoZone
@@ -818,9 +818,6 @@ function RealPostcardFront({
         </div>
       </div>
 
-      {/* Dealer identity bar */}
-      <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
-
       {/* Urgency strip — branded accent, not generic amber */}
       {urgencyLine && (
         <div style={{
@@ -838,12 +835,11 @@ function RealPostcardFront({
         <OfferCallout offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
       )}
 
-      {/* Body copy — brief (shorter when offer is shown) */}
-      <div style={{ padding: "11px 14px 10px" }}>
-        <HandwrittenContent
-          text={(() => { const max = offer ? 100 : 160; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
-          fontSize={13} lineHeight={1.80}
-        />
+      {/* Body copy — clean campaign sans-serif */}
+      <div style={{ padding: "10px 14px 9px" }}>
+        <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", lineHeight: 1.72, color: "#374151", margin: 0, fontWeight: 400 }}>
+          {(() => { const max = offer ? 90 : 150; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
+        </p>
       </div>
 
       {/* Action row: QR scan + CTA button side by side */}
@@ -852,7 +848,7 @@ function RealPostcardFront({
         <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
           <div style={{ background: "white", border: `2.5px solid ${accent.header}`, borderRadius: "8px", padding: "4px", boxShadow: `0 3px 10px ${accent.header}33` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrPreviewUrl} alt="Scan to schedule" width={56} height={56} style={{ display: "block", borderRadius: "4px" }} />
+            <img src={qrPreviewUrl} alt="Scan to schedule" width={64} height={64} style={{ display: "block", borderRadius: "4px" }} />
           </div>
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5px", fontWeight: 900, color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>
             SCAN TO<br />SCHEDULE
@@ -868,12 +864,12 @@ function RealPostcardFront({
             boxShadow: `0 6px 16px ${accent.header}55`,
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2px",
           }}>
-            <div style={{ fontSize: "11px", letterSpacing: "0.07em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "6px" }}>
+            <div style={{ fontSize: "13px", letterSpacing: "0.06em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "6px" }}>
               <span>{ctaText ?? "Call to Schedule Today"}</span>
-              <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
+              <span style={{ opacity: 0.75, fontSize: "15px", lineHeight: 1 }}>→</span>
             </div>
             {dealershipPhone && (
-              <div style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.82)", letterSpacing: "0.03em" }}>{dealershipPhone}</div>
+              <div style={{ fontSize: "9.5px", fontWeight: 700, color: "rgba(255,255,255,0.85)", letterSpacing: "0.03em" }}>{dealershipPhone}</div>
             )}
           </div>
         </div>
@@ -1242,6 +1238,8 @@ function Postcard6x9Preview({
               backgroundPositionY: "72px",
               boxShadow: "0 4px 6px -1px rgba(0,0,0,0.08), 0 10px 24px -4px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9)",
             }}>
+              {/* Dealer identity bar — always at top */}
+              <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
               {/* Vehicle photo — tall hero with offer badge + headline overlay */}
               <div style={{ position: "relative" }}>
                 <VehiclePhotoZone heroBg={accent.header} height="170px" imageUrl={vehiclePhotoUrl} showLabel={!headline} dealershipName={headline ? undefined : dealershipName} />
@@ -1252,9 +1250,6 @@ function Postcard6x9Preview({
                   {!headline && !subHeadline && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "rgba(255,255,255,0.70)", letterSpacing: "0.10em", textTransform: "uppercase" }}>{dealershipName}</div>}
                 </div>
               </div>
-
-              {/* Dealer identity bar */}
-              <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
 
               {/* Urgency strip — branded accent */}
               {urgencyLine && (
@@ -1273,19 +1268,18 @@ function Postcard6x9Preview({
                 <OfferCallout offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
               )}
 
-              {/* Body copy — brief (shorter when offer shown) */}
-              <div style={{ padding: "11px 16px 10px" }}>
-                <HandwrittenContent
-                  text={(() => { const max = offer ? 100 : 160; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
-                  fontSize={15} lineHeight={1.80}
-                />
+              {/* Body copy — clean campaign sans-serif */}
+              <div style={{ padding: "10px 16px 9px" }}>
+                <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "12.5px", lineHeight: 1.72, color: "#374151", margin: 0, fontWeight: 400 }}>
+                  {(() => { const max = offer ? 90 : 150; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
+                </p>
               </div>
               {/* Action row: QR + CTA */}
               <div style={{ padding: "10px 16px 14px", display: "flex", gap: "10px", alignItems: "stretch" }}>
                 <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
                   <div style={{ background: "white", border: `2.5px solid ${accent.header}`, borderRadius: "8px", padding: "4px", boxShadow: `0 3px 10px ${accent.header}33` }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={qrPreviewUrl} alt="QR" width={56} height={56} style={{ display: "block", borderRadius: "4px" }} />
+                    <img src={qrPreviewUrl} alt="QR" width={64} height={64} style={{ display: "block", borderRadius: "4px" }} />
                   </div>
                   <div style={{ fontSize: "5px", color: accent.header, fontFamily: "'Inter', sans-serif", fontWeight: 900, letterSpacing: "0.08em", textAlign: "center", textTransform: "uppercase", lineHeight: 1.3 }}>SCAN TO<br />SCHEDULE</div>
                 </div>
@@ -1298,12 +1292,12 @@ function Postcard6x9Preview({
                     boxShadow: `0 6px 16px ${accent.header}55`,
                     display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2px",
                   }}>
-                    <div style={{ fontSize: "11px", letterSpacing: "0.07em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <div style={{ fontSize: "13px", letterSpacing: "0.06em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "6px" }}>
                       <span>{ctaText ?? "Call to Schedule Today"}</span>
-                      <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
+                      <span style={{ opacity: 0.75, fontSize: "15px", lineHeight: 1 }}>→</span>
                     </div>
                     {dealershipPhone && (
-                      <div style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.82)", letterSpacing: "0.03em" }}>{dealershipPhone}</div>
+                      <div style={{ fontSize: "9.5px", fontWeight: 700, color: "rgba(255,255,255,0.85)", letterSpacing: "0.03em" }}>{dealershipPhone}</div>
                     )}
                   </div>
                 </div>
@@ -2055,7 +2049,8 @@ function ConquestFront({
       borderRadius: "12px", overflow: "hidden",
       boxShadow: "0 4px 6px -1px rgba(0,0,0,0.08), 0 10px 24px -4px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9)",
     }}>
-      <div style={{ height: "6px", background: `linear-gradient(90deg, ${accent.header} 0%, ${adjustBrightness(accent.header, 20)} 100%)` }} />
+      {/* Dealer identity bar — always at top */}
+      <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
       <div style={{ position: "relative" }}>
         <VehiclePhotoZone heroBg={accent.header} height="162px" imageUrl={vehiclePhotoUrl} showLabel={false} />
         {offer && <OfferBadge offer={offer} accent={accent} />}
@@ -2078,30 +2073,29 @@ function ConquestFront({
       {offer && (
         <OfferCallout offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
       )}
-      {/* Body copy — brief (shorter when offer shown) */}
-      <div style={{ padding: "11px 16px 10px" }}>
-        <HandwrittenContent
-          text={(() => { const max = offer ? 100 : 160; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
-          fontSize={14} lineHeight={1.78}
-        />
+      {/* Body copy — clean campaign sans-serif */}
+      <div style={{ padding: "10px 16px 9px" }}>
+        <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", lineHeight: 1.72, color: "#374151", margin: 0, fontWeight: 400 }}>
+          {(() => { const max = offer ? 90 : 150; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
+        </p>
       </div>
       {/* Action row: QR + CTA */}
       <div style={{ padding: "10px 16px 12px", display: "flex", gap: "10px", alignItems: "stretch" }}>
         <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
           <div style={{ background: "white", border: `2.5px solid ${accent.header}`, borderRadius: "8px", padding: "4px", boxShadow: `0 3px 10px ${accent.header}33` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrPreviewUrl} alt="Scan to view offer" width={56} height={56} style={{ display: "block", borderRadius: "4px" }} />
+            <img src={qrPreviewUrl} alt="Scan to view offer" width={64} height={64} style={{ display: "block", borderRadius: "4px" }} />
           </div>
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5px", fontWeight: 900, color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>SCAN TO<br />VIEW OFFER</div>
         </div>
         <div style={{ flex: 1, display: "flex" }}>
           <div style={{ flex: 1, background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`, color: "white", fontFamily: "'Inter', sans-serif", fontWeight: 900, borderRadius: "4px", padding: "0 12px", boxShadow: `0 6px 16px ${accent.header}55`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2px" }}>
-            <div style={{ fontSize: "11px", letterSpacing: "0.07em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{ fontSize: "13px", letterSpacing: "0.06em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "8px" }}>
               <span>{cta}</span>
-              <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
+              <span style={{ opacity: 0.75, fontSize: "15px", lineHeight: 1 }}>→</span>
             </div>
             {dealershipPhone && (
-              <div style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.82)", letterSpacing: "0.03em" }}>{dealershipPhone}</div>
+              <div style={{ fontSize: "9.5px", fontWeight: 700, color: "rgba(255,255,255,0.85)", letterSpacing: "0.03em" }}>{dealershipPhone}</div>
             )}
           </div>
         </div>
@@ -2152,7 +2146,8 @@ function RealConquestFront({
       boxShadow: "0 2px 4px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.20), 0 0 0 1px rgba(0,0,0,0.05)",
       width: "100%", display: "flex", flexDirection: "column",
     }}>
-      <div style={{ height: "6px", background: `linear-gradient(90deg, ${accent.header} 0%, ${adjustBrightness(accent.header, 20)} 100%)` }} />
+      {/* Dealer identity bar — always at top */}
+      <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
       <div style={{ position: "relative" }}>
         <VehiclePhotoZone heroBg={accent.header} height="190px" imageUrl={vehiclePhotoUrl} showLabel={false} />
         {offer && <OfferBadge offer={offer} accent={accent} />}
@@ -2161,8 +2156,6 @@ function RealConquestFront({
           <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "27px", color: "#fff", lineHeight: 1.06, letterSpacing: "-0.03em", textShadow: "0 3px 14px rgba(0,0,0,0.72)" }}>{headline}</div>
         </div>
       </div>
-      {/* Dealer identity bar */}
-      <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
       {urgencyLine && (
         <div style={{
           background: adjustBrightness(accent.header, -14),
@@ -2177,30 +2170,29 @@ function RealConquestFront({
       {offer && (
         <OfferCallout offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
       )}
-      {/* Body copy — brief (shorter when offer shown) */}
-      <div style={{ padding: "11px 14px 10px" }}>
-        <HandwrittenContent
-          text={(() => { const max = offer ? 100 : 160; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
-          fontSize={13} lineHeight={1.80}
-        />
+      {/* Body copy — clean campaign sans-serif */}
+      <div style={{ padding: "10px 14px 9px" }}>
+        <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", lineHeight: 1.72, color: "#374151", margin: 0, fontWeight: 400 }}>
+          {(() => { const max = offer ? 90 : 150; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
+        </p>
       </div>
       {/* Action row: QR + CTA */}
       <div style={{ padding: "10px 14px 12px", display: "flex", gap: "10px", alignItems: "stretch" }}>
         <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
           <div style={{ background: "white", border: `2.5px solid ${accent.header}`, borderRadius: "8px", padding: "4px", boxShadow: `0 3px 10px ${accent.header}33` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrPreviewUrl} alt="Scan to view offer" width={56} height={56} style={{ display: "block", borderRadius: "4px" }} />
+            <img src={qrPreviewUrl} alt="Scan to view offer" width={64} height={64} style={{ display: "block", borderRadius: "4px" }} />
           </div>
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5px", fontWeight: 900, color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>SCAN TO<br />VIEW OFFER</div>
         </div>
         <div style={{ flex: 1, display: "flex" }}>
           <div style={{ flex: 1, background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`, color: "white", fontFamily: "'Inter', sans-serif", fontWeight: 900, borderRadius: "4px", padding: "0 12px", boxShadow: `0 6px 16px ${accent.header}55`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2px" }}>
-            <div style={{ fontSize: "11px", letterSpacing: "0.07em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{ fontSize: "13px", letterSpacing: "0.06em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "8px" }}>
               <span>{cta}</span>
-              <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
+              <span style={{ opacity: 0.75, fontSize: "15px", lineHeight: 1 }}>→</span>
             </div>
             {dealershipPhone && (
-              <div style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.82)", letterSpacing: "0.03em" }}>{dealershipPhone}</div>
+              <div style={{ fontSize: "9.5px", fontWeight: 700, color: "rgba(255,255,255,0.85)", letterSpacing: "0.03em" }}>{dealershipPhone}</div>
             )}
           </div>
         </div>
