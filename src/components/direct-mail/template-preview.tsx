@@ -377,7 +377,9 @@ function VehiclePhotoZone({
       {/* Gradient overlay — text readability + depth */}
       <div style={{
         position: "absolute", bottom: 0, left: 0, right: 0, height: "70%",
-        background: `linear-gradient(to top, ${heroBg}f2 0%, ${heroBg}66 50%, transparent 100%)`,
+        background: hasRealPhoto
+          ? "linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.56) 45%, transparent 100%)"
+          : `linear-gradient(to top, ${heroBg}f2 0%, ${heroBg}66 50%, transparent 100%)`,
         pointerEvents: "none",
       }} />
       {/* Top shadow for realistic photo depth */}
@@ -489,11 +491,15 @@ function OfferCallout({ offer, accent, expiresText, conditionsText }: { offer: s
   const savingsAmount = dollarMatch ? dollarMatch[1].replace(/\.00$/, "") : null;
 
   return (
-    <div style={{
-      background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -22)} 100%)`,
-      padding: "11px 14px",
-      display: "flex", alignItems: "center", gap: "14px",
-    }}>
+    <div style={{ background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -22)} 100%)` }}>
+      {/* Eyebrow — "★ EXCLUSIVE OFFER" */}
+      <div style={{
+        borderBottom: "1px solid rgba(255,255,255,0.15)",
+        padding: "5px 14px 4px",
+        fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 800,
+        color: "rgba(255,255,255,0.80)", letterSpacing: "0.18em", textTransform: "uppercase",
+      }}>★ EXCLUSIVE OFFER</div>
+      <div style={{ padding: "10px 14px 11px", display: "flex", alignItems: "center", gap: "14px" }}>
       {(savingsAmount || isFree) && (
         <div style={{
           background: "rgba(0,0,0,0.24)",
@@ -521,6 +527,7 @@ function OfferCallout({ offer, accent, expiresText, conditionsText }: { offer: s
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", color: "rgba(255,255,255,0.52)", marginTop: "3px", letterSpacing: "0.03em", lineHeight: 1.4 }}>{conditionsText}</div>
         )}
       </div>
+      </div>
     </div>
   );
 }
@@ -536,20 +543,20 @@ function OfferBadge({ offer, accent }: { offer: string; accent: AccentConfig }) 
   return (
     <div style={{
       position: "absolute", top: "10px", right: "10px", zIndex: 10,
-      width: "66px", height: "66px", borderRadius: "50%",
+      width: "80px", height: "80px", borderRadius: "50%",
       background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -28)} 100%)`,
-      boxShadow: "0 6px 18px rgba(0,0,0,0.45), 0 0 0 3px rgba(255,255,255,0.32)",
-      border: "2.5px solid rgba(255,255,255,0.45)",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.50), 0 0 0 4px rgba(255,255,255,0.28)",
+      border: "3px solid rgba(255,255,255,0.50)",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
     }}>
       {amount ? (
         <>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 800, color: "rgba(255,255,255,0.85)", letterSpacing: "0.10em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "22px", fontWeight: 900, color: "#fff", lineHeight: 1, margin: "1px 0" }}>${amount}</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 800, color: "rgba(255,255,255,0.85)", letterSpacing: "0.10em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "rgba(255,255,255,0.85)", letterSpacing: "0.10em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "26px", fontWeight: 900, color: "#fff", lineHeight: 1, margin: "1px 0" }}>${amount}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "rgba(255,255,255,0.85)", letterSpacing: "0.10em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
         </>
       ) : (
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 900, color: "#fff", lineHeight: 1 }}>FREE</div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "16px", fontWeight: 900, color: "#fff", lineHeight: 1 }}>FREE</div>
       )}
     </div>
   );
@@ -825,23 +832,30 @@ function RealPostcardFront({
         )}
       </div>
 
-      {/* Urgency strip — full-width amber banner */}
+      {/* Urgency strip — branded accent, not generic amber */}
       {urgencyLine && (
-        <div style={{ background: "#FFFBEB", borderBottom: "2px solid #F59E0B", padding: "6px 14px", display: "flex", alignItems: "center", gap: "6px" }}>
+        <div style={{
+          background: adjustBrightness(accent.header, -14),
+          borderLeft: "4px solid rgba(255,255,255,0.55)",
+          padding: "6px 14px", display: "flex", alignItems: "center", gap: "7px",
+        }}>
           <span style={{ fontSize: "10px" }}>⚡</span>
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: "#78350F", letterSpacing: "0.04em", textTransform: "uppercase" }}>{urgencyLine}</span>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
         </div>
       )}
 
-      {/* Body copy — full-width, kept brief (postcards are not letters) */}
-      <div style={{ padding: "11px 14px 10px" }}>
-        <HandwrittenContent text={content.length > 160 ? content.slice(0, 157) + "…" : content} fontSize={13} lineHeight={1.80} />
-      </div>
-
-      {/* Offer Banner — dominant full-width accent block */}
+      {/* Offer Banner — dominant full-width accent block (above body copy) */}
       {offer && (
         <OfferCallout offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
       )}
+
+      {/* Body copy — brief (shorter when offer is shown) */}
+      <div style={{ padding: "11px 14px 10px" }}>
+        <HandwrittenContent
+          text={(() => { const max = offer ? 100 : 160; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
+          fontSize={13} lineHeight={1.80}
+        />
+      </div>
 
       {/* Action row: QR scan + CTA button side by side */}
       <div style={{ padding: "10px 14px 12px", display: "flex", gap: "10px", alignItems: "stretch" }}>
@@ -855,19 +869,23 @@ function RealPostcardFront({
             SCAN TO<br />SCHEDULE
           </div>
         </div>
-        {/* CTA — fills remaining width, matches QR height */}
+        {/* CTA — fills remaining width, shows phone as secondary line */}
         <div style={{ flex: 1, display: "flex" }}>
           <div style={{
             flex: 1,
             background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`,
-            color: "white", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "11px",
-            letterSpacing: "0.07em", textTransform: "uppercase",
+            color: "white", fontFamily: "'Inter', sans-serif", fontWeight: 900,
             borderRadius: "4px", padding: "0 12px",
             boxShadow: `0 6px 16px ${accent.header}55`,
-            display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2px",
           }}>
-            <span>{ctaText ?? "Call to Schedule Today"}</span>
-            <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
+            <div style={{ fontSize: "11px", letterSpacing: "0.07em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "6px" }}>
+              <span>{ctaText ?? "Call to Schedule Today"}</span>
+              <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
+            </div>
+            {dealershipPhone && (
+              <div style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.82)", letterSpacing: "0.03em" }}>{dealershipPhone}</div>
+            )}
           </div>
         </div>
       </div>
@@ -1242,22 +1260,30 @@ function Postcard6x9Preview({
               {/* Dealer identity bar */}
               <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
 
-              {/* Urgency strip */}
+              {/* Urgency strip — branded accent */}
               {urgencyLine && (
-                <div style={{ background: "#FFFBEB", borderBottom: "2px solid #F59E0B", padding: "6px 16px", display: "flex", alignItems: "center", gap: "6px" }}>
+                <div style={{
+                  background: adjustBrightness(accent.header, -14),
+                  borderLeft: "4px solid rgba(255,255,255,0.55)",
+                  padding: "6px 16px", display: "flex", alignItems: "center", gap: "7px",
+                }}>
                   <span style={{ fontSize: "10px" }}>⚡</span>
-                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: "#78350F", letterSpacing: "0.04em", textTransform: "uppercase" }}>{urgencyLine}</span>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
                 </div>
               )}
 
-              {/* Body copy — full-width */}
-              <div style={{ padding: "11px 16px 10px" }}>
-                <HandwrittenContent text={content.length > 160 ? content.slice(0, 157) + "…" : content} fontSize={15} lineHeight={1.80} />
-              </div>
-              {/* Offer Banner */}
+              {/* Offer Banner — above body copy */}
               {offer && (
                 <OfferCallout offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
               )}
+
+              {/* Body copy — brief (shorter when offer shown) */}
+              <div style={{ padding: "11px 16px 10px" }}>
+                <HandwrittenContent
+                  text={(() => { const max = offer ? 100 : 160; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
+                  fontSize={15} lineHeight={1.80}
+                />
+              </div>
               {/* Action row: QR + CTA */}
               <div style={{ padding: "10px 16px 14px", display: "flex", gap: "10px", alignItems: "stretch" }}>
                 <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
@@ -1271,14 +1297,18 @@ function Postcard6x9Preview({
                   <div style={{
                     flex: 1,
                     background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`,
-                    color: "white", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "11px",
-                    letterSpacing: "0.07em", textTransform: "uppercase",
+                    color: "white", fontFamily: "'Inter', sans-serif", fontWeight: 900,
                     borderRadius: "4px", padding: "0 12px",
                     boxShadow: `0 6px 16px ${accent.header}55`,
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2px",
                   }}>
-                    <span>{ctaText ?? "Call to Schedule Today"}</span>
-                    <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
+                    <div style={{ fontSize: "11px", letterSpacing: "0.07em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span>{ctaText ?? "Call to Schedule Today"}</span>
+                      <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
+                    </div>
+                    {dealershipPhone && (
+                      <div style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.82)", letterSpacing: "0.03em" }}>{dealershipPhone}</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2003,19 +2033,26 @@ function ConquestFront({
         </div>
       </div>
       {urgencyLine && (
-        <div style={{ background: "#FEF3C7", borderBottom: "1px solid #F59E0B", padding: "4px 16px", display: "flex", alignItems: "center", gap: "5px" }}>
+        <div style={{
+          background: adjustBrightness(accent.header, -14),
+          borderLeft: "4px solid rgba(255,255,255,0.55)",
+          padding: "4px 16px", display: "flex", alignItems: "center", gap: "5px",
+        }}>
           <span style={{ fontSize: "9px" }}>⚡</span>
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
         </div>
       )}
-      {/* Body copy — full-width */}
-      <div style={{ padding: "11px 16px 10px" }}>
-        <HandwrittenContent text={content.length > 160 ? content.slice(0, 157) + "…" : content} fontSize={14} lineHeight={1.78} />
-      </div>
-      {/* Offer banner — dominant accent block */}
+      {/* Offer banner — dominant accent block (above body copy) */}
       {offer && (
         <OfferCallout offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
       )}
+      {/* Body copy — brief (shorter when offer shown) */}
+      <div style={{ padding: "11px 16px 10px" }}>
+        <HandwrittenContent
+          text={(() => { const max = offer ? 100 : 160; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
+          fontSize={14} lineHeight={1.78}
+        />
+      </div>
       {/* Action row: QR + CTA */}
       <div style={{ padding: "10px 16px 12px", display: "flex", gap: "10px", alignItems: "stretch" }}>
         <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
@@ -2026,9 +2063,14 @@ function ConquestFront({
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5px", fontWeight: 900, color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>SCAN TO<br />VIEW OFFER</div>
         </div>
         <div style={{ flex: 1, display: "flex" }}>
-          <div style={{ flex: 1, background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`, color: "white", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "11px", letterSpacing: "0.07em", textTransform: "uppercase", borderRadius: "4px", padding: "0 12px", boxShadow: `0 6px 16px ${accent.header}55`, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-            <span>{cta}</span>
-            <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
+          <div style={{ flex: 1, background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`, color: "white", fontFamily: "'Inter', sans-serif", fontWeight: 900, borderRadius: "4px", padding: "0 12px", boxShadow: `0 6px 16px ${accent.header}55`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+            <div style={{ fontSize: "11px", letterSpacing: "0.07em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "8px" }}>
+              <span>{cta}</span>
+              <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
+            </div>
+            {dealershipPhone && (
+              <div style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.82)", letterSpacing: "0.03em" }}>{dealershipPhone}</div>
+            )}
           </div>
         </div>
       </div>
@@ -2099,19 +2141,26 @@ function RealConquestFront({
         {dealershipPhone && <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7.5px", fontWeight: 700, color: "rgba(255,255,255,0.90)", flexShrink: 0 }}>{dealershipPhone}</span>}
       </div>
       {urgencyLine && (
-        <div style={{ background: "#FEF3C7", borderBottom: "1px solid #F59E0B", padding: "4px 14px", display: "flex", alignItems: "center", gap: "5px" }}>
+        <div style={{
+          background: adjustBrightness(accent.header, -14),
+          borderLeft: "4px solid rgba(255,255,255,0.55)",
+          padding: "4px 14px", display: "flex", alignItems: "center", gap: "5px",
+        }}>
           <span style={{ fontSize: "9px" }}>⚡</span>
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
         </div>
       )}
-      {/* Body copy — full-width */}
-      <div style={{ padding: "11px 14px 10px" }}>
-        <HandwrittenContent text={content.length > 160 ? content.slice(0, 157) + "…" : content} fontSize={13} lineHeight={1.80} />
-      </div>
-      {/* Offer banner — dominant accent block */}
+      {/* Offer banner — dominant accent block (above body copy) */}
       {offer && (
         <OfferCallout offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
       )}
+      {/* Body copy — brief (shorter when offer shown) */}
+      <div style={{ padding: "11px 14px 10px" }}>
+        <HandwrittenContent
+          text={(() => { const max = offer ? 100 : 160; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
+          fontSize={13} lineHeight={1.80}
+        />
+      </div>
       {/* Action row: QR + CTA */}
       <div style={{ padding: "10px 14px 12px", display: "flex", gap: "10px", alignItems: "stretch" }}>
         <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
@@ -2122,9 +2171,14 @@ function RealConquestFront({
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5px", fontWeight: 900, color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>SCAN TO<br />VIEW OFFER</div>
         </div>
         <div style={{ flex: 1, display: "flex" }}>
-          <div style={{ flex: 1, background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`, color: "white", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "11px", letterSpacing: "0.07em", textTransform: "uppercase", borderRadius: "4px", padding: "0 12px", boxShadow: `0 6px 16px ${accent.header}55`, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-            <span>{cta}</span>
-            <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
+          <div style={{ flex: 1, background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`, color: "white", fontFamily: "'Inter', sans-serif", fontWeight: 900, borderRadius: "4px", padding: "0 12px", boxShadow: `0 6px 16px ${accent.header}55`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+            <div style={{ fontSize: "11px", letterSpacing: "0.07em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "8px" }}>
+              <span>{cta}</span>
+              <span style={{ opacity: 0.75, fontSize: "14px", lineHeight: 1 }}>→</span>
+            </div>
+            {dealershipPhone && (
+              <div style={{ fontSize: "9px", fontWeight: 700, color: "rgba(255,255,255,0.82)", letterSpacing: "0.03em" }}>{dealershipPhone}</div>
+            )}
           </div>
         </div>
       </div>
