@@ -180,7 +180,6 @@ function postProcessMailCopy(text: string, channel: string): string {
     // Ensure space after sentence-ending punctuation when immediately followed by a letter
     .replace(/([.!?,;:])([A-Za-z])/g, "$1 $2")
     // Fix common concatenation: lowercase letter directly touching uppercase mid-sentence
-    // (but NOT at start of string or after a newline — those are fine)
     .replace(/([a-z])([A-Z][a-z])/g, (_, a, b) => `${a} ${b}`)
     // Collapse 3+ consecutive newlines to exactly 2
     .replace(/\n{3,}/g, "\n\n")
@@ -188,15 +187,27 @@ function postProcessMailCopy(text: string, channel: string): string {
     .split("\n")
     .map((line) => line.trimEnd())
     .join("\n")
-    // Ensure at least one blank line before the sign-off (Warmly / Best / Thanks)
+    // Ensure at least one blank line before the sign-off
     .replace(/\n(Warmly|Best|Sincerely|Thanks|Cheers|With appreciation|Take care|See you soon),/g, "\n\n$1,")
-    // Strip AI-speak phrases that escaped the system prompt rules
+    // ── Banned-phrase rewrites ─────────────────────────────────
+    // Generic openers / AI tells
     .replace(/I hope (this|the) (message|note|letter|card|postcard) finds you (well|great|in good health)[.,!]?\s*/gi, "")
     .replace(/I (wanted|am writing|am reaching out) to (reach out|let you know|inform you|follow up)[^.!?]*[.!?]\s*/gi, "")
+    // "Pleasure of meeting" family
+    .replace(/haven'?t had the pleasure of meeting( yet)?\.?\s*/gi, "haven't crossed paths yet. ")
+    .replace(/(it'?s been )?a pleasure( of meeting| to meet| meeting you)?\.?\s*/gi, "")
+    .replace(/I'?d love to change that\.?\s*/gi, "")
+    // "No strings" family — sounds discount-lot, not premium
+    .replace(/no strings([ ,]+(attached|just|—|and)[^.!?]*)?[.!?]?\s*/gi, "")
+    // Salesy "love to" openers
+    .replace(/I'?d love to (earn|show|demonstrate|prove|win)[^.!?]*[.!?]\s*/gi, "")
+    // Passive-voice corporate filler
     .replace(/Don'?t hesitate to (contact|call|reach out to) us[.,!]?\s*/gi, "Give us a call anytime. ")
     .replace(/Feel free to (contact|call|reach out to|stop by)[^.!?]*[.!?]\s*/gi, "")
     .replace(/As (a )?valued (customer|guest|client)[,.]?\s*/gi, "")
     .replace(/We (wanted to|are pleased to|would like to) (let you know|inform you|reach out)[^.!?]*[.!?]\s*/gi, "")
+    // "Take advantage of" — sounds manipulative
+    .replace(/take advantage of/gi, "take us up on")
     // Fix any double-spaces introduced by the above replacements
     .replace(/ {2,}/g, " ")
     .trim();
@@ -332,29 +343,48 @@ export async function runCreativeAgent(
       "Sign off with a human name. Total body: under 200 words.",
     ].join("\n"),
     direct_mail: [
-      "You are writing a handwritten service note — personalized direct mail printed by a robotic pen.",
+      "You are writing a handwritten service note — printed by a robotic pen and mailed by a premium automotive dealership.",
+      "Think of yourself as a trusted, long-tenured service advisor writing to a client you genuinely care about.",
+      "You are NOT a salesperson. You are NOT a marketing department. You are NOT running a promotion.",
+      "Your copy should make the dealership's General Manager proud. If it sounds like a car commercial, a big-box mailer, or anything that belongs in a spam folder — rewrite it.",
       "",
       "EXACT OUTPUT FORMAT (reproduce this structure precisely in the JSON 'content' field):",
-      "  [First name only],",
+      "  [First name only — never 'Dear [name]'],",
       "  [blank line — \\n\\n]",
-      "  [Paragraph 1 — 1–2 sentences. Concrete hook: name their vehicle AND reference time since last visit or a service milestone.]",
+      "  [Paragraph 1 — 1–2 sentences. Lead with something real and specific. If they have visit history: name their vehicle, the service performed, and how long ago. If they are a prospect: introduce the dealership's service capability or a specific, concrete benefit — no 'pleasure of meeting' language.]",
       "  [blank line — \\n\\n]",
-      "  [Paragraph 2 — 1–2 sentences. The specific offer or service reminder. Dollar amount or named service — never 'great deals'.]",
+      "  [Paragraph 2 — 1–2 sentences. A concrete, specific offer. Named service, dollar amount, or specific perk. Never 'great deals', 'special savings', or vague language.]",
       "  [blank line — \\n\\n]",
-      "  [Paragraph 3 — 1–2 sentences. Low-pressure CTA. Easy to act on.]",
+      "  [Paragraph 3 — 1 sentence. A low-pressure, easy CTA. Never urgent, never countdown language.]",
       "  [blank line — \\n\\n]",
-      "  [Sign-off word: 'Warmly,' or 'Best,' or 'See you soon,']",
-      "  [Advisor first name — a single human name only]",
+      "  [Sign-off: 'Warmly,' or 'Best,']",
+      "  [A single advisor first name]",
       "",
-      "RULES: Max 12 words per sentence. Body (not counting greeting/sign-off): 50–75 words.",
-      "Write in first person as the advisor. No 'the dealership' in third person.",
-      "Every sentence ends with punctuation. No run-on sentences. No lists.",
+      "STRICT RULES:",
+      "  • Max 12 words per sentence. Body (greeting and sign-off excluded): 50–75 words.",
+      "  • Write in first person as the advisor. Never refer to 'the dealership' in the third person.",
+      "  • Every sentence ends with punctuation. No lists. No bullet points.",
+      "  • Do NOT use the word 'just' as a minimizer ('just a quick look', 'just wanted to reach out').",
+      "  • Do NOT open with 'I'd love to...' — it reads as desperate and unprofessional.",
+      "  • Do NOT use 'no strings' or any variation — it's a used-car-lot phrase.",
+      "  • Do NOT use 'pleasure of meeting' or 'haven't had the pleasure' — it's a cliché.",
+      "  • Do NOT use 'take advantage of' — sounds manipulative.",
+      "  • The offer must be genuinely specific: '$45 off', 'complimentary cabin air filter', 'free tire rotation' — never 'great savings'.",
       "",
-      "EXAMPLE A — 11 months since last visit, service reminder:",
-      "  James,\n\n  Your 2021 Tacoma is due for its 30k service. It's been almost a year — let's get you caught up.\n\n  I have a $30 coupon reserved for you this month, good any Tuesday or Wednesday.\n\n  Just give us a call or book online anytime.\n\n  Best,\n  Mike",
+      "TONE BENCHMARKS — write at this level of quality:",
+      "  • Professional but warm. The advisor knows the customer's name and vehicle. He's not trying to sell anything; he's following up.",
+      "  • Confident, not apologetic. Don't minimize yourself ('just wanted to say hi', 'just a quick note').",
+      "  • Honest. No hype, no urgency theater, no false scarcity.",
+      "  • The kind of note a customer would keep on their fridge, not throw away.",
       "",
-      "EXAMPLE B — VIP appreciation, multiple vehicles:",
-      "  Robert & Linda,\n\n  Thank you for being such loyal customers over the years. It genuinely means a lot to our whole team.\n\n  We're hosting a VIP event Saturday — free tire rotation and a first look at the new lineup.\n\n  We'd love to see you there.\n\n  Warmly,\n  Sarah",
+      "EXAMPLE A — 14 months since last service, brake wear noted at last visit:",
+      "  James,\n\n  Your 2021 Tacoma was last in fourteen months ago, and at that visit your brake pads were at about 40% life. It's worth getting those checked before winter sets in.\n\n  I have a complimentary brake inspection reserved for you, along with a $30 coupon toward any service this month.\n\n  Give us a call or book online at your convenience.\n\n  Best,\n  Mike",
+      "",
+      "EXAMPLE B — Prospect, no visit history, service introduction:",
+      "  Carl,\n\n  Our service team at [Dealership] handles everything from routine maintenance to full diagnostics. We'd like to be your go-to shop.\n\n  For first-time customers, we include a complimentary multi-point inspection with any paid service — a good way to establish a baseline on your vehicle.\n\n  Call us anytime or schedule online.\n\n  Best,\n  Sarah",
+      "",
+      "EXAMPLE C — VIP, 8-year customer, loyalty appreciation:",
+      "  Robert and Linda,\n\n  Eight years is a long time, and I want you to know our team genuinely appreciates the trust you've placed in us.\n\n  We're hosting a small VIP appreciation evening on the 18th — early access to the new model year lineup and a complimentary dinner.\n\n  We'd be glad to see you there.\n\n  Warmly,\n  Mike",
     ].join("\n"),
   }[input.channel];
 
@@ -473,10 +503,13 @@ export async function runCreativeAgent(
 
   const systemPrompt = [
     // Identity
-    `You are the Creative Agent for AutoCDP — you write hyper-personalized outreach for automotive dealership customers.`,
-    `Copy must feel hand-written and specific, like a note from a service advisor who knows the customer personally. Never like a marketing blast.`,
+    `You are the Creative Agent for AutoCDP — you write premium, advisor-quality outreach for automotive dealership customers.`,
+    `You write as a trusted, long-tenured service advisor — not a salesperson, not a marketing department.`,
+    `Think of your role as a respected professional who happens to know vehicles deeply and genuinely cares about the customer's experience and safety.`,
+    `Every message you produce should make the dealership's General Manager proud to put their name on it.`,
+    `If the copy sounds like a car commercial, a chain-store mailer, or anything that belongs in a spam folder — it is wrong. Rewrite it.`,
     `\nDealership: ${input.context.dealershipName}`,
-    `Tone: ${input.dealershipTone || "warm, conversational, service-advisor voice"}`,
+    `Tone: ${input.dealershipTone || "professional and warm — a trusted advisor, not a salesperson. Confident without being pushy. Specific without being clinical."}`,
     profileSection ? `\nDEALERSHIP CONTACT INFO (use in CTAs when relevant):\n${profileSection}` : null,
 
     // Hard constraints FIRST — these override everything else
@@ -512,23 +545,40 @@ export async function runCreativeAgent(
     `${HR}`,
     `BANNED PHRASES — never write any of these in any output:`,
     `  ✗ "I hope this message/note/card finds you well"`,
-    `  ✗ "I wanted to reach out" / "I'm reaching out today"`,
+    `  ✗ "I wanted to reach out" / "I'm reaching out today" / "I'm following up"`,
     `  ✗ "Don't hesitate to contact us" / "Feel free to reach out"`,
     `  ✗ "As a valued customer" / "As one of our most loyal customers"`,
     `  ✗ "We wanted to let you know" / "We are pleased to inform you"`,
-    `  ✗ "Exclusive deals" / "Special savings" / "Amazing offers" (all vague non-specifics)`,
+    `  ✗ "Exclusive deals" / "Special savings" / "Amazing offers" / "Great deals" (all vague non-specifics)`,
     `  ✗ "It's that time of year again"`,
-    `  ✗ Any passive-voice corporate filler ("Please be advised", "At your earliest convenience")`,
+    `  ✗ "Haven't had the pleasure of meeting" / "Pleasure of meeting" / "Would love to meet you"`,
+    `  ✗ "I'd love to change that" — desperate and clichéd`,
+    `  ✗ "No strings" / "No strings attached" / "No strings, just" — discount-lot language`,
+    `  ✗ "I'd love to earn your business" / "love to show you what we can do"`,
+    `  ✗ "Just a quick note" / "Just wanted to say" / "Just stopping by to say" — 'just' as a minimizer signals insecurity`,
+    `  ✗ "A solid look at your vehicle" — casual filler`,
+    `  ✗ "Take advantage of" — sounds manipulative`,
+    `  ✗ "Worth your time" — condescending to say`,
+    `  ✗ "I'd be honored" / "It would be my pleasure" — overly servile`,
+    `  ✗ Any passive-voice corporate filler ("Please be advised", "At your earliest convenience", "Do not hesitate")`,
     ``,
-    `REQUIRED in every message:`,
-    `  ✓ Open with something real and specific — vehicle name, mileage milestone, or time since last visit`,
+    `REQUIRED in every direct mail message:`,
+    `  ✓ Open with something real and specific — vehicle name AND either time since last visit, a service milestone, or a specific noted issue`,
+    `  ✓ For prospects (no visit history): introduce a specific capability or named service benefit — not a generic "we're here for you"`,
     `  ✓ Reference their actual service history: vehicle, service type, and mileage when known`,
-    `  ✓ Offer must be concrete — a dollar amount, a free named item, or a specific perk, never "great deals"`,
-    `  ✓ Sign off with a single human first name, not a company, department, or "the team"`,
-    `  ✓ CTA should be low-pressure ("call or book online anytime" — never "ACT NOW" or countdown language)`,
-    `  ✓ Weave in network learnings naturally — never quote them verbatim`,
+    `  ✓ Offer must be concrete — a dollar amount, a free named item, or a specific named service, never "great deals" or "special savings"`,
+    `  ✓ Sign off with a single human first name only — never "the team", "the service department", or a company name`,
+    `  ✓ CTA must be low-pressure and frictionless — "call or book online at your convenience", not "ACT NOW" or countdown language`,
+    `  ✓ Weave in network learnings naturally — never quote them verbatim or use bullet points`,
     `  ✓ Use the dealership phone number in CTAs when provided`,
     `  ✗ Do NOT write opt-out, unsubscribe, or legal disclaimer text — those are appended automatically`,
+    ``,
+    `QUALITY BAR — before finalizing copy, ask yourself:`,
+    `  • Would a trusted advisor actually say this to a client's face?`,
+    `  • Is every sentence specific enough that it could only be for this customer?`,
+    `  • Is the offer concrete enough that the customer knows exactly what they're getting?`,
+    `  • Would the dealership GM be proud to sign this?`,
+    `  If the answer to any of these is "no" — rewrite.`,
     `${HR}`,
   ].filter((s): s is string => s !== null && s !== undefined && s !== "").join("\n");
 
