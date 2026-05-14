@@ -688,9 +688,9 @@ function RealPostcardFront({
         <VehiclePhotoZone
           heroBg={accent.header}
           height="138px"
-          dealershipName={dealershipName}
+          dealershipName={headline ? undefined : dealershipName}
           imageUrl={vehiclePhotoUrl}
-          showLabel
+          showLabel={!headline}
         />
         {(headline || subHeadline) && (
           <div style={{
@@ -747,8 +747,10 @@ function RealPostcardFront({
         <div style={{ flex: 1, minWidth: 0 }}>
           <HandwrittenContent text={content} fontSize={14} lineHeight={1.82} />
           {urgencyLine && (
-            <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "3px", padding: "2px 6px", display: "inline-flex", alignItems: "center", gap: "3px", marginTop: "6px", marginBottom: "6px" }}>
-              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 700, color: "#B45309", letterSpacing: "0.04em" }}>⚡ {urgencyLine}</span>
+            <div style={{ display: "flex", marginTop: "6px", marginBottom: "6px" }}>
+              <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "3px", padding: "2px 6px", display: "flex", alignItems: "center", gap: "3px" }}>
+                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 700, color: "#B45309", letterSpacing: "0.04em" }}>⚡ {urgencyLine}</span>
+              </div>
             </div>
           )}
           {offer && <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />}
@@ -769,10 +771,24 @@ function RealPostcardFront({
             color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase",
             textAlign: "center", lineHeight: 1.3,
           }}>
-            {ctaText ? ctaText.slice(0, 25).toUpperCase() : <>SCAN TO<br />SCHEDULE</>}
+            <>SCAN TO<br />SCHEDULE</>
           </div>
         </div>
       </div>
+
+      {/* CTA button */}
+      {ctaText && (
+        <div style={{ padding: "0 14px 10px" }}>
+          <div style={{
+            background: accent.header, color: "white",
+            fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "8.5px",
+            letterSpacing: "0.07em", textTransform: "uppercase",
+            padding: "7px 12px", borderRadius: "3px", textAlign: "center",
+          }}>
+            {ctaText}
+          </div>
+        </div>
+      )}
 
       {/* Address footer */}
       {(addrLines.line1 || addrLines.line2) && (
@@ -1121,7 +1137,7 @@ function Postcard6x9Preview({
             }}>
               {/* Vehicle photo strip with optional headline overlay */}
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={accent.header} height="110px" imageUrl={vehiclePhotoUrl} showLabel dealershipName={dealershipName} />
+                <VehiclePhotoZone heroBg={accent.header} height="110px" imageUrl={vehiclePhotoUrl} showLabel={!headline} dealershipName={headline ? undefined : dealershipName} />
                 {(headline || subHeadline) && (
                   <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "22px 12px 7px", background: "linear-gradient(to top, rgba(0,0,0,0.70) 0%, transparent 100%)" }}>
                     {headline && <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "12px", color: "#fff", lineHeight: 1.2, letterSpacing: "-0.01em", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>{headline}</div>}
@@ -1138,8 +1154,10 @@ function Postcard6x9Preview({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <HandwrittenContent text={content} fontSize={16} lineHeight={1.88} />
                   {urgencyLine && (
-                    <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "3px", padding: "2px 6px", display: "inline-flex", alignItems: "center", gap: "3px", marginTop: "6px", marginBottom: "6px" }}>
-                      <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 700, color: "#B45309", letterSpacing: "0.04em" }}>⚡ {urgencyLine}</span>
+                    <div style={{ display: "flex", marginTop: "6px", marginBottom: "6px" }}>
+                      <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "3px", padding: "2px 6px", display: "flex", alignItems: "center", gap: "3px" }}>
+                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 700, color: "#B45309", letterSpacing: "0.04em" }}>⚡ {urgencyLine}</span>
+                      </div>
                     </div>
                   )}
                   {offer && <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />}
@@ -1150,10 +1168,22 @@ function Postcard6x9Preview({
                     <img src={qrPreviewUrl} alt="QR" width={68} height={68} style={{ display: "block", borderRadius: "4px", border: "1px solid #D1C9B0" }} />
                   </div>
                   <div style={{ fontSize: "6px", color: accent.header, fontFamily: "'Inter', sans-serif", fontWeight: 800, letterSpacing: "0.08em", textAlign: "center", textTransform: "uppercase" }}>
-                    {ctaText ? ctaText.slice(0, 25).toUpperCase() : <>SCAN TO<br />SCHEDULE</>}
+                    <>SCAN TO<br />SCHEDULE</>
                   </div>
                 </div>
               </div>
+              {ctaText && (
+                <div style={{ padding: "0 16px 14px" }}>
+                  <div style={{
+                    background: accent.header, color: "white",
+                    fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "9px",
+                    letterSpacing: "0.07em", textTransform: "uppercase",
+                    padding: "8px 14px", borderRadius: "4px", textAlign: "center",
+                  }}>
+                    {ctaText}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <PostcardBack dealershipName={dealershipName} customerName={customerName} accent={accent} logoUrl={logoUrl} customerAddress={customerAddress} dealershipAddress={dealershipAddress} />
@@ -1322,12 +1352,13 @@ function LetterPreview({
 
 function MultiPanelPreview({
   content, dealershipName, customerName, offer, qrPreviewUrl, logoUrl, layoutSpec, accent, vehiclePhotoUrl,
-  headline: headlineProp, ctaText,
+  headline: headlineProp, ctaText, expiresText, conditionsText,
 }: {
   content: string; dealershipName: string; customerName?: string; offer?: string | null;
   qrPreviewUrl: string; logoUrl?: string | null; layoutSpec?: LayoutSpec; accent: AccentConfig;
   vehiclePhotoUrl?: string | null;
   headline?: string | null; ctaText?: string | null;
+  expiresText?: string | null; conditionsText?: string | null;
 }) {
   const [showBack, setShowBack] = useState(false);
   const [previewMode, setPreviewMode] = useState<PreviewMode>("design");
@@ -1369,7 +1400,7 @@ function MultiPanelPreview({
               </div>
               <div style={{ padding: "14px 18px 16px" }}>
                 <HandwrittenContent text={content} fontSize={15} lineHeight={1.82} />
-                {offer && <CouponStrip offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} />}
+                {offer && <CouponStrip offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />}
                 <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "12px" }}>
                   <div style={{ background: accentHex, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "10px", padding: "7px 16px", borderRadius: "3px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
                     {ctaText ?? front?.cta ?? "Schedule Now"}
@@ -1409,10 +1440,10 @@ function MultiPanelPreview({
                       </div>
                       <div style={{ padding: "14px 18px 16px" }}>
                         <HandwrittenContent text={content} fontSize={15} lineHeight={1.82} />
-                        {offer && <CouponStrip offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} />}
+                        {offer && <CouponStrip offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />}
                         <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "12px" }}>
                           <div style={{ background: accentHex, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "10px", padding: "7px 16px", borderRadius: "3px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-                            {front?.cta ?? "Schedule Now"}
+                            {ctaText ?? front?.cta ?? "Schedule Now"}
                           </div>
                           <div style={{ background: "white", border: `2px solid ${accentHex}`, borderRadius: "6px", padding: "3px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -2050,6 +2081,7 @@ export function TemplatePreview({
             offer={offer} qrPreviewUrl={qrUrl} logoUrl={logoUrl}
             layoutSpec={layoutSpec} accent={accent} vehiclePhotoUrl={vehiclePhotoUrl}
             headline={headline} ctaText={ctaText}
+            expiresText={expiresText} conditionsText={conditionsText}
           />
         </div>
       </div>
