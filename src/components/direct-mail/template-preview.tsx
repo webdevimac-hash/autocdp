@@ -1692,35 +1692,40 @@ function PremiumFluorescentPreview({
         <div className="flex justify-center">
           {!showBack ? (
             <div className="w-full rounded-xl shadow-xl overflow-hidden" style={{ maxWidth: "420px", background: bg, position: "relative" }}>
-              {/* Hero — photo with headline overlaid at bottom */}
-              <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={bg} height="188px" showLabel={false} imageUrl={vehiclePhotoUrl} />
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "5px", background: accentCol }} />
-                <div style={{ position: "absolute", top: "12px", left: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+              {/* Dark branded header band — full-width above hero */}
+              <div style={{ background: "linear-gradient(135deg, #080808 0%, #151515 100%)", borderBottom: `2.5px solid ${accentCol}`, padding: "9px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", top: 0, left: "22%", width: "30px", height: "100%", background: "rgba(255,255,255,0.04)", transform: "skewX(-18deg)" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   {logoUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={logoUrl} alt={dealershipName}
-                      style={{ height: "14px", width: "auto", maxWidth: "50px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+                      style={{ height: "15px", width: "auto", maxWidth: "52px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                     />
                   )}
-                  <span style={{ fontSize: "8px", fontWeight: 900, letterSpacing: "0.10em", textTransform: "uppercase", color: accentCol, fontFamily: "'Inter', sans-serif" }}>{dealershipName}</span>
+                  <span style={{ fontSize: "9.5px", fontWeight: 900, letterSpacing: "0.10em", textTransform: "uppercase", color: accentCol, fontFamily: "'Inter', sans-serif" }}>{dealershipName}</span>
                 </div>
+                <div style={{ background: `${accentCol}22`, border: `1px solid ${accentCol}66`, borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 900, color: accentCol, letterSpacing: "0.14em", textTransform: "uppercase" }}>EXCLUSIVE OFFER</div>
+              </div>
+              {/* Hero — photo with headline overlaid at bottom */}
+              <div style={{ position: "relative" }}>
+                <VehiclePhotoZone heroBg={bg} height="188px" showLabel={false} imageUrl={vehiclePhotoUrl} />
                 {/* Dominant headline overlaid at bottom of hero */}
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "48px 16px 12px", background: `linear-gradient(to top, ${bg} 0%, ${bg}d0 38%, transparent 100%)`, pointerEvents: "none" }}>
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "24px", color: textCol, lineHeight: 1.07, letterSpacing: "-0.025em", textShadow: "0 2px 12px rgba(0,0,0,0.65)" }}>{resolvedHeadline}</div>
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "54px 16px 12px", background: `linear-gradient(to top, ${bg} 0%, ${bg}d0 42%, transparent 100%)`, pointerEvents: "none" }}>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "30px", color: textCol, lineHeight: 1.04, letterSpacing: "-0.03em", textShadow: "0 2px 14px rgba(0,0,0,0.70)" }}>{resolvedHeadline}</div>
                   {resolvedSubheadline && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: `${textCol}cc`, lineHeight: 1.35, marginTop: "5px", fontWeight: 500 }}>{resolvedSubheadline}</div>}
                 </div>
               </div>
-              {/* Urgency strip — solid accent band */}
+              {/* Urgency strip — solid accent band with ACT NOW pill */}
               {urgencyLine && (
                 <div style={{
-                  background: accentCol, padding: "6px 18px",
-                  borderLeft: "5px solid rgba(0,0,0,0.20)",
+                  background: accentCol, padding: "7px 18px",
+                  borderLeft: "5px solid rgba(0,0,0,0.25)",
                   display: "flex", alignItems: "center", gap: "7px",
                 }}>
                   <span style={{ fontSize: "10px" }}>⚡</span>
-                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: isNeon ? "#000" : bg, letterSpacing: "0.06em", textTransform: "uppercase" }}>{urgencyLine}</span>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: isNeon ? "#000" : bg, letterSpacing: "0.06em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
+                  <div style={{ background: "rgba(0,0,0,0.22)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 900, color: isNeon ? "#000" : bg, letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
                 </div>
               )}
               {/* Content area */}
@@ -1783,35 +1788,40 @@ function PremiumFluorescentPreview({
                 <div style={{ transform: "rotate(-0.4deg)", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.22))" }}>
                   {!showBack ? (
                     <div className="w-full rounded-xl shadow-xl overflow-hidden" style={{ maxWidth: "520px", background: bg, position: "relative" }}>
-                      {/* Hero — photo with headline overlaid at bottom */}
-                      <div style={{ position: "relative" }}>
-                        <VehiclePhotoZone heroBg={bg} height="200px" showLabel={false} imageUrl={vehiclePhotoUrl} />
-                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "5px", background: accentCol }} />
-                        <div style={{ position: "absolute", top: "12px", left: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+                      {/* Dark branded header band — full-width above hero */}
+                      <div style={{ background: "linear-gradient(135deg, #080808 0%, #151515 100%)", borderBottom: `2.5px solid ${accentCol}`, padding: "10px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", position: "relative", overflow: "hidden" }}>
+                        <div style={{ position: "absolute", top: 0, left: "22%", width: "32px", height: "100%", background: "rgba(255,255,255,0.04)", transform: "skewX(-18deg)" }} />
+                        <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
                           {logoUrl && (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={logoUrl} alt={dealershipName}
-                              style={{ height: "14px", width: "auto", maxWidth: "50px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+                              style={{ height: "16px", width: "auto", maxWidth: "56px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
                               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                             />
                           )}
-                          <span style={{ fontSize: "8px", fontWeight: 900, letterSpacing: "0.10em", textTransform: "uppercase", color: accentCol, fontFamily: "'Inter', sans-serif" }}>{dealershipName}</span>
+                          <span style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.10em", textTransform: "uppercase", color: accentCol, fontFamily: "'Inter', sans-serif" }}>{dealershipName}</span>
                         </div>
+                        <div style={{ background: `${accentCol}22`, border: `1px solid ${accentCol}66`, borderRadius: "3px", padding: "2px 8px", fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 900, color: accentCol, letterSpacing: "0.14em", textTransform: "uppercase" }}>EXCLUSIVE OFFER</div>
+                      </div>
+                      {/* Hero — photo with headline overlaid at bottom */}
+                      <div style={{ position: "relative" }}>
+                        <VehiclePhotoZone heroBg={bg} height="200px" showLabel={false} imageUrl={vehiclePhotoUrl} />
                         {/* Dominant headline overlaid at bottom of hero */}
-                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "52px 18px 12px", background: `linear-gradient(to top, ${bg} 0%, ${bg}d0 38%, transparent 100%)`, pointerEvents: "none" }}>
-                          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "27px", color: textCol, lineHeight: 1.07, letterSpacing: "-0.025em", textShadow: "0 2px 12px rgba(0,0,0,0.65)" }}>{resolvedHeadline}</div>
+                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "58px 18px 12px", background: `linear-gradient(to top, ${bg} 0%, ${bg}d0 44%, transparent 100%)`, pointerEvents: "none" }}>
+                          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "32px", color: textCol, lineHeight: 1.03, letterSpacing: "-0.03em", textShadow: "0 2px 14px rgba(0,0,0,0.70)" }}>{resolvedHeadline}</div>
                           {resolvedSubheadline && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: `${textCol}cc`, lineHeight: 1.35, marginTop: "5px", fontWeight: 500 }}>{resolvedSubheadline}</div>}
                         </div>
                       </div>
-                      {/* Urgency strip — solid accent band */}
+                      {/* Urgency strip — solid accent band with ACT NOW pill */}
                       {urgencyLine && (
                         <div style={{
-                          background: accentCol, padding: "6px 18px",
-                          borderLeft: "5px solid rgba(0,0,0,0.20)",
+                          background: accentCol, padding: "8px 18px",
+                          borderLeft: "5px solid rgba(0,0,0,0.25)",
                           display: "flex", alignItems: "center", gap: "7px",
                         }}>
                           <span style={{ fontSize: "10px" }}>⚡</span>
-                          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: isNeon ? "#000" : bg, letterSpacing: "0.06em", textTransform: "uppercase" }}>{urgencyLine}</span>
+                          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: isNeon ? "#000" : bg, letterSpacing: "0.06em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
+                          <div style={{ background: "rgba(0,0,0,0.22)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 900, color: isNeon ? "#000" : bg, letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
                         </div>
                       )}
                       {/* Content area */}
@@ -1914,23 +1924,27 @@ function ComplexFoldPreview({
         <div className="w-full rounded-xl shadow-xl overflow-hidden" style={{ maxWidth: "420px", minHeight: "300px" }}>
           {activePanel === "cover" && (
             <div style={{ background: bg, minHeight: "300px", position: "relative", overflow: "hidden" }}>
-              {/* Hero — taller with headline overlaid at bottom */}
-              <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={bg} height="215px" showLabel={false} imageUrl={vehiclePhotoUrl} />
-                {/* Logo + dealer name — top left */}
-                <div style={{ position: "absolute", top: "12px", left: "18px", display: "flex", alignItems: "center", gap: "7px" }}>
+              {/* Branded header band — above hero */}
+              <div style={{ background: `linear-gradient(135deg, ${accent} 0%, ${adjustBrightness(accent, -22)} 100%)`, borderBottom: "2px solid rgba(0,0,0,0.18)", padding: "9px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", top: 0, left: "28%", width: "28px", height: "100%", background: "rgba(255,255,255,0.10)", transform: "skewX(-18deg)" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   {logoUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={logoUrl} alt={dealershipName}
-                      style={{ height: "13px", width: "auto", maxWidth: "50px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+                      style={{ height: "15px", width: "auto", maxWidth: "52px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                     />
                   )}
-                  <span style={{ fontSize: "7px", fontWeight: 900, letterSpacing: "0.12em", textTransform: "uppercase", color: accent, fontFamily: "'Inter', sans-serif" }}>{dealershipName}</span>
+                  <span style={{ fontSize: "9.5px", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", color: "#fff", fontFamily: "'Inter', sans-serif" }}>{dealershipName}</span>
                 </div>
+                <div style={{ background: "rgba(255,255,255,0.18)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 900, color: "#fff", letterSpacing: "0.14em", textTransform: "uppercase" }}>TRI-FOLD MAILER</div>
+              </div>
+              {/* Hero — taller with headline overlaid at bottom */}
+              <div style={{ position: "relative" }}>
+                <VehiclePhotoZone heroBg={bg} height="215px" showLabel={false} imageUrl={vehiclePhotoUrl} />
                 {/* Dominant headline overlaid at bottom of photo */}
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "52px 18px 12px", background: "linear-gradient(to top, rgba(0,0,0,0.90) 0%, rgba(0,0,0,0.50) 55%, transparent 100%)", pointerEvents: "none" }}>
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "28px", color: "#fff", lineHeight: 1.04, letterSpacing: "-0.025em", textShadow: "0 3px 14px rgba(0,0,0,0.70)" }}>
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "58px 18px 12px", background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 55%, transparent 100%)", pointerEvents: "none" }}>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "32px", color: "#fff", lineHeight: 1.03, letterSpacing: "-0.03em", textShadow: "0 3px 16px rgba(0,0,0,0.75)" }}>
                     {headline ?? cover?.headline ?? "We'd love to see you again."}
                   </div>
                   <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.72)", lineHeight: 1.4, marginTop: "5px", fontWeight: 400 }}>
@@ -1938,15 +1952,16 @@ function ComplexFoldPreview({
                   </div>
                 </div>
               </div>
-              {/* Urgency strip — solid accent band */}
+              {/* Urgency strip — solid accent band with ACT NOW pill */}
               {urgencyLine && (
                 <div style={{
-                  background: accent, padding: "6px 22px",
+                  background: accent, padding: "7px 22px",
                   borderLeft: "5px solid rgba(0,0,0,0.20)",
                   display: "flex", alignItems: "center", gap: "7px",
                 }}>
                   <span style={{ fontSize: "10px" }}>⚡</span>
-                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: isNeon ? "#000" : "#fff", letterSpacing: "0.06em", textTransform: "uppercase" }}>{urgencyLine}</span>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: isNeon ? "#000" : "#fff", letterSpacing: "0.06em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
+                  <div style={{ background: "rgba(0,0,0,0.20)", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 900, color: isNeon ? "#000" : "#fff", letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
                 </div>
               )}
               {/* Teaser — invites reader to open */}
