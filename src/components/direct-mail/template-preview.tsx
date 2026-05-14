@@ -478,6 +478,36 @@ function CouponStrip({ offer, accent, expiresText, conditionsText }: { offer: st
   );
 }
 
+// ── Offer Badge ───────────────────────────────────────────────
+// Floating circular badge overlaid on the vehicle photo hero
+
+function OfferBadge({ offer, accent }: { offer: string; accent: AccentConfig }) {
+  const dollarMatch = offer.match(/\$(\d+(?:\.\d{2})?)/);
+  const isFree = /free/i.test(offer);
+  if (!dollarMatch && !isFree) return null;
+  const amount = dollarMatch ? dollarMatch[1].replace(/\.00$/, "") : null;
+  return (
+    <div style={{
+      position: "absolute", top: "10px", right: "10px", zIndex: 10,
+      width: "54px", height: "54px", borderRadius: "50%",
+      background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -24)} 100%)`,
+      boxShadow: "0 4px 14px rgba(0,0,0,0.40), 0 0 0 2.5px rgba(255,255,255,0.30)",
+      border: "2px solid rgba(255,255,255,0.40)",
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+    }}>
+      {amount ? (
+        <>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, color: "rgba(255,255,255,0.82)", letterSpacing: "0.10em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "18px", fontWeight: 900, color: "#fff", lineHeight: 1, margin: "1px 0" }}>${amount}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, color: "rgba(255,255,255,0.82)", letterSpacing: "0.10em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
+        </>
+      ) : (
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 900, color: "#fff", lineHeight: 1 }}>FREE</div>
+      )}
+    </div>
+  );
+}
+
 // ── Bold Header Band ──────────────────────────────────────────
 
 function BoldHeaderBand({
@@ -683,76 +713,85 @@ function RealPostcardFront({
       display: "flex",
       flexDirection: "column",
     }}>
-      {/* Hero vehicle photo with optional headline overlay */}
+      {/* Hero vehicle photo — tall, with offer badge + headline overlay */}
       <div style={{ position: "relative" }}>
         <VehiclePhotoZone
           heroBg={accent.header}
-          height="138px"
+          height="175px"
           dealershipName={headline ? undefined : dealershipName}
           imageUrl={vehiclePhotoUrl}
           showLabel={!headline}
         />
-        {(headline || subHeadline) && (
-          <div style={{
-            position: "absolute", bottom: 0, left: 0, right: 0,
-            padding: "24px 12px 8px",
-            background: "linear-gradient(to top, rgba(0,0,0,0.72) 0%, transparent 100%)",
-          }}>
-            {headline && (
-              <div style={{
-                fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "13px",
-                color: "#fff", lineHeight: 1.2, letterSpacing: "-0.01em",
-                textShadow: "0 1px 3px rgba(0,0,0,0.5)",
-              }}>
-                {headline}
-              </div>
-            )}
-            {subHeadline && (
-              <div style={{
-                fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: "9.5px",
-                color: "rgba(255,255,255,0.85)", lineHeight: 1.3, letterSpacing: "-0.005em",
-                textShadow: "0 1px 2px rgba(0,0,0,0.4)", marginTop: "2px",
-              }}>
-                {subHeadline}
-              </div>
-            )}
-          </div>
-        )}
+        {/* Offer badge — top-right corner */}
+        {offer && <OfferBadge offer={offer} accent={accent} />}
+        {/* Headline overlay — strong gradient, large bold text */}
+        <div style={{
+          position: "absolute", bottom: 0, left: 0, right: 0,
+          padding: "36px 13px 10px",
+          background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.38) 60%, transparent 100%)",
+          pointerEvents: "none",
+        }}>
+          {headline && (
+            <div style={{
+              fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "19px",
+              color: "#fff", lineHeight: 1.15, letterSpacing: "-0.02em",
+              textShadow: "0 2px 8px rgba(0,0,0,0.60), 0 1px 2px rgba(0,0,0,0.40)",
+            }}>
+              {headline}
+            </div>
+          )}
+          {subHeadline && (
+            <div style={{
+              fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: "11px",
+              color: "rgba(255,255,255,0.88)", lineHeight: 1.3, letterSpacing: "-0.005em",
+              textShadow: "0 1px 4px rgba(0,0,0,0.50)", marginTop: "3px",
+            }}>
+              {subHeadline}
+            </div>
+          )}
+          {!headline && !subHeadline && (
+            // Fallback eyebrow when no headline — shows dealership name on photo
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "rgba(255,255,255,0.70)", letterSpacing: "0.10em", textTransform: "uppercase" }}>
+              {dealershipName}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Bold header band */}
-      <div style={{ background: accent.header, padding: "7px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginTop: "-1px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      {/* Dealer identity bar */}
+      <div style={{ background: accent.header, padding: "6px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
           {logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt={dealershipName}
-              style={{ height: "15px", width: "auto", maxWidth: "54px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+              style={{ height: "13px", width: "auto", maxWidth: "48px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
             />
           )}
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, color: "white", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: "white", letterSpacing: "0.06em", textTransform: "uppercase" }}>
             {dealershipName}
           </span>
         </div>
         {dealershipPhone && (
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8.5px", fontWeight: 700, color: "rgba(255,255,255,0.9)", flexShrink: 0 }}>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7.5px", fontWeight: 700, color: "rgba(255,255,255,0.90)", flexShrink: 0 }}>
             {dealershipPhone}
           </span>
         )}
       </div>
 
+      {/* Urgency strip — full-width amber banner */}
+      {urgencyLine && (
+        <div style={{ background: "#FEF3C7", borderBottom: "1px solid #F59E0B", padding: "4px 14px", display: "flex", alignItems: "center", gap: "5px" }}>
+          <span style={{ fontSize: "9px" }}>⚡</span>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
+        </div>
+      )}
+
       {/* Content area */}
-      <div style={{ padding: "11px 14px 14px", flex: 1, display: "flex", gap: "12px" }}>
-        {/* Left: handwritten copy + urgency + coupon */}
+      <div style={{ padding: "10px 14px 12px", flex: 1, display: "flex", gap: "12px" }}>
+        {/* Left: handwritten copy + coupon */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <HandwrittenContent text={content} fontSize={14} lineHeight={1.82} />
-          {urgencyLine && (
-            <div style={{ display: "flex", marginTop: "6px", marginBottom: "6px" }}>
-              <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "3px", padding: "2px 6px", display: "flex", alignItems: "center", gap: "3px" }}>
-                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 700, color: "#B45309", letterSpacing: "0.04em" }}>⚡ {urgencyLine}</span>
-              </div>
-            </div>
-          )}
+          <HandwrittenContent text={content} fontSize={13} lineHeight={1.82} />
           {offer && <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />}
         </div>
 
@@ -761,7 +800,7 @@ function RealPostcardFront({
           <div style={{
             background: "white", border: `2px solid ${accent.header}`,
             borderRadius: "8px", padding: "5px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.14)",
           }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={qrPreviewUrl} alt="Scan to schedule" width={68} height={68} style={{ display: "block", borderRadius: "4px" }} />
@@ -776,19 +815,18 @@ function RealPostcardFront({
         </div>
       </div>
 
-      {/* CTA button */}
-      {ctaText && (
-        <div style={{ padding: "0 14px 10px" }}>
-          <div style={{
-            background: accent.header, color: "white",
-            fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "8.5px",
-            letterSpacing: "0.07em", textTransform: "uppercase",
-            padding: "7px 12px", borderRadius: "3px", textAlign: "center",
-          }}>
-            {ctaText}
-          </div>
+      {/* CTA button — always prominent, full-width */}
+      <div style={{ padding: "0 14px 11px" }}>
+        <div style={{
+          background: accent.header, color: "white",
+          fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "9px",
+          letterSpacing: "0.08em", textTransform: "uppercase",
+          padding: "9px 14px", borderRadius: "3px", textAlign: "center",
+          boxShadow: `0 4px 12px ${accent.header}55`,
+        }}>
+          {ctaText ?? "Call to Schedule Today"}
         </div>
-      )}
+      </div>
 
       {/* Address footer */}
       {(addrLines.line1 || addrLines.line2) && (
@@ -975,8 +1013,8 @@ function RealLetterPreview({
       )}
 
       {headline && (
-        <div style={{ margin: "14px 22px 0", borderLeft: `3px solid ${accent.header}`, paddingLeft: "10px", background: `${accent.header}08` }}>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: is8511 ? "13px" : "11px", fontWeight: 800, color: "#1F2937", lineHeight: 1.3 }}>{headline}</div>
+        <div style={{ background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -18)} 100%)`, padding: "10px 22px", margin: "14px 0 0" }}>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: is8511 ? "15px" : "13px", fontWeight: 900, color: "#fff", lineHeight: 1.25, letterSpacing: "-0.01em", textShadow: "0 1px 3px rgba(0,0,0,0.25)" }}>{headline}</div>
         </div>
       )}
 
@@ -1103,7 +1141,7 @@ function Postcard6x9Preview({
   conditionsText?: string | null;
 }) {
   const [showBack, setShowBack] = useState(false);
-  const [previewMode, setPreviewMode] = useState<PreviewMode>(initialMode ?? "design");
+  const [previewMode, setPreviewMode] = useState<PreviewMode>(initialMode ?? "realistic");
 
   return (
     <div className="space-y-2.5">
@@ -1135,35 +1173,36 @@ function Postcard6x9Preview({
               backgroundPositionY: "72px",
               boxShadow: "0 4px 6px -1px rgba(0,0,0,0.08), 0 10px 24px -4px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9)",
             }}>
-              {/* Vehicle photo strip with optional headline overlay */}
+              {/* Vehicle photo — tall hero with offer badge + headline overlay */}
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={accent.header} height="110px" imageUrl={vehiclePhotoUrl} showLabel={!headline} dealershipName={headline ? undefined : dealershipName} />
-                {(headline || subHeadline) && (
-                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "22px 12px 7px", background: "linear-gradient(to top, rgba(0,0,0,0.70) 0%, transparent 100%)" }}>
-                    {headline && <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "12px", color: "#fff", lineHeight: 1.2, letterSpacing: "-0.01em", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>{headline}</div>}
-                    {subHeadline && <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: "8.5px", color: "rgba(255,255,255,0.85)", lineHeight: 1.3, marginTop: "2px", textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}>{subHeadline}</div>}
-                  </div>
-                )}
+                <VehiclePhotoZone heroBg={accent.header} height="138px" imageUrl={vehiclePhotoUrl} showLabel={!headline} dealershipName={headline ? undefined : dealershipName} />
+                {offer && <OfferBadge offer={offer} accent={accent} />}
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "30px 14px 9px", background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.35) 60%, transparent 100%)", pointerEvents: "none" }}>
+                  {headline && <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "17px", color: "#fff", lineHeight: 1.15, letterSpacing: "-0.02em", textShadow: "0 2px 8px rgba(0,0,0,0.60)" }}>{headline}</div>}
+                  {subHeadline && <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: "10px", color: "rgba(255,255,255,0.88)", lineHeight: 1.3, marginTop: "3px", textShadow: "0 1px 4px rgba(0,0,0,0.50)" }}>{subHeadline}</div>}
+                  {!headline && !subHeadline && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "rgba(255,255,255,0.70)", letterSpacing: "0.10em", textTransform: "uppercase" }}>{dealershipName}</div>}
+                </div>
               </div>
 
-              {/* Bold header band */}
+              {/* Dealer identity bar */}
               <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
 
+              {/* Urgency strip */}
+              {urgencyLine && (
+                <div style={{ background: "#FEF3C7", borderBottom: "1px solid #F59E0B", padding: "4px 16px", display: "flex", alignItems: "center", gap: "5px" }}>
+                  <span style={{ fontSize: "9px" }}>⚡</span>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
+                </div>
+              )}
+
               {/* Message + QR */}
-              <div style={{ padding: "12px 16px 14px", display: "flex", gap: "10px" }}>
+              <div style={{ padding: "11px 16px 12px", display: "flex", gap: "10px" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <HandwrittenContent text={content} fontSize={16} lineHeight={1.88} />
-                  {urgencyLine && (
-                    <div style={{ display: "flex", marginTop: "6px", marginBottom: "6px" }}>
-                      <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "3px", padding: "2px 6px", display: "flex", alignItems: "center", gap: "3px" }}>
-                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 700, color: "#B45309", letterSpacing: "0.04em" }}>⚡ {urgencyLine}</span>
-                      </div>
-                    </div>
-                  )}
+                  <HandwrittenContent text={content} fontSize={15} lineHeight={1.88} />
                   {offer && <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />}
                 </div>
                 <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", paddingTop: "4px" }}>
-                  <div style={{ background: "white", border: `2px solid ${accent.header}`, borderRadius: "8px", padding: "4px", boxShadow: "0 2px 8px rgba(0,0,0,0.10)" }}>
+                  <div style={{ background: "white", border: `2px solid ${accent.header}`, borderRadius: "8px", padding: "4px", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={qrPreviewUrl} alt="QR" width={68} height={68} style={{ display: "block", borderRadius: "4px", border: "1px solid #D1C9B0" }} />
                   </div>
@@ -1172,18 +1211,18 @@ function Postcard6x9Preview({
                   </div>
                 </div>
               </div>
-              {ctaText && (
-                <div style={{ padding: "0 16px 14px" }}>
-                  <div style={{
-                    background: accent.header, color: "white",
-                    fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "9px",
-                    letterSpacing: "0.07em", textTransform: "uppercase",
-                    padding: "8px 14px", borderRadius: "4px", textAlign: "center",
-                  }}>
-                    {ctaText}
-                  </div>
+              {/* CTA — always prominent */}
+              <div style={{ padding: "0 16px 14px" }}>
+                <div style={{
+                  background: accent.header, color: "white",
+                  fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "9px",
+                  letterSpacing: "0.08em", textTransform: "uppercase",
+                  padding: "9px 14px", borderRadius: "4px", textAlign: "center",
+                  boxShadow: `0 4px 12px ${accent.header}55`,
+                }}>
+                  {ctaText ?? "Call to Schedule Today"}
                 </div>
-              )}
+              </div>
             </div>
           ) : (
             <PostcardBack dealershipName={dealershipName} customerName={customerName} accent={accent} logoUrl={logoUrl} customerAddress={customerAddress} dealershipAddress={dealershipAddress} />
@@ -1261,7 +1300,7 @@ function LetterPreview({
 }) {
   const aspectRatio = templateType === "letter_8.5x11" ? "8.5/11" : "6/9";
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-  const [previewMode, setPreviewMode] = useState<PreviewMode>(initialMode ?? "design");
+  const [previewMode, setPreviewMode] = useState<PreviewMode>(initialMode ?? "realistic");
   const cAddrLines = addrToLines(customerAddress);
 
   return (
@@ -1307,8 +1346,8 @@ function LetterPreview({
           )}
 
           {headline && (
-            <div style={{ margin: templateType === "letter_8.5x11" ? "14px 28px 0" : "12px 20px 0", borderLeft: `3px solid ${accent.header}`, paddingLeft: "10px", background: `${accent.header}08` }}>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: templateType === "letter_8.5x11" ? "13px" : "11px", fontWeight: 800, color: "#1F2937", lineHeight: 1.3 }}>{headline}</div>
+            <div style={{ background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -18)} 100%)`, padding: templateType === "letter_8.5x11" ? "10px 28px" : "8px 20px", margin: "14px 0 0" }}>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: templateType === "letter_8.5x11" ? "14px" : "12px", fontWeight: 900, color: "#fff", lineHeight: 1.25, letterSpacing: "-0.01em" }}>{headline}</div>
             </div>
           )}
 
@@ -1352,16 +1391,17 @@ function LetterPreview({
 
 function MultiPanelPreview({
   content, dealershipName, customerName, offer, qrPreviewUrl, logoUrl, layoutSpec, accent, vehiclePhotoUrl,
-  headline: headlineProp, ctaText, expiresText, conditionsText,
+  headline: headlineProp, ctaText, expiresText, conditionsText, urgencyLine,
 }: {
   content: string; dealershipName: string; customerName?: string; offer?: string | null;
   qrPreviewUrl: string; logoUrl?: string | null; layoutSpec?: LayoutSpec; accent: AccentConfig;
   vehiclePhotoUrl?: string | null;
   headline?: string | null; ctaText?: string | null;
   expiresText?: string | null; conditionsText?: string | null;
+  urgencyLine?: string | null;
 }) {
   const [showBack, setShowBack] = useState(false);
-  const [previewMode, setPreviewMode] = useState<PreviewMode>("design");
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("realistic");
   const front = layoutSpec?.panels?.find((p) => p.role === "front") ?? layoutSpec?.panels?.[0];
   const cs = layoutSpec?.colorScheme;
   const heroBg = cs?.primary ?? accent.header;
@@ -1386,30 +1426,39 @@ function MultiPanelPreview({
           {!showBack ? (
             <div className="w-full rounded-xl border border-slate-200 shadow-xl overflow-hidden" style={{ maxWidth: "420px", background: "#fff" }}>
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={heroBg} height="155px" showLabel imageUrl={vehiclePhotoUrl} dealershipName={dealershipName} />
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "28px 16px 12px", background: `linear-gradient(to top, ${heroBg}ee 0%, transparent 100%)` }}>
+                <VehiclePhotoZone heroBg={heroBg} height="175px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                {offer && <OfferBadge offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex, offerBg: accent.offerBg, offerText: accent.offerText, letterBorder: accent.letterBorder, highlightGlow: accent.highlightGlow, isHighlight: accent.isHighlight }} />}
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "36px 16px 12px", background: `linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.35) 65%, transparent 100%)`, pointerEvents: "none" }}>
                   {logoUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={logoUrl} alt={dealershipName}
-                      style={{ position: "absolute", top: "-44px", left: "14px", height: "18px", width: "auto", maxWidth: "65px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+                      style={{ position: "absolute", top: "-40px", left: "14px", height: "16px", width: "auto", maxWidth: "60px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                     />
                   )}
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "16px", color: "#fff", lineHeight: 1.15, letterSpacing: "-0.01em" }}>{resolvedHeadline}</div>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "20px", color: "#fff", lineHeight: 1.12, letterSpacing: "-0.02em", textShadow: "0 2px 8px rgba(0,0,0,0.60)" }}>{resolvedHeadline}</div>
                 </div>
               </div>
+              {urgencyLine && (
+                <div style={{ background: "#FEF3C7", borderBottom: "1px solid #F59E0B", padding: "4px 18px", display: "flex", alignItems: "center", gap: "5px" }}>
+                  <span style={{ fontSize: "9px" }}>⚡</span>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
+                </div>
+              )}
               <div style={{ padding: "14px 18px 16px" }}>
                 <HandwrittenContent text={content} fontSize={15} lineHeight={1.82} />
                 {offer && <CouponStrip offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />}
-                <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "12px" }}>
-                  <div style={{ background: accentHex, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "10px", padding: "7px 16px", borderRadius: "3px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                <div style={{ marginTop: "14px" }}>
+                  <div style={{ background: accentHex, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "9px 16px", borderRadius: "3px", letterSpacing: "0.06em", textTransform: "uppercase", textAlign: "center", boxShadow: `0 4px 12px ${accentHex}55`, marginBottom: "8px" }}>
                     {ctaText ?? front?.cta ?? "Schedule Now"}
                   </div>
-                  <div style={{ background: "white", border: `2px solid ${accentHex}`, borderRadius: "6px", padding: "3px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={qrPreviewUrl} alt="QR" width={46} height={46} style={{ borderRadius: "3px" }} />
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                    <div style={{ background: "white", border: `2px solid ${accentHex}`, borderRadius: "6px", padding: "3px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={qrPreviewUrl} alt="QR" width={46} height={46} style={{ borderRadius: "3px" }} />
+                    </div>
+                    <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 700, color: accentHex, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO<br />BOOK</div>
                   </div>
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 700, color: accentHex, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO<br />BOOK</div>
                 </div>
               </div>
             </div>
@@ -1426,30 +1475,39 @@ function MultiPanelPreview({
                   {!showBack ? (
                     <div className="w-full rounded-xl border border-slate-200 shadow-xl overflow-hidden" style={{ maxWidth: "520px", background: "#fff" }}>
                       <div style={{ position: "relative" }}>
-                        <VehiclePhotoZone heroBg={heroBg} height="155px" showLabel imageUrl={vehiclePhotoUrl} dealershipName={dealershipName} />
-                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "28px 16px 12px", background: `linear-gradient(to top, ${heroBg}ee 0%, transparent 100%)` }}>
+                        <VehiclePhotoZone heroBg={heroBg} height="175px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                        {offer && <OfferBadge offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex, offerBg: accent.offerBg, offerText: accent.offerText, letterBorder: accent.letterBorder, highlightGlow: accent.highlightGlow, isHighlight: accent.isHighlight }} />}
+                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "36px 16px 12px", background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.35) 65%, transparent 100%)", pointerEvents: "none" }}>
                           {logoUrl && (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={logoUrl} alt={dealershipName}
-                              style={{ position: "absolute", top: "-44px", left: "14px", height: "18px", width: "auto", maxWidth: "65px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+                              style={{ position: "absolute", top: "-40px", left: "14px", height: "16px", width: "auto", maxWidth: "60px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
                               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                             />
                           )}
-                          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "16px", color: "#fff", lineHeight: 1.15, letterSpacing: "-0.01em" }}>{resolvedHeadline}</div>
+                          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "20px", color: "#fff", lineHeight: 1.12, letterSpacing: "-0.02em", textShadow: "0 2px 8px rgba(0,0,0,0.60)" }}>{resolvedHeadline}</div>
                         </div>
                       </div>
+                      {urgencyLine && (
+                        <div style={{ background: "#FEF3C7", borderBottom: "1px solid #F59E0B", padding: "4px 18px", display: "flex", alignItems: "center", gap: "5px" }}>
+                          <span style={{ fontSize: "9px" }}>⚡</span>
+                          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
+                        </div>
+                      )}
                       <div style={{ padding: "14px 18px 16px" }}>
                         <HandwrittenContent text={content} fontSize={15} lineHeight={1.82} />
                         {offer && <CouponStrip offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />}
-                        <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "12px" }}>
-                          <div style={{ background: accentHex, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "10px", padding: "7px 16px", borderRadius: "3px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                        <div style={{ marginTop: "14px" }}>
+                          <div style={{ background: accentHex, color: "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "9px 16px", borderRadius: "3px", letterSpacing: "0.06em", textTransform: "uppercase", textAlign: "center", boxShadow: `0 4px 12px ${accentHex}55`, marginBottom: "8px" }}>
                             {ctaText ?? front?.cta ?? "Schedule Now"}
                           </div>
-                          <div style={{ background: "white", border: `2px solid ${accentHex}`, borderRadius: "6px", padding: "3px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={qrPreviewUrl} alt="QR" width={46} height={46} style={{ borderRadius: "3px" }} />
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                            <div style={{ background: "white", border: `2px solid ${accentHex}`, borderRadius: "6px", padding: "3px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={qrPreviewUrl} alt="QR" width={46} height={46} style={{ borderRadius: "3px" }} />
+                            </div>
+                            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 700, color: accentHex, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO<br />BOOK</div>
                           </div>
-                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 700, color: accentHex, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO<br />BOOK</div>
                         </div>
                       </div>
                     </div>
@@ -1476,14 +1534,15 @@ function MultiPanelPreview({
 
 function PremiumFluorescentPreview({
   content, dealershipName, customerName, offer, qrPreviewUrl, logoUrl, layoutSpec, vehiclePhotoUrl,
-  headline: headlineProp, subHeadline, ctaText, urgencyLine,
+  headline: headlineProp, subHeadline, ctaText, urgencyLine, expiresText, conditionsText,
 }: {
   content: string; dealershipName: string; customerName?: string; offer?: string | null;
   qrPreviewUrl: string; logoUrl?: string | null; layoutSpec?: LayoutSpec; vehiclePhotoUrl?: string | null;
   headline?: string | null; subHeadline?: string | null; ctaText?: string | null; urgencyLine?: string | null;
+  expiresText?: string | null; conditionsText?: string | null;
 }) {
   const [showBack, setShowBack] = useState(false);
-  const [previewMode, setPreviewMode] = useState<PreviewMode>("design");
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("realistic");
   const front = layoutSpec?.panels?.find((p) => p.role === "front") ?? layoutSpec?.panels?.[0];
   const cs = layoutSpec?.colorScheme;
   const bg = cs?.background ?? "#0F172A";
@@ -1516,7 +1575,7 @@ function PremiumFluorescentPreview({
           {!showBack ? (
             <div className="w-full rounded-xl shadow-xl overflow-hidden" style={{ maxWidth: "420px", background: bg, position: "relative" }}>
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={bg} height="120px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                <VehiclePhotoZone heroBg={bg} height="150px" showLabel={false} imageUrl={vehiclePhotoUrl} />
                 <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "4px", background: accentCol }} />
                 <div style={{ position: "absolute", top: "10px", left: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
                   {logoUrl && (
@@ -1530,25 +1589,31 @@ function PremiumFluorescentPreview({
                 </div>
               </div>
               <div style={{ padding: "14px 20px 20px" }}>
-                <div style={{ fontSize: "21px", fontWeight: 900, color: textCol, lineHeight: 1.1, marginBottom: resolvedSubheadline ? "5px" : "12px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.01em" }}>{resolvedHeadline}</div>
+                <div style={{ fontSize: "22px", fontWeight: 900, color: textCol, lineHeight: 1.08, marginBottom: resolvedSubheadline ? "5px" : "12px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.02em" }}>{resolvedHeadline}</div>
                 {resolvedSubheadline && <div style={{ fontSize: "11px", color: `${textCol}99`, marginBottom: "12px", fontFamily: "'Inter', sans-serif", lineHeight: 1.4 }}>{resolvedSubheadline}</div>}
-                <div style={{ width: "28px", height: "3px", background: accentCol, borderRadius: "2px", marginBottom: "12px" }} />
+                <div style={{ width: "32px", height: "3px", background: accentCol, borderRadius: "2px", marginBottom: "12px" }} />
                 <div style={{ marginBottom: "12px" }}>
                   <HandwrittenContent text={content} fontSize={14} lineHeight={1.75} />
                 </div>
                 {offer && (
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", background: `${accentCol}18`, border: `1.5px solid ${accentCol}55`, borderRadius: "4px", padding: "7px 10px", marginBottom: "10px" }}>
-                    <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, padding: "3px 8px", borderRadius: "2px", letterSpacing: "0.04em", textTransform: "uppercase", flexShrink: 0 }}>OFFER</div>
-                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 600, color: textCol }}>{offer}</span>
+                  <div style={{ background: `${accentCol}18`, border: `2px solid ${accentCol}66`, borderRadius: "5px", padding: "9px 12px", marginBottom: "10px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: expiresText ? "4px" : 0 }}>
+                      <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, padding: "3px 8px", borderRadius: "2px", letterSpacing: "0.06em", textTransform: "uppercase", flexShrink: 0 }}>OFFER</div>
+                      <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 700, color: textCol }}>{offer}</span>
+                    </div>
+                    {expiresText && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", color: accentCol, fontWeight: 600, letterSpacing: "0.04em" }}>{expiresText}</div>}
+                    {conditionsText && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", color: `${textCol}55`, marginTop: "2px", letterSpacing: "0.03em" }}>{conditionsText}</div>}
                   </div>
                 )}
                 {urgencyLine && (
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontStyle: "italic", color: accentCol, marginBottom: "10px", opacity: 0.85 }}>{urgencyLine}</div>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontStyle: "italic", color: accentCol, marginBottom: "10px", fontWeight: 600 }}>{urgencyLine}</div>
                 )}
-                <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                  <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "9px 18px", borderRadius: "3px", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                <div style={{ marginBottom: "10px" }}>
+                  <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "10px 18px", borderRadius: "3px", letterSpacing: "0.05em", textTransform: "uppercase", textAlign: "center", boxShadow: `0 4px 14px ${accentCol}66` }}>
                     {ctaText ?? front?.cta ?? "Book Your Appointment"}
                   </div>
+                </div>
+                <div style={{ display: "flex", justifyContent: "center" }}>
                   <div style={{ textAlign: "center" }}>
                     <div style={{ background: "rgba(255,255,255,0.08)", border: `2px solid ${accentCol}88`, borderRadius: "6px", padding: "3px" }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1573,7 +1638,7 @@ function PremiumFluorescentPreview({
                   {!showBack ? (
                     <div className="w-full rounded-xl shadow-xl overflow-hidden" style={{ maxWidth: "520px", background: bg, position: "relative" }}>
                       <div style={{ position: "relative" }}>
-                        <VehiclePhotoZone heroBg={bg} height="120px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                        <VehiclePhotoZone heroBg={bg} height="150px" showLabel={false} imageUrl={vehiclePhotoUrl} />
                         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "4px", background: accentCol }} />
                         <div style={{ position: "absolute", top: "10px", left: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
                           {logoUrl && (
@@ -1587,25 +1652,31 @@ function PremiumFluorescentPreview({
                         </div>
                       </div>
                       <div style={{ padding: "14px 20px 20px" }}>
-                        <div style={{ fontSize: "21px", fontWeight: 900, color: textCol, lineHeight: 1.1, marginBottom: resolvedSubheadline ? "5px" : "12px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.01em" }}>{resolvedHeadline}</div>
+                        <div style={{ fontSize: "22px", fontWeight: 900, color: textCol, lineHeight: 1.08, marginBottom: resolvedSubheadline ? "5px" : "12px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.02em" }}>{resolvedHeadline}</div>
                         {resolvedSubheadline && <div style={{ fontSize: "11px", color: `${textCol}99`, marginBottom: "12px", fontFamily: "'Inter', sans-serif", lineHeight: 1.4 }}>{resolvedSubheadline}</div>}
-                        <div style={{ width: "28px", height: "3px", background: accentCol, borderRadius: "2px", marginBottom: "12px" }} />
+                        <div style={{ width: "32px", height: "3px", background: accentCol, borderRadius: "2px", marginBottom: "12px" }} />
                         <div style={{ marginBottom: "12px" }}>
                           <HandwrittenContent text={content} fontSize={14} lineHeight={1.75} />
                         </div>
                         {offer && (
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px", background: `${accentCol}18`, border: `1.5px solid ${accentCol}55`, borderRadius: "4px", padding: "7px 10px", marginBottom: "10px" }}>
-                            <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, padding: "3px 8px", borderRadius: "2px", letterSpacing: "0.04em", textTransform: "uppercase", flexShrink: 0 }}>OFFER</div>
-                            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 600, color: textCol }}>{offer}</span>
+                          <div style={{ background: `${accentCol}18`, border: `2px solid ${accentCol}66`, borderRadius: "5px", padding: "9px 12px", marginBottom: "10px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: expiresText ? "4px" : 0 }}>
+                              <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, padding: "3px 8px", borderRadius: "2px", letterSpacing: "0.06em", textTransform: "uppercase", flexShrink: 0 }}>OFFER</div>
+                              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 700, color: textCol }}>{offer}</span>
+                            </div>
+                            {expiresText && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", color: accentCol, fontWeight: 600, letterSpacing: "0.04em" }}>{expiresText}</div>}
+                            {conditionsText && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", color: `${textCol}55`, marginTop: "2px", letterSpacing: "0.03em" }}>{conditionsText}</div>}
                           </div>
                         )}
                         {urgencyLine && (
-                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontStyle: "italic", color: accentCol, marginBottom: "10px", opacity: 0.85 }}>{urgencyLine}</div>
+                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontStyle: "italic", color: accentCol, marginBottom: "10px", fontWeight: 600 }}>{urgencyLine}</div>
                         )}
-                        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                          <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "9px 18px", borderRadius: "3px", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                        <div style={{ marginBottom: "10px" }}>
+                          <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "10px 18px", borderRadius: "3px", letterSpacing: "0.05em", textTransform: "uppercase", textAlign: "center", boxShadow: `0 4px 14px ${accentCol}66` }}>
                             {ctaText ?? front?.cta ?? "Book Your Appointment"}
                           </div>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "center" }}>
                           <div style={{ textAlign: "center" }}>
                             <div style={{ background: "rgba(255,255,255,0.08)", border: `2px solid ${accentCol}88`, borderRadius: "6px", padding: "3px" }}>
                               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1770,24 +1841,15 @@ function ConquestFront({
       boxShadow: "0 4px 6px -1px rgba(0,0,0,0.08), 0 10px 24px -4px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9)",
     }}>
       <div style={{ height: "6px", background: `linear-gradient(90deg, ${accent.header} 0%, ${adjustBrightness(accent.header, 20)} 100%)` }} />
-      <VehiclePhotoZone heroBg={accent.header} height="122px" imageUrl={vehiclePhotoUrl} showLabel dealershipName={dealershipName} />
-      <div style={{ padding: "11px 16px 14px" }}>
-        {/* Eyebrow + phone row */}
-        <div style={{ display: "flex", alignItems: "center", marginBottom: "5px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-            <div style={{ background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 800, letterSpacing: "0.13em", textTransform: "uppercase", padding: "2px 7px", borderRadius: "2px" }}>
-              EXCLUSIVE OFFER
-            </div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 700, letterSpacing: "0.10em", textTransform: "uppercase", color: "#9CA3AF" }}>
-              · Neighborhood Exclusive
-            </div>
-          </div>
-          {dealershipPhone && <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", color: "#6B7280", marginLeft: "auto" }}>{dealershipPhone}</span>}
+      <div style={{ position: "relative" }}>
+        <VehiclePhotoZone heroBg={accent.header} height="148px" imageUrl={vehiclePhotoUrl} showLabel={false} />
+        {offer && <OfferBadge offer={offer} accent={accent} />}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "32px 16px 10px", background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.35) 65%, transparent 100%)", pointerEvents: "none" }}>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.72)", marginBottom: "3px" }}>EXCLUSIVE OFFER · {dealershipName}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "18px", color: "#fff", lineHeight: 1.12, letterSpacing: "-0.02em", textShadow: "0 2px 8px rgba(0,0,0,0.60)" }}>{headline}</div>
         </div>
-        {/* Bold headline */}
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "17px", fontWeight: 900, color: "#0F172A", lineHeight: 1.15, marginBottom: "10px", letterSpacing: "-0.02em" }}>
-          {headline}
-        </div>
+      </div>
+      <div style={{ padding: "10px 16px 14px" }}>
         {/* Copy + QR side by side */}
         <div style={{ display: "flex", gap: "10px" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -1805,7 +1867,7 @@ function ConquestFront({
           </div>
         </div>
         {/* Full-width CTA */}
-        <div style={{ marginTop: "11px", background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", padding: "8px 14px", borderRadius: "3px", textAlign: "center" }}>
+        <div style={{ marginTop: "11px", background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", padding: "9px 14px", borderRadius: "3px", textAlign: "center", boxShadow: `0 4px 12px ${accent.header}55` }}>
           {cta}
         </div>
         {/* Urgency subline */}
@@ -1859,24 +1921,27 @@ function RealConquestFront({
       boxShadow: "0 2px 4px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.20), 0 0 0 1px rgba(0,0,0,0.05)",
       width: "100%", display: "flex", flexDirection: "column",
     }}>
-      <div style={{ height: "8px", background: `linear-gradient(90deg, ${accent.header} 0%, ${adjustBrightness(accent.header, 20)} 100%)` }} />
-      <VehiclePhotoZone heroBg={accent.header} height="150px" imageUrl={vehiclePhotoUrl} showLabel={false} />
-      <div style={{ background: accent.header, padding: "7px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginTop: "-1px" }}>
+      <div style={{ height: "6px", background: `linear-gradient(90deg, ${accent.header} 0%, ${adjustBrightness(accent.header, 20)} 100%)` }} />
+      <div style={{ position: "relative" }}>
+        <VehiclePhotoZone heroBg={accent.header} height="175px" imageUrl={vehiclePhotoUrl} showLabel={false} />
+        {offer && <OfferBadge offer={offer} accent={accent} />}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "36px 14px 10px", background: "linear-gradient(to top, rgba(0,0,0,0.84) 0%, rgba(0,0,0,0.38) 65%, transparent 100%)", pointerEvents: "none" }}>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.72)", marginBottom: "3px" }}>EXCLUSIVE OFFER · {dealershipName}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "20px", color: "#fff", lineHeight: 1.10, letterSpacing: "-0.02em", textShadow: "0 2px 8px rgba(0,0,0,0.65)" }}>{headline}</div>
+        </div>
+      </div>
+      {/* Dealer identity bar */}
+      <div style={{ background: accent.header, padding: "6px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
           {logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt={dealershipName} style={{ height: "14px", width: "auto", maxWidth: "50px", objectFit: "contain", filter: "brightness(0) invert(1)" }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+            <img src={logoUrl} alt={dealershipName} style={{ height: "13px", width: "auto", maxWidth: "48px", objectFit: "contain", filter: "brightness(0) invert(1)" }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
           )}
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8.5px", fontWeight: 900, color: "white", letterSpacing: "0.05em", textTransform: "uppercase" }}>{dealershipName}</span>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: "white", letterSpacing: "0.06em", textTransform: "uppercase" }}>{dealershipName}</span>
         </div>
-        {dealershipPhone && <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 700, color: "rgba(255,255,255,0.88)", flexShrink: 0 }}>{dealershipPhone}</span>}
+        {dealershipPhone && <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7.5px", fontWeight: 700, color: "rgba(255,255,255,0.90)", flexShrink: 0 }}>{dealershipPhone}</span>}
       </div>
-      <div style={{ padding: "12px 14px 14px", flex: 1, display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "5px" }}>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 800, letterSpacing: "0.13em", textTransform: "uppercase", color: accent.header }}>EXCLUSIVE OFFER</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9CA3AF" }}>· Neighborhood Exclusive</div>
-        </div>
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "17px", fontWeight: 900, color: "#0F172A", lineHeight: 1.12, letterSpacing: "-0.02em", marginBottom: "10px" }}>{headline}</div>
+      <div style={{ padding: "10px 14px 12px", flex: 1, display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", gap: "12px", flex: 1 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <HandwrittenContent text={content} fontSize={13} lineHeight={1.80} />
@@ -1890,7 +1955,7 @@ function RealConquestFront({
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 900, color: accent.header, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>SCAN TO<br />VIEW OFFER</div>
           </div>
         </div>
-        <div style={{ marginTop: "11px", background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", padding: "7px 14px", borderRadius: "2px", textAlign: "center" }}>{cta}</div>
+        <div style={{ marginTop: "11px", background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", padding: "9px 14px", borderRadius: "3px", textAlign: "center", boxShadow: `0 4px 12px ${accent.header}55` }}>{cta}</div>
         <div style={{ textAlign: "center", marginTop: "4px", fontFamily: "'Inter', sans-serif", fontSize: "5.5px", color: "#9CA3AF", letterSpacing: "0.04em" }}>{urgencyLine ?? "Limited time offer · Present this card to redeem"}</div>
       </div>
       {(addrLines.line1 || addrLines.line2) && (
@@ -1923,7 +1988,7 @@ function ConquestPostcardPreview({
   expiresText?: string | null; conditionsText?: string | null;
 }) {
   const [showBack, setShowBack] = useState(false);
-  const [previewMode, setPreviewMode] = useState<PreviewMode>("design");
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("realistic");
 
   return (
     <div className="space-y-2.5">
@@ -2080,7 +2145,7 @@ export function TemplatePreview({
             content={content} dealershipName={dealershipName} customerName={customerName}
             offer={offer} qrPreviewUrl={qrUrl} logoUrl={logoUrl}
             layoutSpec={layoutSpec} accent={accent} vehiclePhotoUrl={vehiclePhotoUrl}
-            headline={headline} ctaText={ctaText}
+            headline={headline} ctaText={ctaText} urgencyLine={urgencyLine}
             expiresText={expiresText} conditionsText={conditionsText}
           />
         </div>
@@ -2097,6 +2162,7 @@ export function TemplatePreview({
             offer={offer} qrPreviewUrl={qrUrl} logoUrl={logoUrl}
             layoutSpec={layoutSpec} vehiclePhotoUrl={vehiclePhotoUrl}
             headline={headline} subHeadline={subHeadline} ctaText={ctaText} urgencyLine={urgencyLine}
+            expiresText={expiresText} conditionsText={conditionsText}
           />
         </div>
       </div>
