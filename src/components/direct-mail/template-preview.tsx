@@ -426,50 +426,51 @@ function adjustBrightness(hex: string, amount: number): string {
 function CouponStrip({ offer, accent, expiresText, conditionsText }: { offer: string; accent: AccentConfig; expiresText?: string; conditionsText?: string }) {
   const dollarMatch = offer.match(/\$(\d+(?:\.\d{2})?)/);
   const isFree = /free/i.test(offer);
+  const savingsAmount = dollarMatch ? dollarMatch[1].replace(/\.00$/, "") : null;
   return (
-    <div style={{ marginTop: "10px", position: "relative" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "3px", marginBottom: "4px" }}>
-        <svg width="11" height="11" viewBox="0 0 11 11" style={{ flexShrink: 0 }}>
-          <path d="M 5.5 0 L 7 2 L 9 1 L 8 3 L 10.5 3.5 L 8.5 5 L 10 6.5 L 8 6.5 L 8 8.5 L 6.5 7.5 L 5.5 10 L 4.5 7.5 L 3 8.5 L 3 6.5 L 1 6.5 L 2.5 5 L 0.5 3.5 L 3 3 L 2 1 L 4 2 Z" fill="#9CA3AF" />
-        </svg>
-        <div style={{ flex: 1, borderTop: "1.5px dashed #CBD5E1" }} />
-        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", color: "#9CA3AF", letterSpacing: "0.04em" }}>
-          CUT HERE
-        </span>
+    <div style={{ position: "relative" }}>
+      {/* Eyebrow label */}
+      <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "5px" }}>
+        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 900, color: accent.header, letterSpacing: "0.12em", textTransform: "uppercase" }}>★ FEATURED OFFER</span>
+        <div style={{ flex: 1, height: "1px", background: `linear-gradient(90deg, ${accent.header}44 0%, transparent 100%)` }} />
       </div>
-      <div style={{ display: "flex", border: `1.5px dashed ${accent.offerBorder}`, borderRadius: "4px", overflow: "hidden", background: "white" }}>
+      {/* Coupon body */}
+      <div style={{ display: "flex", border: `2px solid ${accent.offerBorder}`, borderRadius: "5px", overflow: "hidden", background: "white", boxShadow: `0 2px 8px ${accent.header}22` }}>
         <div style={{
-          background: accent.header, color: "white", padding: "8px 10px",
+          background: `linear-gradient(160deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -20)} 100%)`,
+          color: "white", padding: "10px 12px",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          minWidth: "52px", flexShrink: 0,
+          minWidth: "58px", flexShrink: 0, gap: "1px",
         }}>
-          {dollarMatch ? (
+          {savingsAmount ? (
             <>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.85 }}>SAVE</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "19px", fontWeight: 900, lineHeight: 1, marginTop: "1px" }}>{dollarMatch[1].replace(/\.00$/, "")}</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.85, marginTop: "1px" }}>OFF</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", opacity: 0.88 }}>SAVE</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "22px", fontWeight: 900, lineHeight: 1 }}>${savingsAmount}</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", opacity: 0.88 }}>OFF</div>
             </>
           ) : isFree ? (
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 900, lineHeight: 1 }}>FREE</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 900, lineHeight: 1 }}>FREE</div>
           ) : (
             <>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.85 }}>SAVE</div>
-              <svg width="16" height="16" viewBox="0 0 16 16" style={{ marginTop: "3px" }}>
-                <path d="M 8 0 L 9.8 5.4 L 15.5 5.4 L 10.9 8.7 L 12.7 14.1 L 8 10.8 L 3.3 14.1 L 5.1 8.7 L 0.5 5.4 L 6.2 5.4 Z" fill="rgba(255,255,255,0.85)" />
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", opacity: 0.88 }}>SAVE</div>
+              <svg width="18" height="18" viewBox="0 0 16 16" style={{ marginTop: "2px" }}>
+                <path d="M 8 0 L 9.8 5.4 L 15.5 5.4 L 10.9 8.7 L 12.7 14.1 L 8 10.8 L 3.3 14.1 L 5.1 8.7 L 0.5 5.4 L 6.2 5.4 Z" fill="rgba(255,255,255,0.90)" />
               </svg>
             </>
           )}
         </div>
-        <div style={{ flex: 1, padding: "7px 9px", background: accent.offerBg }}>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 700, color: accent.offerText, lineHeight: 1.3 }}>
+        {/* Perforation divider */}
+        <div style={{ width: "2px", background: "repeating-linear-gradient(180deg, white 0px, white 4px, transparent 4px, transparent 8px)", flexShrink: 0 }} />
+        <div style={{ flex: 1, padding: "9px 11px", background: accent.offerBg }}>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10.5px", fontWeight: 800, color: accent.offerText, lineHeight: 1.25 }}>
             {offer}
           </div>
           {expiresText && (
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", color: "#B45309", marginTop: "2px", fontWeight: 600, letterSpacing: "0.03em" }}>
-              {expiresText}
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", color: "#B45309", marginTop: "3px", fontWeight: 700, letterSpacing: "0.02em" }}>
+              🕐 {expiresText}
             </div>
           )}
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", color: "#9CA3AF", marginTop: "2px", letterSpacing: "0.04em" }}>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", color: "#9CA3AF", marginTop: "3px", letterSpacing: "0.03em", lineHeight: 1.4 }}>
             {conditionsText ?? "Cannot be combined with other offers"}
           </div>
         </div>
@@ -717,40 +718,39 @@ function RealPostcardFront({
       <div style={{ position: "relative" }}>
         <VehiclePhotoZone
           heroBg={accent.header}
-          height="175px"
+          height="195px"
           dealershipName={headline ? undefined : dealershipName}
           imageUrl={vehiclePhotoUrl}
           showLabel={!headline}
         />
         {/* Offer badge — top-right corner */}
         {offer && <OfferBadge offer={offer} accent={accent} />}
-        {/* Headline overlay — strong gradient, large bold text */}
+        {/* Headline overlay — deep gradient, dominant bold text */}
         <div style={{
           position: "absolute", bottom: 0, left: 0, right: 0,
-          padding: "36px 13px 10px",
-          background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.38) 60%, transparent 100%)",
+          padding: "48px 14px 12px",
+          background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.52) 55%, transparent 100%)",
           pointerEvents: "none",
         }}>
           {headline && (
             <div style={{
-              fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "22px",
-              color: "#fff", lineHeight: 1.12, letterSpacing: "-0.025em",
-              textShadow: "0 2px 10px rgba(0,0,0,0.65), 0 1px 3px rgba(0,0,0,0.45)",
+              fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "27px",
+              color: "#fff", lineHeight: 1.08, letterSpacing: "-0.03em",
+              textShadow: "0 3px 12px rgba(0,0,0,0.70), 0 1px 3px rgba(0,0,0,0.50)",
             }}>
               {headline}
             </div>
           )}
           {subHeadline && (
             <div style={{
-              fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: "11px",
-              color: "rgba(255,255,255,0.88)", lineHeight: 1.3, letterSpacing: "-0.005em",
-              textShadow: "0 1px 4px rgba(0,0,0,0.50)", marginTop: "3px",
+              fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: "12px",
+              color: "rgba(255,255,255,0.90)", lineHeight: 1.3, letterSpacing: "-0.01em",
+              textShadow: "0 1px 6px rgba(0,0,0,0.55)", marginTop: "4px",
             }}>
               {subHeadline}
             </div>
           )}
           {!headline && !subHeadline && (
-            // Fallback eyebrow when no headline — shows dealership name on photo
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "rgba(255,255,255,0.70)", letterSpacing: "0.10em", textTransform: "uppercase" }}>
               {dealershipName}
             </div>
@@ -759,21 +759,21 @@ function RealPostcardFront({
       </div>
 
       {/* Dealer identity bar */}
-      <div style={{ background: accent.header, padding: "6px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+      <div style={{ background: accent.header, padding: "7px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
           {logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt={dealershipName}
-              style={{ height: "13px", width: "auto", maxWidth: "48px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+              style={{ height: "14px", width: "auto", maxWidth: "52px", objectFit: "contain", filter: "brightness(0) invert(1)" }}
               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
             />
           )}
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: "white", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 900, color: "white", letterSpacing: "0.06em", textTransform: "uppercase" }}>
             {dealershipName}
           </span>
         </div>
         {dealershipPhone && (
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7.5px", fontWeight: 700, color: "rgba(255,255,255,0.90)", flexShrink: 0 }}>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 700, color: "rgba(255,255,255,0.92)", flexShrink: 0, letterSpacing: "0.01em" }}>
             {dealershipPhone}
           </span>
         )}
@@ -781,15 +781,17 @@ function RealPostcardFront({
 
       {/* Urgency strip — full-width amber banner */}
       {urgencyLine && (
-        <div style={{ background: "#FEF3C7", borderBottom: "1px solid #F59E0B", padding: "4px 14px", display: "flex", alignItems: "center", gap: "5px" }}>
-          <span style={{ fontSize: "9px" }}>⚡</span>
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
+        <div style={{ background: "#FFFBEB", borderBottom: "2px solid #F59E0B", padding: "6px 14px", display: "flex", alignItems: "center", gap: "6px" }}>
+          <span style={{ fontSize: "10px" }}>⚡</span>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: "#78350F", letterSpacing: "0.04em", textTransform: "uppercase" }}>{urgencyLine}</span>
         </div>
       )}
 
-      {/* Content area */}
-      <div style={{ padding: "10px 14px 8px", flex: 1, display: "flex", gap: "12px" }}>
-        {/* Left: handwritten copy */}
+      {/* Content area — left accent rail */}
+      <div style={{ padding: "11px 14px 9px", flex: 1, display: "flex", gap: "12px" }}>
+        {/* 3px color rail on the left edge */}
+        <div style={{ width: "3px", borderRadius: "2px", background: `linear-gradient(180deg, ${accent.header} 0%, ${accent.header}44 100%)`, flexShrink: 0, alignSelf: "stretch" }} />
+        {/* Handwritten copy */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <HandwrittenContent text={content} fontSize={13} lineHeight={1.82} />
         </div>
@@ -797,12 +799,12 @@ function RealPostcardFront({
         {/* Right: framed QR card */}
         <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", paddingTop: "2px" }}>
           <div style={{
-            background: "white", border: `2px solid ${accent.header}`,
-            borderRadius: "8px", padding: "5px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.14)",
+            background: "white", border: `2.5px solid ${accent.header}`,
+            borderRadius: "9px", padding: "5px",
+            boxShadow: `0 3px 10px ${accent.header}33, 0 1px 3px rgba(0,0,0,0.10)`,
           }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrPreviewUrl} alt="Scan to schedule" width={68} height={68} style={{ display: "block", borderRadius: "4px" }} />
+            <img src={qrPreviewUrl} alt="Scan to schedule" width={68} height={68} style={{ display: "block", borderRadius: "5px" }} />
           </div>
           <div style={{
             fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 900,
@@ -816,21 +818,24 @@ function RealPostcardFront({
 
       {/* Featured Offer — full-width coupon strip */}
       {offer && (
-        <div style={{ padding: "0 14px 8px" }}>
+        <div style={{ padding: "0 14px 9px" }}>
           <CouponStrip offer={offer} accent={accent} expiresText={expiresText ?? undefined} conditionsText={conditionsText ?? undefined} />
         </div>
       )}
 
       {/* CTA button — always prominent, full-width */}
-      <div style={{ padding: "0 14px 11px" }}>
+      <div style={{ padding: "0 14px 12px" }}>
         <div style={{
-          background: accent.header, color: "white",
-          fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "9px",
+          background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`,
+          color: "white",
+          fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px",
           letterSpacing: "0.08em", textTransform: "uppercase",
-          padding: "9px 14px", borderRadius: "3px", textAlign: "center",
-          boxShadow: `0 4px 12px ${accent.header}55`,
+          padding: "11px 14px", borderRadius: "4px", textAlign: "center",
+          boxShadow: `0 6px 16px ${accent.header}55, 0 2px 4px rgba(0,0,0,0.12)`,
+          display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
         }}>
-          {ctaText ?? "Call to Schedule Today"}
+          <span>{ctaText ?? "Call to Schedule Today"}</span>
+          <span style={{ opacity: 0.75, fontSize: "13px", lineHeight: 1 }}>→</span>
         </div>
       </div>
 
@@ -1019,8 +1024,10 @@ function RealLetterPreview({
       )}
 
       {headline && (
-        <div style={{ background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -18)} 100%)`, padding: "10px 22px", margin: "14px 0 0" }}>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: is8511 ? "15px" : "13px", fontWeight: 900, color: "#fff", lineHeight: 1.25, letterSpacing: "-0.01em", textShadow: "0 1px 3px rgba(0,0,0,0.25)" }}>{headline}</div>
+        <div style={{ background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -22)} 100%)`, padding: is8511 ? "14px 22px" : "12px 22px", margin: "14px 0 0", position: "relative", overflow: "hidden" }}>
+          {/* Subtle sheen stripe */}
+          <div style={{ position: "absolute", top: 0, right: "20%", width: "30%", height: "100%", background: "rgba(255,255,255,0.06)", transform: "skewX(-12deg)", pointerEvents: "none" }} />
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: is8511 ? "17px" : "14px", fontWeight: 900, color: "#fff", lineHeight: 1.2, letterSpacing: "-0.015em", textShadow: "0 1px 4px rgba(0,0,0,0.30)", position: "relative" }}>{headline}</div>
         </div>
       )}
 
@@ -1053,13 +1060,21 @@ function RealLetterPreview({
 
       {ctaText && (
         <div style={{ padding: "0 22px 16px" }}>
-          <div style={{ background: accent.header, color: "white", fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", padding: "10px 14px", borderRadius: "3px", textAlign: "center", display: "block", boxShadow: `0 4px 12px ${accent.header}55` }}>
-            {ctaText}
+          <div style={{
+            background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`,
+            color: "white", fontFamily: "'Inter', sans-serif", fontSize: "9.5px", fontWeight: 900,
+            letterSpacing: "0.08em", textTransform: "uppercase", padding: "11px 14px",
+            borderRadius: "4px", textAlign: "center", display: "flex", alignItems: "center",
+            justifyContent: "center", gap: "8px",
+            boxShadow: `0 6px 16px ${accent.header}44, 0 2px 4px rgba(0,0,0,0.10)`,
+          }}>
+            <span>{ctaText}</span>
+            <span style={{ opacity: 0.75, fontSize: "13px", lineHeight: 1 }}>→</span>
           </div>
         </div>
       )}
 
-      <div style={{ height: "4px", background: accent.header }} />
+      <div style={{ height: "5px", background: `linear-gradient(90deg, ${accent.header} 0%, ${adjustBrightness(accent.header, 20)} 100%)` }} />
     </div>
   );
 }
@@ -1181,11 +1196,11 @@ function Postcard6x9Preview({
             }}>
               {/* Vehicle photo — tall hero with offer badge + headline overlay */}
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={accent.header} height="138px" imageUrl={vehiclePhotoUrl} showLabel={!headline} dealershipName={headline ? undefined : dealershipName} />
+                <VehiclePhotoZone heroBg={accent.header} height="158px" imageUrl={vehiclePhotoUrl} showLabel={!headline} dealershipName={headline ? undefined : dealershipName} />
                 {offer && <OfferBadge offer={offer} accent={accent} />}
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "30px 14px 9px", background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.35) 60%, transparent 100%)", pointerEvents: "none" }}>
-                  {headline && <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "17px", color: "#fff", lineHeight: 1.15, letterSpacing: "-0.02em", textShadow: "0 2px 8px rgba(0,0,0,0.60)" }}>{headline}</div>}
-                  {subHeadline && <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: "10px", color: "rgba(255,255,255,0.88)", lineHeight: 1.3, marginTop: "3px", textShadow: "0 1px 4px rgba(0,0,0,0.50)" }}>{subHeadline}</div>}
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "40px 14px 10px", background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.45) 60%, transparent 100%)", pointerEvents: "none" }}>
+                  {headline && <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "21px", color: "#fff", lineHeight: 1.1, letterSpacing: "-0.025em", textShadow: "0 3px 10px rgba(0,0,0,0.65)" }}>{headline}</div>}
+                  {subHeadline && <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: "11px", color: "rgba(255,255,255,0.90)", lineHeight: 1.3, marginTop: "4px", textShadow: "0 1px 5px rgba(0,0,0,0.55)" }}>{subHeadline}</div>}
                   {!headline && !subHeadline && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "rgba(255,255,255,0.70)", letterSpacing: "0.10em", textTransform: "uppercase" }}>{dealershipName}</div>}
                 </div>
               </div>
@@ -1195,9 +1210,9 @@ function Postcard6x9Preview({
 
               {/* Urgency strip */}
               {urgencyLine && (
-                <div style={{ background: "#FEF3C7", borderBottom: "1px solid #F59E0B", padding: "4px 16px", display: "flex", alignItems: "center", gap: "5px" }}>
-                  <span style={{ fontSize: "9px" }}>⚡</span>
-                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
+                <div style={{ background: "#FFFBEB", borderBottom: "2px solid #F59E0B", padding: "6px 16px", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ fontSize: "10px" }}>⚡</span>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: "#78350F", letterSpacing: "0.04em", textTransform: "uppercase" }}>{urgencyLine}</span>
                 </div>
               )}
 
@@ -1225,13 +1240,15 @@ function Postcard6x9Preview({
               {/* CTA — always prominent */}
               <div style={{ padding: "0 16px 14px" }}>
                 <div style={{
-                  background: accent.header, color: "white",
-                  fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "9px",
+                  background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -16)} 100%)`,
+                  color: "white", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px",
                   letterSpacing: "0.08em", textTransform: "uppercase",
-                  padding: "9px 14px", borderRadius: "4px", textAlign: "center",
-                  boxShadow: `0 4px 12px ${accent.header}55`,
+                  padding: "11px 14px", borderRadius: "4px", textAlign: "center",
+                  boxShadow: `0 6px 16px ${accent.header}55, 0 2px 4px rgba(0,0,0,0.12)`,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
                 }}>
-                  {ctaText ?? "Call to Schedule Today"}
+                  <span>{ctaText ?? "Call to Schedule Today"}</span>
+                  <span style={{ opacity: 0.75, fontSize: "13px", lineHeight: 1 }}>→</span>
                 </div>
               </div>
             </div>
@@ -1594,9 +1611,9 @@ function PremiumFluorescentPreview({
           {!showBack ? (
             <div className="w-full rounded-xl shadow-xl overflow-hidden" style={{ maxWidth: "420px", background: bg, position: "relative" }}>
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={bg} height="150px" showLabel={false} imageUrl={vehiclePhotoUrl} />
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "4px", background: accentCol }} />
-                <div style={{ position: "absolute", top: "10px", left: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+                <VehiclePhotoZone heroBg={bg} height="175px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "5px", background: accentCol }} />
+                <div style={{ position: "absolute", top: "12px", left: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
                   {logoUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={logoUrl} alt={dealershipName}
@@ -1604,45 +1621,49 @@ function PremiumFluorescentPreview({
                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                     />
                   )}
-                  <span style={{ fontSize: "7.5px", fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", color: accentCol, fontFamily: "'Inter', sans-serif" }}>{dealershipName}</span>
+                  <span style={{ fontSize: "8px", fontWeight: 900, letterSpacing: "0.10em", textTransform: "uppercase", color: accentCol, fontFamily: "'Inter', sans-serif" }}>{dealershipName}</span>
                 </div>
               </div>
-              <div style={{ padding: "14px 20px 20px" }}>
-                <div style={{ fontSize: "22px", fontWeight: 900, color: textCol, lineHeight: 1.08, marginBottom: resolvedSubheadline ? "5px" : "12px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.02em" }}>{resolvedHeadline}</div>
-                {resolvedSubheadline && <div style={{ fontSize: "11px", color: `${textCol}99`, marginBottom: "12px", fontFamily: "'Inter', sans-serif", lineHeight: 1.4 }}>{resolvedSubheadline}</div>}
-                <div style={{ width: "32px", height: "3px", background: accentCol, borderRadius: "2px", marginBottom: "12px" }} />
-                <div style={{ marginBottom: "12px" }}>
+              {urgencyLine && (
+                <div style={{ background: `${accentCol}22`, borderBottom: `2px solid ${accentCol}`, padding: "5px 18px", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ fontSize: "10px" }}>⚡</span>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: accentCol, letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
+                </div>
+              )}
+              <div style={{ padding: "16px 20px 20px" }}>
+                <div style={{ fontSize: "26px", fontWeight: 900, color: textCol, lineHeight: 1.05, marginBottom: resolvedSubheadline ? "6px" : "14px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.025em" }}>{resolvedHeadline}</div>
+                {resolvedSubheadline && <div style={{ fontSize: "12px", color: `${textCol}bb`, marginBottom: "14px", fontFamily: "'Inter', sans-serif", lineHeight: 1.4, fontWeight: 500 }}>{resolvedSubheadline}</div>}
+                <div style={{ width: "40px", height: "3px", background: accentCol, borderRadius: "2px", marginBottom: "14px" }} />
+                <div style={{ marginBottom: "14px" }}>
                   <HandwrittenContent text={content} fontSize={14} lineHeight={1.75} />
                 </div>
                 {offer && (
-                  <div style={{ background: `${accentCol}18`, border: `2px solid ${accentCol}66`, borderRadius: "5px", padding: "9px 12px", marginBottom: "10px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: expiresText ? "4px" : 0 }}>
-                      <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, padding: "3px 8px", borderRadius: "2px", letterSpacing: "0.06em", textTransform: "uppercase", flexShrink: 0 }}>OFFER</div>
-                      <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 700, color: textCol }}>{offer}</span>
+                  <div style={{ background: `${accentCol}18`, border: `2px solid ${accentCol}88`, borderRadius: "6px", padding: "10px 14px", marginBottom: "12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: expiresText || conditionsText ? "5px" : 0 }}>
+                      <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, padding: "4px 10px", borderRadius: "3px", letterSpacing: "0.08em", textTransform: "uppercase", flexShrink: 0 }}>★ OFFER</div>
+                      <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 800, color: textCol, lineHeight: 1.25 }}>{offer}</span>
                     </div>
-                    {expiresText && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", color: accentCol, fontWeight: 600, letterSpacing: "0.04em" }}>{expiresText}</div>}
-                    {conditionsText && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", color: `${textCol}55`, marginTop: "2px", letterSpacing: "0.03em" }}>{conditionsText}</div>}
+                    {expiresText && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7.5px", color: accentCol, fontWeight: 700, letterSpacing: "0.04em" }}>🕐 {expiresText}</div>}
+                    {conditionsText && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", color: `${textCol}44`, marginTop: "2px", letterSpacing: "0.03em" }}>{conditionsText}</div>}
                   </div>
                 )}
-                {urgencyLine && (
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontStyle: "italic", color: accentCol, marginBottom: "10px", fontWeight: 600 }}>{urgencyLine}</div>
-                )}
-                <div style={{ marginBottom: "10px" }}>
-                  <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "10px 18px", borderRadius: "3px", letterSpacing: "0.05em", textTransform: "uppercase", textAlign: "center", boxShadow: `0 4px 14px ${accentCol}66` }}>
-                    {ctaText ?? front?.cta ?? "Book Your Appointment"}
+                <div style={{ marginBottom: "12px" }}>
+                  <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "11px", padding: "12px 18px", borderRadius: "4px", letterSpacing: "0.05em", textTransform: "uppercase", textAlign: "center", boxShadow: `0 6px 18px ${accentCol}66`, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                    <span>{ctaText ?? front?.cta ?? "Book Your Appointment"}</span>
+                    <span style={{ fontSize: "14px", lineHeight: 1, opacity: 0.75 }}>→</span>
                   </div>
                 </div>
                 <div style={{ display: "flex", justifyContent: "center" }}>
                   <div style={{ textAlign: "center" }}>
-                    <div style={{ background: "rgba(255,255,255,0.08)", border: `2px solid ${accentCol}88`, borderRadius: "6px", padding: "3px" }}>
+                    <div style={{ background: "rgba(255,255,255,0.09)", border: `2px solid ${accentCol}88`, borderRadius: "7px", padding: "4px" }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={qrPreviewUrl} alt="QR" width={50} height={50} style={{ borderRadius: "3px", display: "block" }} />
+                      <img src={qrPreviewUrl} alt="QR" width={52} height={52} style={{ borderRadius: "4px", display: "block" }} />
                     </div>
-                    <div style={{ fontSize: "5.5px", color: accentCol, marginTop: "3px", fontFamily: "'Inter', sans-serif", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO BOOK</div>
+                    <div style={{ fontSize: "6px", color: accentCol, marginTop: "4px", fontFamily: "'Inter', sans-serif", fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase" }}>SCAN TO BOOK</div>
                   </div>
                 </div>
               </div>
-              <div style={{ height: "4px", background: accentCol }} />
+              <div style={{ height: "5px", background: accentCol }} />
             </div>
           ) : (
             <PostcardBack dealershipName={dealershipName} customerName={customerName} accent={backAccent} logoUrl={logoUrl} />
@@ -1657,9 +1678,9 @@ function PremiumFluorescentPreview({
                   {!showBack ? (
                     <div className="w-full rounded-xl shadow-xl overflow-hidden" style={{ maxWidth: "520px", background: bg, position: "relative" }}>
                       <div style={{ position: "relative" }}>
-                        <VehiclePhotoZone heroBg={bg} height="150px" showLabel={false} imageUrl={vehiclePhotoUrl} />
-                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "4px", background: accentCol }} />
-                        <div style={{ position: "absolute", top: "10px", left: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+                        <VehiclePhotoZone heroBg={bg} height="175px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "5px", background: accentCol }} />
+                        <div style={{ position: "absolute", top: "12px", left: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
                           {logoUrl && (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={logoUrl} alt={dealershipName}
@@ -1667,45 +1688,49 @@ function PremiumFluorescentPreview({
                               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                             />
                           )}
-                          <span style={{ fontSize: "7.5px", fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", color: accentCol, fontFamily: "'Inter', sans-serif" }}>{dealershipName}</span>
+                          <span style={{ fontSize: "8px", fontWeight: 900, letterSpacing: "0.10em", textTransform: "uppercase", color: accentCol, fontFamily: "'Inter', sans-serif" }}>{dealershipName}</span>
                         </div>
                       </div>
-                      <div style={{ padding: "14px 20px 20px" }}>
-                        <div style={{ fontSize: "22px", fontWeight: 900, color: textCol, lineHeight: 1.08, marginBottom: resolvedSubheadline ? "5px" : "12px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.02em" }}>{resolvedHeadline}</div>
-                        {resolvedSubheadline && <div style={{ fontSize: "11px", color: `${textCol}99`, marginBottom: "12px", fontFamily: "'Inter', sans-serif", lineHeight: 1.4 }}>{resolvedSubheadline}</div>}
-                        <div style={{ width: "32px", height: "3px", background: accentCol, borderRadius: "2px", marginBottom: "12px" }} />
-                        <div style={{ marginBottom: "12px" }}>
+                      {urgencyLine && (
+                        <div style={{ background: `${accentCol}22`, borderBottom: `2px solid ${accentCol}`, padding: "5px 18px", display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span style={{ fontSize: "10px" }}>⚡</span>
+                          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: accentCol, letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
+                        </div>
+                      )}
+                      <div style={{ padding: "16px 20px 20px" }}>
+                        <div style={{ fontSize: "26px", fontWeight: 900, color: textCol, lineHeight: 1.05, marginBottom: resolvedSubheadline ? "6px" : "14px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.025em" }}>{resolvedHeadline}</div>
+                        {resolvedSubheadline && <div style={{ fontSize: "12px", color: `${textCol}bb`, marginBottom: "14px", fontFamily: "'Inter', sans-serif", lineHeight: 1.4, fontWeight: 500 }}>{resolvedSubheadline}</div>}
+                        <div style={{ width: "40px", height: "3px", background: accentCol, borderRadius: "2px", marginBottom: "14px" }} />
+                        <div style={{ marginBottom: "14px" }}>
                           <HandwrittenContent text={content} fontSize={14} lineHeight={1.75} />
                         </div>
                         {offer && (
-                          <div style={{ background: `${accentCol}18`, border: `2px solid ${accentCol}66`, borderRadius: "5px", padding: "9px 12px", marginBottom: "10px" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: expiresText ? "4px" : 0 }}>
-                              <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, padding: "3px 8px", borderRadius: "2px", letterSpacing: "0.06em", textTransform: "uppercase", flexShrink: 0 }}>OFFER</div>
-                              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 700, color: textCol }}>{offer}</span>
+                          <div style={{ background: `${accentCol}18`, border: `2px solid ${accentCol}88`, borderRadius: "6px", padding: "10px 14px", marginBottom: "12px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: expiresText || conditionsText ? "5px" : 0 }}>
+                              <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, padding: "4px 10px", borderRadius: "3px", letterSpacing: "0.08em", textTransform: "uppercase", flexShrink: 0 }}>★ OFFER</div>
+                              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 800, color: textCol, lineHeight: 1.25 }}>{offer}</span>
                             </div>
-                            {expiresText && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", color: accentCol, fontWeight: 600, letterSpacing: "0.04em" }}>{expiresText}</div>}
-                            {conditionsText && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", color: `${textCol}55`, marginTop: "2px", letterSpacing: "0.03em" }}>{conditionsText}</div>}
+                            {expiresText && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7.5px", color: accentCol, fontWeight: 700, letterSpacing: "0.04em" }}>🕐 {expiresText}</div>}
+                            {conditionsText && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", color: `${textCol}44`, marginTop: "2px", letterSpacing: "0.03em" }}>{conditionsText}</div>}
                           </div>
                         )}
-                        {urgencyLine && (
-                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontStyle: "italic", color: accentCol, marginBottom: "10px", fontWeight: 600 }}>{urgencyLine}</div>
-                        )}
-                        <div style={{ marginBottom: "10px" }}>
-                          <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "10px", padding: "10px 18px", borderRadius: "3px", letterSpacing: "0.05em", textTransform: "uppercase", textAlign: "center", boxShadow: `0 4px 14px ${accentCol}66` }}>
-                            {ctaText ?? front?.cta ?? "Book Your Appointment"}
+                        <div style={{ marginBottom: "12px" }}>
+                          <div style={{ background: accentCol, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "11px", padding: "12px 18px", borderRadius: "4px", letterSpacing: "0.05em", textTransform: "uppercase", textAlign: "center", boxShadow: `0 6px 18px ${accentCol}66`, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                            <span>{ctaText ?? front?.cta ?? "Book Your Appointment"}</span>
+                            <span style={{ fontSize: "14px", lineHeight: 1, opacity: 0.75 }}>→</span>
                           </div>
                         </div>
                         <div style={{ display: "flex", justifyContent: "center" }}>
                           <div style={{ textAlign: "center" }}>
-                            <div style={{ background: "rgba(255,255,255,0.08)", border: `2px solid ${accentCol}88`, borderRadius: "6px", padding: "3px" }}>
+                            <div style={{ background: "rgba(255,255,255,0.09)", border: `2px solid ${accentCol}88`, borderRadius: "7px", padding: "4px" }}>
                               {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={qrPreviewUrl} alt="QR" width={50} height={50} style={{ borderRadius: "3px", display: "block" }} />
+                              <img src={qrPreviewUrl} alt="QR" width={52} height={52} style={{ borderRadius: "4px", display: "block" }} />
                             </div>
-                            <div style={{ fontSize: "5.5px", color: accentCol, marginTop: "3px", fontFamily: "'Inter', sans-serif", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>SCAN TO BOOK</div>
+                            <div style={{ fontSize: "6px", color: accentCol, marginTop: "4px", fontFamily: "'Inter', sans-serif", fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase" }}>SCAN TO BOOK</div>
                           </div>
                         </div>
                       </div>
-                      <div style={{ height: "4px", background: accentCol }} />
+                      <div style={{ height: "5px", background: accentCol }} />
                     </div>
                   ) : (
                     <RealPostcardBack
@@ -1759,28 +1784,28 @@ function ComplexFoldPreview({
         <div className="w-full rounded-xl shadow-xl overflow-hidden" style={{ maxWidth: "420px", minHeight: "300px" }}>
           {activePanel === "cover" && (
             <div style={{ background: bg, minHeight: "300px", position: "relative", overflow: "hidden" }}>
-              <VehiclePhotoZone heroBg={bg} height="160px" showLabel={false} imageUrl={vehiclePhotoUrl} />
-              <div style={{ padding: "18px 22px 14px", position: "relative" }}>
+              <VehiclePhotoZone heroBg={bg} height="175px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+              {urgencyLine && (
+                <div style={{ background: `${accent}22`, borderBottom: `2px solid ${accent}`, padding: "5px 22px", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ fontSize: "10px" }}>⚡</span>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: accent, letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
+                </div>
+              )}
+              <div style={{ padding: "16px 22px 18px", position: "relative" }}>
                 {logoUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={logoUrl} alt={dealershipName}
-                    style={{ height: "15px", width: "auto", maxWidth: "58px", objectFit: "contain", filter: "brightness(0) invert(1)", marginBottom: "12px" }}
+                    style={{ height: "15px", width: "auto", maxWidth: "58px", objectFit: "contain", filter: "brightness(0) invert(1)", marginBottom: "10px" }}
                     onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                   />
                 )}
-                <div style={{ fontSize: "8px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: accent, marginBottom: "10px", fontFamily: "'Inter', sans-serif" }}>{dealershipName}</div>
-                <div style={{ fontSize: "22px", fontWeight: 900, color: "#fff", lineHeight: 1.1, marginBottom: "6px", fontFamily: "'Inter', sans-serif" }}>
+                <div style={{ fontSize: "8px", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: accent, marginBottom: "10px", fontFamily: "'Inter', sans-serif" }}>{dealershipName}</div>
+                <div style={{ fontSize: "26px", fontWeight: 900, color: "#fff", lineHeight: 1.05, marginBottom: "8px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.02em", textShadow: "0 2px 8px rgba(0,0,0,0.40)" }}>
                   {headline ?? cover?.headline ?? "We'd love to see you again."}
                 </div>
-                <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.55)", fontFamily: "'Inter', sans-serif", marginBottom: urgencyLine ? "14px" : 0 }}>
+                <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.65)", fontFamily: "'Inter', sans-serif", fontWeight: 400, lineHeight: 1.4 }}>
                   {cover?.subheadline ?? "A personal note from your service team."}
                 </div>
-                {urgencyLine && (
-                  <div style={{ background: "#FEF3C7", borderRadius: "3px", padding: "5px 10px", display: "flex", alignItems: "center", gap: "5px", marginRight: "16px" }}>
-                    <span style={{ fontSize: "9px" }}>⚡</span>
-                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, color: "#92400E", letterSpacing: "0.05em", textTransform: "uppercase" }}>{urgencyLine}</span>
-                  </div>
-                )}
               </div>
               <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "8px", background: accent }} />
             </div>
@@ -1798,33 +1823,33 @@ function ComplexFoldPreview({
           )}
           {activePanel === "inner-right" && (
             <div style={{ background: "#fff", padding: "20px 22px", minHeight: "300px" }}>
-              <div style={{ fontSize: "14px", fontWeight: 800, color: "#1e293b", marginBottom: "10px", fontFamily: "'Inter', sans-serif" }}>
+              <div style={{ fontSize: "17px", fontWeight: 900, color: "#1e293b", marginBottom: "14px", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.01em", lineHeight: 1.2 }}>
                 {innerRight?.headline ?? "Ready when you are."}
               </div>
               {offer && (
-                <div style={{ background: `${accent}12`, border: `2px solid ${accent}`, borderRadius: "4px", padding: "9px 12px", marginBottom: "14px", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <div style={{ background: accent, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, padding: "3px 7px", borderRadius: "2px", letterSpacing: "0.04em", textTransform: "uppercase", flexShrink: 0 }}>OFFER</div>
-                  <span style={{ fontSize: "10px", fontWeight: 700, color: accent, fontFamily: "'Inter', sans-serif" }}>{offer}</span>
+                <div style={{ background: `${accent}10`, border: `2px solid ${accent}`, borderRadius: "6px", padding: "11px 14px", marginBottom: "16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+                    <div style={{ background: accent, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, padding: "4px 10px", borderRadius: "3px", letterSpacing: "0.08em", textTransform: "uppercase", flexShrink: 0 }}>★ OFFER</div>
+                    <span style={{ fontSize: "11px", fontWeight: 800, color: accent, fontFamily: "'Inter', sans-serif", lineHeight: 1.25 }}>{offer}</span>
+                  </div>
                 </div>
               )}
-              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                <div>
-                  <div style={{ background: "white", border: `2px solid ${accent}`, borderRadius: "6px", padding: "3px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={qrPreviewUrl} alt="QR" width={68} height={68} style={{ borderRadius: "3px", display: "block" }} />
-                  </div>
-                  <div style={{ fontSize: "6.5px", color: accent, marginTop: "4px", textAlign: "center", fontFamily: "'Inter', sans-serif", letterSpacing: "0.08em", fontWeight: 800, textTransform: "uppercase" }}>SCAN TO BOOK</div>
+              <div style={{ marginBottom: "14px" }}>
+                <div style={{ background: accent, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "11px", padding: "11px 16px", borderRadius: "4px", letterSpacing: "0.05em", textTransform: "uppercase", textAlign: "center", boxShadow: `0 4px 14px ${accent}44`, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                  <span>{ctaText ?? innerRight?.cta ?? "Book Now"}</span>
+                  <span style={{ fontSize: "14px", lineHeight: 1, opacity: 0.75 }}>→</span>
                 </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <div>
-                  <div style={{ background: accent, color: isNeon ? "#000" : "#fff", fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "10px", padding: "8px 16px", borderRadius: "3px", letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "10px" }}>
-                    {ctaText ?? innerRight?.cta ?? "Book Now"}
+                  <div style={{ background: "white", border: `2.5px solid ${accent}`, borderRadius: "7px", padding: "4px", boxShadow: `0 2px 8px ${accent}22` }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={qrPreviewUrl} alt="QR" width={64} height={64} style={{ borderRadius: "4px", display: "block" }} />
                   </div>
-                  {urgencyLine && (
-                    <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", color: accent, fontStyle: "italic", marginBottom: "8px", opacity: 0.85 }}>{urgencyLine}</div>
-                  )}
-                  <div style={{ fontSize: "9px", color: "#64748b", lineHeight: 1.7, fontFamily: "'Inter', sans-serif" }}>
-                    <strong style={{ color: "#1e293b" }}>{dealershipName}</strong>
-                  </div>
+                  <div style={{ fontSize: "6.5px", color: accent, marginTop: "4px", textAlign: "center", fontFamily: "'Inter', sans-serif", letterSpacing: "0.08em", fontWeight: 900, textTransform: "uppercase" }}>SCAN TO BOOK</div>
+                </div>
+                <div style={{ fontSize: "9px", color: "#64748b", lineHeight: 1.7, fontFamily: "'Inter', sans-serif" }}>
+                  <strong style={{ color: "#1e293b" }}>{dealershipName}</strong>
                 </div>
               </div>
             </div>
