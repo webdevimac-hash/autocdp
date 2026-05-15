@@ -30,10 +30,31 @@ VALUES (
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage RLS: service role can write; authenticated users can read their own
-CREATE POLICY IF NOT EXISTS "mail_examples_storage_service_all"
-  ON storage.objects FOR ALL
-  USING (bucket_id = 'mail-examples' AND auth.role() = 'service_role');
+-- CREATE POLICY does not support IF NOT EXISTS, so we use DO blocks to guard.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage'
+      AND tablename  = 'objects'
+      AND policyname = 'mail_examples_storage_service_all'
+  ) THEN
+    CREATE POLICY "mail_examples_storage_service_all"
+      ON storage.objects FOR ALL
+      USING (bucket_id = 'mail-examples' AND auth.role() = 'service_role');
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "mail_examples_storage_authenticated_read"
-  ON storage.objects FOR SELECT TO authenticated
-  USING (bucket_id = 'mail-examples');
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage'
+      AND tablename  = 'objects'
+      AND policyname = 'mail_examples_storage_authenticated_read'
+  ) THEN
+    CREATE POLICY "mail_examples_storage_authenticated_read"
+      ON storage.objects FOR SELECT TO authenticated
+      USING (bucket_id = 'mail-examples');
+  END IF;
+END $$;
