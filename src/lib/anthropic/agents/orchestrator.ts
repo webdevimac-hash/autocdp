@@ -484,23 +484,54 @@ export async function runDirectMailOrchestrator(
         const visualExamples = dmBaselineExamples.slice(0, 8).filter(
           (ex) => ex.visual_description?.trim()
         );
+        // Auto-infer best-fit template from visual descriptions (mirrors creative-agent logic)
+        const dmCombined = visualExamples.map((ex) => ex.visual_description!).join(" ").toLowerCase();
+        const dmInferredTemplate =
+          dmCombined.match(/fluorescent|neon|#ffe|#ff6|#39ff|dark.{0,15}(background|bg)|navy.{0,15}(background|bg)/)
+            ? "premium-fluorescent"
+            : dmCombined.match(/tri.?fold|folded|three.panel|complex.fold/) ? "complex-fold"
+            : dmCombined.match(/multi.panel|front.panel|back.panel/) ? "multi-panel"
+            : dmCombined.match(/conquest|new.customer|prospect/) ? "conquest"
+            : "standard postcard_6x9";
+
         const visualDnaBlock = visualExamples.length > 0
           ? [
               ``,
+              "█".repeat(60),
+              `⚠  STOP — READ VISUAL DESIGN DNA BEFORE WRITING COPY  ⚠`,
+              "█".repeat(60),
+              ``,
               EQ,
-              `VISUAL DESIGN DNA — ${input.context.dealershipName.toUpperCase()}'S PROVEN MAIL PIECES`,
+              `VISUAL DESIGN DNA — ${input.context.dealershipName.toUpperCase()}'S ACTUAL MAIL PIECES`,
               EQ,
-              `MANDATORY: You MUST reference these visual layouts when writing copy.`,
-              `Include a "layout_suggestion" key in the variables field of your send_direct_mail call`,
-              `describing which specific visual elements you are adapting and why they fit this campaign.`,
+              ``,
+              `MANDATORY: Your copy AND your layout_suggestion variable MUST directly reference`,
+              `these scanned mail pieces by "Visual Design [N]". Generic advice = REJECTED.`,
+              ``,
+              `▶ INFERRED TEMPLATE: ${dmInferredTemplate.toUpperCase()}`,
+              `  Use this template type in your layout_suggestion variable unless the campaign`,
+              `  goal explicitly requires a different format (and state why).`,
+              ``,
+              `CITE ALL OF THESE in layout_suggestion: hero treatment · offer badge/coupon style`,
+              `· headline style · color palette · urgency element · CTA design · eye path`,
               ``,
               ...visualExamples.map((ex, i) => {
                 const typeTag = ex.mail_type ? ` [${ex.mail_type}]` : "";
                 const srcTag  = ex.source_type && ex.source_type !== "text"
                   ? ` [scanned ${ex.source_type.toUpperCase()}]` : "";
-                return `${"─".repeat(40)}\nVisual Design ${i + 1}${typeTag}${srcTag}:\n${ex.visual_description!.trim()}`;
+                return [
+                  `┌${"─".repeat(56)}┐`,
+                  `│ Visual Design ${i + 1}${typeTag}${srcTag}`.padEnd(57) + `│`,
+                  `└${"─".repeat(56)}┘`,
+                  ex.visual_description!.trim(),
+                  ``,
+                ].join("\n");
               }),
               EQ,
+              `REQUIRED layout_suggestion format:`,
+              `  "Use [template]. From Visual Design [N]: [hero] + [badge/coupon] + [color palette].`,
+              `   Urgency: [element]. CTA: [treatment]. Eye path: [1st] → [2nd] → [3rd]."`,
+              "█".repeat(60),
               ``,
             ].join("\n")
           : "";
@@ -1047,23 +1078,53 @@ export async function runOmnichannelOrchestrator(
         const omniVisualExamples = omniBaselineExamples.slice(0, 8).filter(
           (ex) => ex.visual_description?.trim()
         );
+        // Auto-infer best-fit template from visual descriptions
+        const omniCombined = omniVisualExamples.map((ex) => ex.visual_description!).join(" ").toLowerCase();
+        const omniInferredTemplate =
+          omniCombined.match(/fluorescent|neon|#ffe|#ff6|#39ff|dark.{0,15}(background|bg)|navy.{0,15}(background|bg)/)
+            ? "premium-fluorescent"
+            : omniCombined.match(/tri.?fold|folded|three.panel|complex.fold/) ? "complex-fold"
+            : omniCombined.match(/multi.panel|front.panel|back.panel/) ? "multi-panel"
+            : omniCombined.match(/conquest|new.customer|prospect/) ? "conquest"
+            : "standard postcard_6x9";
+
         const omniVisualDnaBlock = omniVisualExamples.length > 0
           ? [
               ``,
+              "█".repeat(60),
+              `⚠  STOP — READ VISUAL DESIGN DNA BEFORE WRITING COPY  ⚠`,
+              "█".repeat(60),
+              ``,
               EQ,
-              `VISUAL DESIGN DNA — ${input.context.dealershipName.toUpperCase()}'S PROVEN MAIL PIECES`,
+              `VISUAL DESIGN DNA — ${input.context.dealershipName.toUpperCase()}'S ACTUAL MAIL PIECES`,
               EQ,
-              `MANDATORY: You MUST reference these visual layouts when writing direct mail copy.`,
-              `Include a "layout_suggestion" key in your send_direct_mail variables field`,
-              `naming the specific visual elements you are adapting from these scans.`,
+              ``,
+              `MANDATORY: Your direct mail copy AND layout_suggestion variable MUST reference`,
+              `these scans by "Visual Design [N]". Generic layout advice = REJECTED.`,
+              ``,
+              `▶ INFERRED TEMPLATE: ${omniInferredTemplate.toUpperCase()}`,
+              `  Use this in your layout_suggestion unless the campaign goal requires otherwise.`,
+              ``,
+              `CITE IN layout_suggestion: hero treatment · badge/coupon style · headline style`,
+              `· color palette · urgency element · CTA design · eye path`,
               ``,
               ...omniVisualExamples.map((ex, i) => {
                 const typeTag = ex.mail_type ? ` [${ex.mail_type}]` : "";
                 const srcTag  = ex.source_type && ex.source_type !== "text"
                   ? ` [scanned ${ex.source_type.toUpperCase()}]` : "";
-                return `${"─".repeat(40)}\nVisual Design ${i + 1}${typeTag}${srcTag}:\n${ex.visual_description!.trim()}`;
+                return [
+                  `┌${"─".repeat(56)}┐`,
+                  `│ Visual Design ${i + 1}${typeTag}${srcTag}`.padEnd(57) + `│`,
+                  `└${"─".repeat(56)}┘`,
+                  ex.visual_description!.trim(),
+                  ``,
+                ].join("\n");
               }),
               EQ,
+              `REQUIRED layout_suggestion format:`,
+              `  "Use [template]. From Visual Design [N]: [hero] + [badge/coupon] + [color palette].`,
+              `   Urgency: [element]. CTA: [treatment]. Eye path: [1st] → [2nd] → [3rd]."`,
+              "█".repeat(60),
               ``,
             ].join("\n")
           : "";

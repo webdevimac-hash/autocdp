@@ -688,35 +688,71 @@ export async function runCreativeAgent(
   }
 
   // ── Visual Design DNA (high-priority block, injected early in system prompt) ──
-  // Built separately so it can be placed BEFORE the channel guide for maximum
-  // recency-and-primacy impact. Only populated when visual examples are present.
+  // Placed BEFORE the channel guide so it is the first substantive context
+  // Claude reads. The reminder is also injected into the USER PROMPT (near the
+  // JSON schema) so it is the LAST thing Claude reads before generating output.
   const EQ58 = "═".repeat(58);
+  const WALL  = "█".repeat(58);
+
   const visualBaselineExamples = (input.baselineExamples ?? [])
     .slice(0, 8)
     .filter((ex) => ex.visual_description?.trim());
 
   const hasVisualExamples = visualBaselineExamples.length > 0;
 
+  // Auto-infer the best-fit template type from the visual descriptions so the
+  // agent can make an informed, specific template recommendation.
+  function inferTemplateFromVisuals(descs: string[]): { tag: string; rationale: string } {
+    const combined = descs.join(" ").toLowerCase();
+    if (combined.match(/fluorescent|neon|#ffe|#ff6|#39ff|dark.{0,15}(background|bg)|navy.{0,15}(background|bg)|black.{0,15}(background|bg)/))
+      return { tag: "premium-fluorescent", rationale: "dark/navy background + neon accent colours detected in scans" };
+    if (combined.match(/tri.?fold|folded|three.panel|inner.panel|cover.panel|complex.fold/))
+      return { tag: "complex-fold", rationale: "multi-panel folded format detected in scans" };
+    if (combined.match(/multi.panel|front.panel|back.panel|two.?sided/))
+      return { tag: "multi-panel", rationale: "dual-panel postcard format detected in scans" };
+    if (combined.match(/conquest|new.customer|prospect|acquisition/))
+      return { tag: "conquest", rationale: "conquest / new-customer design tone detected in scans" };
+    return { tag: "standard postcard_6x9", rationale: "clean light-background design detected in scans" };
+  }
+
+  const inferredTemplate = hasVisualExamples
+    ? inferTemplateFromVisuals(visualBaselineExamples.map((ex) => ex.visual_description!))
+    : null;
+
   const visualDesignDnaSection = hasVisualExamples
     ? [
         ``,
-        EQ58,
-        `VISUAL DESIGN DNA — ${input.context.dealershipName.toUpperCase()}'S PROVEN MAIL PIECES`,
-        EQ58,
-        `You have ${visualBaselineExamples.length} scanned physical mail piece${visualBaselineExamples.length > 1 ? "s" : ""} from this dealership with full visual layout analysis.`,
+        WALL,
+        `⚠  STOP — READ THESE VISUAL DESIGNS BEFORE WRITING ANYTHING  ⚠`,
+        WALL,
         ``,
-        `MANDATORY INSTRUCTION: You MUST analyze every visual layout below and produce a specific,`,
-        `actionable layoutSuggestion that adapts the best visual elements to the current campaign goal.`,
-        `Omitting layoutSuggestion when visual examples are present is a CRITICAL FAILURE.`,
+        `${EQ58}`,
+        `VISUAL DESIGN DNA — ${input.context.dealershipName.toUpperCase()}'S ACTUAL MAIL PIECES`,
+        `${EQ58}`,
         ``,
-        `Specifically extract and reference these elements in your layoutSuggestion:`,
-        `  • Hero photo treatment (full-bleed vehicle, side inset, illustrated, no photo)`,
-        `  • Offer/coupon treatment (badge shape, perforated strip, overlay box, inline text)`,
-        `  • Headline — size, weight, color, placement (top-center, left-rail, reversed-out on dark)`,
-        `  • Color palette — primary background, accent colors, text colors`,
-        `  • Urgency elements (banner strips, expiry date style, ACT NOW pills, deadline ribbons)`,
-        `  • CTA design (button shape, QR code position, phone number treatment)`,
-        `  • Layout hierarchy — what draws the eye first → second → third`,
+        `These ${visualBaselineExamples.length} scans are physical mail pieces this dealership has ALREADY PRODUCED AND MAILED.`,
+        `They represent the visual design system, offer treatment, and layout hierarchy that`,
+        `this dealership's customers have already seen and responded to.`,
+        ``,
+        `◆ TEMPLATE MANDATE — based on the visual DNA below, the optimal template is:`,
+        `  ▶ ${inferredTemplate!.tag.toUpperCase()} (${inferredTemplate!.rationale})`,
+        `  Your layoutSuggestion MUST recommend this template (or justify a specific deviation).`,
+        ``,
+        `◆ DESIGN ELEMENT MANDATE — extract and cite ALL of the following in your layoutSuggestion:`,
+        `  ① Hero photo treatment — full-bleed vehicle, side inset, illustrated, no photo`,
+        `  ② Offer/coupon treatment — badge shape (circle/burst/ribbon), perforated strip, overlay box`,
+        `  ③ Headline — size (large/oversized/standard), weight (bold/black), placement, reversed-out?`,
+        `  ④ Color palette — primary background hex/name, ONE accent color, text color`,
+        `  ⑤ Urgency elements — banner strip position, expiry date style, pill/badge/ribbon`,
+        `  ⑥ CTA design — button shape, QR code position, phone number size/placement`,
+        `  ⑦ Eye path — what the reader sees first → second → third (the proven hierarchy)`,
+        ``,
+        `◆ CITATION MANDATE — your layoutSuggestion must literally say "Visual Design [N]" for`,
+        `  every element you reference. Generic advice without example citations is REJECTED.`,
+        ``,
+        `${"─".repeat(58)}`,
+        `THE SCANNED DESIGNS:`,
+        `${"─".repeat(58)}`,
         ``,
         ...visualBaselineExamples.map((ex, i) => {
           const typeTag   = ex.mail_type ? ` [${ex.mail_type}]` : "";
@@ -724,24 +760,29 @@ export async function runCreativeAgent(
             ? ` [scanned ${ex.source_type.toUpperCase()}]`
             : " [scanned]";
           return [
-            `${"─".repeat(40)}`,
-            `VISUAL DESIGN ${i + 1}${typeTag}${sourceTag}:`,
+            `┌${"─".repeat(56)}┐`,
+            `│ VISUAL DESIGN ${i + 1}${typeTag}${sourceTag}`.padEnd(57) + `│`,
+            `└${"─".repeat(56)}┘`,
             ex.visual_description!.trim(),
+            ``,
           ].join("\n");
         }),
+        `${"─".repeat(58)}`,
         ``,
-        EQ58,
-        `YOUR layoutSuggestion MUST:`,
-        `  1. Name specific visual elements from the scans above (not generic advice)`,
-        `  2. State which example(s) influenced the suggestion and why they fit this campaign goal`,
-        `  3. Be actionable enough for a print designer to execute: template format, hero treatment,`,
-        `     offer badge style, color palette decision, urgency element placement`,
+        `◆ REQUIRED FORMAT for your layoutSuggestion field:`,
+        `  "Use [template tag] format. From Visual Design [N]: adopt [hero treatment]`,
+        `  + [offer/coupon treatment] + [headline style]. Color palette: [background] with`,
+        `  [accent]. Urgency: [element]. CTA: [treatment]. Eye path: [1st] → [2nd] → [3rd].`,
+        `  From Visual Design [M]: also adopt [specific additional element]."`,
         ``,
-        `EXAMPLE of an acceptable layoutSuggestion:`,
-        `  "Adopt Example 1's full-bleed vehicle hero (top 50%) + perforated coupon strip below body`,
-        `  + dark navy background with neon yellow CTA pill — the eye goes hero → offer → CTA, matching`,
-        `  the proven hierarchy from the scanned piece. This is a premium-fluorescent postcard_6x9."`,
-        EQ58,
+        `◆ TEMPLATE CHOICE RULE:`,
+        `  If the scans show a consistent design style, default to that template.`,
+        `  If the campaign goal requires a different template, say WHY in the layoutSuggestion`,
+        `  AND still describe how the visual elements from the scans will be adapted.`,
+        ``,
+        WALL,
+        `⚠  END VISUAL DESIGN DNA — NOW PROCEED TO WRITE THE COPY  ⚠`,
+        WALL,
         ``,
       ].join("\n")
     : "";
@@ -894,12 +935,15 @@ export async function runCreativeAgent(
     `  ✗ Do NOT write opt-out, unsubscribe, or legal disclaimer text — those are appended automatically`,
     ``,
     hasVisualExamples
-      ? `LAYOUT SUGGESTION — MANDATORY (visual design examples are loaded):\n` +
-        `  ✓ You MUST output a non-empty layoutSuggestion field\n` +
-        `  ✓ Reference specific visual elements from the VISUAL DESIGN DNA section by example number\n` +
-        `  ✓ Name the template format + hero photo treatment + offer badge style + color palette decision\n` +
-        `  ✗ "No change needed" or an empty string is a FAILURE — every scan has actionable signals\n` +
-        `  ✗ Generic advice ("use a bold headline") without referencing the scanned examples is a FAILURE`
+      ? `LAYOUT SUGGESTION — NON-NEGOTIABLE REQUIREMENT:\n` +
+        `  ✓ layoutSuggestion MUST be a non-empty string citing "Visual Design [N]" by number\n` +
+        `  ✓ Must name: template type · hero photo treatment · offer badge/coupon style\n` +
+        `      · primary background + accent colour · urgency element · CTA design · eye path\n` +
+        `  ✓ Must recommend ${inferredTemplate!.tag} (or explicitly justify a different choice)\n` +
+        `  ✗ Empty string = REJECTED\n` +
+        `  ✗ "No change needed" = REJECTED\n` +
+        `  ✗ Generic advice without "Visual Design [N]" citation = REJECTED\n` +
+        `  ✗ Describing only what was already chosen (standard) without design specifics = REJECTED`
       : `LAYOUT SUGGESTION — include when historical examples or network learnings suggest a clear winner:`,
     ``,
     `QUALITY BAR — before finalizing copy, ask yourself:`,
@@ -976,6 +1020,31 @@ export async function runCreativeAgent(
     ``,
     `TEMPLATE: ${templateLabel}`,
     input.template ? `BASE TEMPLATE:\n${input.template}` : null,
+    ``,
+    // ── Visual DNA reminder injected into the USER PROMPT ────────────────────
+    // Placed immediately before the JSON schema so it is the LAST context
+    // Claude processes before writing layoutSuggestion. Recency maximises fidelity.
+    ...(hasVisualExamples
+      ? [
+          ``,
+          `${"█".repeat(55)}`,
+          `⚠  VISUAL DESIGN DNA REMINDER — CITE THESE IN layoutSuggestion  ⚠`,
+          `${"█".repeat(55)}`,
+          `Inferred template: ${inferredTemplate!.tag.toUpperCase()} — use this unless you justify otherwise.`,
+          ``,
+          ...visualBaselineExamples.map((ex, i) => {
+            const typeTag = ex.mail_type ? ` [${ex.mail_type}]` : "";
+            // Condense to the highest-signal excerpt (first 350 chars covers most descriptions)
+            const excerpt = ex.visual_description!.trim().slice(0, 350);
+            const truncated = ex.visual_description!.length > 350 ? "…" : "";
+            return `Visual Design ${i + 1}${typeTag}: ${excerpt}${truncated}`;
+          }),
+          ``,
+          `Your layoutSuggestion must literally contain "Visual Design [N]" references`,
+          `and name: template · hero treatment · badge/coupon · color palette · CTA · eye path.`,
+          `${"█".repeat(55)}`,
+        ]
+      : []),
     ``,
     `═══════════════════════════════════════`,
     `OUTPUT`,
