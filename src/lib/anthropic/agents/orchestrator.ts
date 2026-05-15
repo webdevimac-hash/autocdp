@@ -477,13 +477,44 @@ export async function runDirectMailOrchestrator(
 
       const dealerMemoriesSection = formatMemoriesForPrompt(dealerMemories);
 
-      const dmBaselineSection = dmBaselineExamples.length > 0
-        ? `\nDEALERSHIP STYLE GUIDELINES — mirror the tone, length, and structure of these past mail pieces:\n\n` +
-          dmBaselineExamples.slice(0, 8).map((ex, i) => {
-            const typeTag = ex.mail_type ? ` [${ex.mail_type}]` : "";
-            return `Example ${i + 1}${typeTag}:\n"""\n${ex.example_text.trim()}\n"""`;
-          }).join("\n\n") + `\n`
-        : "";
+      const dmBaselineSection = (() => {
+        if (!dmBaselineExamples.length) return "";
+        const EQ = "═".repeat(58);
+        // ── Visual DNA block (high-priority) ──────────────────
+        const visualExamples = dmBaselineExamples.slice(0, 8).filter(
+          (ex) => ex.visual_description?.trim()
+        );
+        const visualDnaBlock = visualExamples.length > 0
+          ? [
+              ``,
+              EQ,
+              `VISUAL DESIGN DNA — ${input.context.dealershipName.toUpperCase()}'S PROVEN MAIL PIECES`,
+              EQ,
+              `MANDATORY: You MUST reference these visual layouts when writing copy.`,
+              `Include a "layout_suggestion" key in the variables field of your send_direct_mail call`,
+              `describing which specific visual elements you are adapting and why they fit this campaign.`,
+              ``,
+              ...visualExamples.map((ex, i) => {
+                const typeTag = ex.mail_type ? ` [${ex.mail_type}]` : "";
+                const srcTag  = ex.source_type && ex.source_type !== "text"
+                  ? ` [scanned ${ex.source_type.toUpperCase()}]` : "";
+                return `${"─".repeat(40)}\nVisual Design ${i + 1}${typeTag}${srcTag}:\n${ex.visual_description!.trim()}`;
+              }),
+              EQ,
+              ``,
+            ].join("\n")
+          : "";
+        // ── Copy examples block ────────────────────────────────
+        const copyExamples = dmBaselineExamples.slice(0, 8).filter((ex) => ex.example_text.trim());
+        const copyBlock = copyExamples.length > 0
+          ? `\nDEALERSHIP STYLE GUIDELINES — mirror the tone, length, and structure of these past mail pieces:\n\n` +
+            copyExamples.map((ex, i) => {
+              const typeTag = ex.mail_type ? ` [${ex.mail_type}]` : "";
+              return `Example ${i + 1}${typeTag}:\n"""\n${ex.example_text.trim()}\n"""`;
+            }).join("\n\n") + `\n`
+          : "";
+        return visualDnaBlock + copyBlock;
+      })();
 
       const designStyleNote = input.designStyle && input.designStyle !== "standard"
         ? `\nDESIGN STYLE: ${input.designStyle}\n` +
@@ -1009,13 +1040,44 @@ export async function runOmnichannelOrchestrator(
       const omnichannelDisclaimerNote =
         `\nDO NOT write opt-out, STOP, unsubscribe, or legal disclaimer text — appended automatically.\n`;
 
-      const omniBaselineSection = omniBaselineExamples.length > 0
-        ? `\nDEALERSHIP STYLE GUIDELINES — mirror tone and structure from these past pieces:\n\n` +
-          omniBaselineExamples.slice(0, 8).map((ex, i) => {
-            const typeTag = ex.mail_type ? ` [${ex.mail_type}]` : "";
-            return `Example ${i + 1}${typeTag}:\n"""\n${ex.example_text.trim()}\n"""`;
-          }).join("\n\n") + `\n`
-        : "";
+      const omniBaselineSection = (() => {
+        if (!omniBaselineExamples.length) return "";
+        const EQ = "═".repeat(58);
+        // ── Visual DNA block (high-priority) ──────────────────
+        const omniVisualExamples = omniBaselineExamples.slice(0, 8).filter(
+          (ex) => ex.visual_description?.trim()
+        );
+        const omniVisualDnaBlock = omniVisualExamples.length > 0
+          ? [
+              ``,
+              EQ,
+              `VISUAL DESIGN DNA — ${input.context.dealershipName.toUpperCase()}'S PROVEN MAIL PIECES`,
+              EQ,
+              `MANDATORY: You MUST reference these visual layouts when writing direct mail copy.`,
+              `Include a "layout_suggestion" key in your send_direct_mail variables field`,
+              `naming the specific visual elements you are adapting from these scans.`,
+              ``,
+              ...omniVisualExamples.map((ex, i) => {
+                const typeTag = ex.mail_type ? ` [${ex.mail_type}]` : "";
+                const srcTag  = ex.source_type && ex.source_type !== "text"
+                  ? ` [scanned ${ex.source_type.toUpperCase()}]` : "";
+                return `${"─".repeat(40)}\nVisual Design ${i + 1}${typeTag}${srcTag}:\n${ex.visual_description!.trim()}`;
+              }),
+              EQ,
+              ``,
+            ].join("\n")
+          : "";
+        // ── Copy examples block ────────────────────────────────
+        const omniCopyExamples = omniBaselineExamples.slice(0, 8).filter((ex) => ex.example_text.trim());
+        const omniCopyBlock = omniCopyExamples.length > 0
+          ? `\nDEALERSHIP STYLE GUIDELINES — mirror tone and structure from these past pieces:\n\n` +
+            omniCopyExamples.map((ex, i) => {
+              const typeTag = ex.mail_type ? ` [${ex.mail_type}]` : "";
+              return `Example ${i + 1}${typeTag}:\n"""\n${ex.example_text.trim()}\n"""`;
+            }).join("\n\n") + `\n`
+          : "";
+        return omniVisualDnaBlock + omniCopyBlock;
+      })();
 
       const systemPrompt =
         `You are the AutoCDP Orchestrator for ${input.context.dealershipName}.\n` +

@@ -687,6 +687,65 @@ export async function runCreativeAgent(
       `Your new message should feel like it came from the same advisor who wrote the above.\n`;
   }
 
+  // ── Visual Design DNA (high-priority block, injected early in system prompt) ──
+  // Built separately so it can be placed BEFORE the channel guide for maximum
+  // recency-and-primacy impact. Only populated when visual examples are present.
+  const EQ58 = "═".repeat(58);
+  const visualBaselineExamples = (input.baselineExamples ?? [])
+    .slice(0, 8)
+    .filter((ex) => ex.visual_description?.trim());
+
+  const hasVisualExamples = visualBaselineExamples.length > 0;
+
+  const visualDesignDnaSection = hasVisualExamples
+    ? [
+        ``,
+        EQ58,
+        `VISUAL DESIGN DNA — ${input.context.dealershipName.toUpperCase()}'S PROVEN MAIL PIECES`,
+        EQ58,
+        `You have ${visualBaselineExamples.length} scanned physical mail piece${visualBaselineExamples.length > 1 ? "s" : ""} from this dealership with full visual layout analysis.`,
+        ``,
+        `MANDATORY INSTRUCTION: You MUST analyze every visual layout below and produce a specific,`,
+        `actionable layoutSuggestion that adapts the best visual elements to the current campaign goal.`,
+        `Omitting layoutSuggestion when visual examples are present is a CRITICAL FAILURE.`,
+        ``,
+        `Specifically extract and reference these elements in your layoutSuggestion:`,
+        `  • Hero photo treatment (full-bleed vehicle, side inset, illustrated, no photo)`,
+        `  • Offer/coupon treatment (badge shape, perforated strip, overlay box, inline text)`,
+        `  • Headline — size, weight, color, placement (top-center, left-rail, reversed-out on dark)`,
+        `  • Color palette — primary background, accent colors, text colors`,
+        `  • Urgency elements (banner strips, expiry date style, ACT NOW pills, deadline ribbons)`,
+        `  • CTA design (button shape, QR code position, phone number treatment)`,
+        `  • Layout hierarchy — what draws the eye first → second → third`,
+        ``,
+        ...visualBaselineExamples.map((ex, i) => {
+          const typeTag   = ex.mail_type ? ` [${ex.mail_type}]` : "";
+          const sourceTag = ex.source_type && ex.source_type !== "text"
+            ? ` [scanned ${ex.source_type.toUpperCase()}]`
+            : " [scanned]";
+          return [
+            `${"─".repeat(40)}`,
+            `VISUAL DESIGN ${i + 1}${typeTag}${sourceTag}:`,
+            ex.visual_description!.trim(),
+          ].join("\n");
+        }),
+        ``,
+        EQ58,
+        `YOUR layoutSuggestion MUST:`,
+        `  1. Name specific visual elements from the scans above (not generic advice)`,
+        `  2. State which example(s) influenced the suggestion and why they fit this campaign goal`,
+        `  3. Be actionable enough for a print designer to execute: template format, hero treatment,`,
+        `     offer badge style, color palette decision, urgency element placement`,
+        ``,
+        `EXAMPLE of an acceptable layoutSuggestion:`,
+        `  "Adopt Example 1's full-bleed vehicle hero (top 50%) + perforated coupon strip below body`,
+        `  + dark navy background with neon yellow CTA pill — the eye goes hero → offer → CTA, matching`,
+        `  the proven hierarchy from the scanned piece. This is a premium-fluorescent postcard_6x9."`,
+        EQ58,
+        ``,
+      ].join("\n")
+    : "";
+
   const DESIGN_STYLE_GUIDES: Record<DesignStyle, string> = {
     standard: "",
     "multi-panel": [
@@ -771,6 +830,11 @@ export async function runCreativeAgent(
     // Co-op compliance
     coopSection || null,
 
+    // ── VISUAL DESIGN DNA — placed BEFORE channel guide for maximum recency/primacy ──
+    // Only present when the dealer has uploaded scanned mail pieces with visual analysis.
+    // Claude must reference these layouts in layoutSuggestion — mandatory, not optional.
+    visualDesignDnaSection || null,
+
     // Channel format guide (and advanced design)
     `\nCHANNEL FORMAT:\n${channelGuide}`,
     designStyleNote || null,
@@ -828,6 +892,15 @@ export async function runCreativeAgent(
     `  ✓ Weave in network learnings naturally — never quote them verbatim or use bullet points`,
     `  ✓ Use the dealership phone number in CTAs when provided`,
     `  ✗ Do NOT write opt-out, unsubscribe, or legal disclaimer text — those are appended automatically`,
+    ``,
+    hasVisualExamples
+      ? `LAYOUT SUGGESTION — MANDATORY (visual design examples are loaded):\n` +
+        `  ✓ You MUST output a non-empty layoutSuggestion field\n` +
+        `  ✓ Reference specific visual elements from the VISUAL DESIGN DNA section by example number\n` +
+        `  ✓ Name the template format + hero photo treatment + offer badge style + color palette decision\n` +
+        `  ✗ "No change needed" or an empty string is a FAILURE — every scan has actionable signals\n` +
+        `  ✗ Generic advice ("use a bold headline") without referencing the scanned examples is a FAILURE`
+      : `LAYOUT SUGGESTION — include when historical examples or network learnings suggest a clear winner:`,
     ``,
     `QUALITY BAR — before finalizing copy, ask yourself:`,
     `  • Would a trusted advisor actually say this to a client's face?`,
@@ -926,7 +999,9 @@ export async function runCreativeAgent(
     `  "urgencyLine": "One-line urgency hook — omit entirely if no genuine urgency",`,
     `  "featuredVehicle": "Year Make Model from visit or inventory — null if unknown",`,
     `  "recommendedTemplateReason": "1 sentence on why this template fits this customer",`,
-    `  "layoutSuggestion": "Proactive, specific visual layout recommendation for maximum impact — e.g. 'Use Conquest Postcard with full-bleed hero image + perforated coupon strip below body + side-by-side QR+CTA action row' or 'Switch to Premium Fluorescent: dark navy background, neon urgency strip, oversized OfferBadge top-right — this format drove the highest scan rates in the historical examples'. Reference historical winners when relevant. Omit if no meaningful improvement to current layout.",`,
+    hasVisualExamples
+      ? `  "layoutSuggestion": "REQUIRED — visual design examples are loaded. You MUST reference specific elements from the VISUAL DESIGN DNA section above (cite by example number). Include: template format (e.g. postcard_6x9 / complex-fold), hero photo treatment, offer badge / coupon style, color palette choice, urgency element placement, CTA button style, and layout hierarchy. Be specific enough that a print designer can execute it without asking questions. Example: 'Adopt Visual Design 1\\'s full-bleed vehicle hero (top 55%) + perforated coupon strip + dark navy background with neon yellow CTA pill — proven eye path: hero → offer → CTA. Use premium-fluorescent postcard_6x9.'",`
+      : `  "layoutSuggestion": "Proactive, specific visual layout recommendation for maximum impact — e.g. 'Use Conquest Postcard with full-bleed hero image + perforated coupon strip below body + side-by-side QR+CTA action row' or 'Switch to Premium Fluorescent: dark navy background, neon urgency strip, oversized OfferBadge top-right — this format drove the highest scan rates in the historical examples'. Reference historical winners when relevant. Omit only if no examples exist and no layout change would improve on the current standard template.",`,
     isAdvancedDesign ? layoutSpecSchema : null,
     `  "reasoning": "2–3 sentences: what specific data points drove your hook, offer, and CTA choices — including any performance patterns or historical examples that influenced your layout suggestion",`,
     `  "confidence": 0.9`,
