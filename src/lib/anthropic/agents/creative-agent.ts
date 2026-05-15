@@ -50,7 +50,17 @@ export interface CreativeAgentInput {
   /** When true, append TCPA/CAN-SPAM disclaimer to final content. Default: true. */
   includeDisclaimer?: boolean;
   /** Pre-loaded baseline examples — injected as style guidelines in the system prompt. */
-  baselineExamples?: Array<{ example_text: string; mail_type?: string | null; notes?: string | null }>;
+  baselineExamples?: Array<{
+    example_text: string;
+    mail_type?: string | null;
+    notes?: string | null;
+    /** Public Storage URL for image/PDF uploads */
+    file_url?: string | null;
+    /** AI-generated visual layout description (from Claude Vision at upload time) */
+    visual_description?: string | null;
+    /** "text" | "image" | "pdf" — how this example was added */
+    source_type?: string;
+  }>;
   /** Dealer guidance memories formatted string — soft suggestions from the team. */
   dealerMemories?: string;
   /** Design style — controls whether Claude outputs a structured layoutSpec in addition to copy. */
@@ -643,13 +653,36 @@ export async function runCreativeAgent(
     const examples = input.baselineExamples.slice(0, 8);
     const exampleBlocks = examples.map((ex, i) => {
       const typeTag = ex.mail_type ? ` [${ex.mail_type}]` : "";
+      const sourceTag = ex.source_type && ex.source_type !== "text" ? ` [scanned ${ex.source_type.toUpperCase()}]` : "";
       const notesTag = ex.notes ? `\n   Notes: ${ex.notes}` : "";
-      return `Example ${i + 1}${typeTag}:\n"""\n${ex.example_text.trim()}\n"""${notesTag}`;
+
+      // Visual layout description (from Claude vision at upload time)
+      const visualTag = ex.visual_description
+        ? `\n   VISUAL LAYOUT: ${ex.visual_description}`
+        : "";
+
+      // Copy text block — may be empty for image examples where OCR failed
+      const copyBlock = ex.example_text.trim()
+        ? `\nCopy text:\n"""\n${ex.example_text.trim()}\n"""`
+        : "\n(Copy text not available — use the VISUAL LAYOUT description above to infer the design system and offer structure.)";
+
+      return `Example ${i + 1}${typeTag}${sourceTag}:${visualTag}${copyBlock}${notesTag}`;
     }).join("\n\n");
 
+    // Count how many examples have visual descriptions (image/PDF uploads)
+    const visualCount = examples.filter((ex) => ex.visual_description).length;
+    const visualNote = visualCount > 0
+      ? `${visualCount} example${visualCount > 1 ? "s" : ""} include a full visual layout scan — ` +
+        `pay particular attention to the VISUAL LAYOUT sections: they describe the design system, ` +
+        `offer treatment, and hierarchy that drove real results for this dealership. ` +
+        `Reference these in your layoutSuggestion.\n`
+      : "";
+
     baselineSection =
-      `\nDEALERSHIP STYLE GUIDELINES — these are real past mail pieces that performed well for this dealership.\n` +
-      `Study the tone, sentence length, offer structure, greeting style, and sign-off format. Mirror this style closely.\n\n` +
+      `\nDEALERSHIP STYLE GUIDELINES — these are real past mail pieces from ${input.context.dealershipName}.\n` +
+      `Study the tone, sentence length, offer structure, greeting style, sign-off format, and visual layout.\n` +
+      `Mirror this style closely — your new message should feel like it came from the same advisor.\n` +
+      (visualNote ? `\n${visualNote}` : `\n`) +
       exampleBlocks + `\n\n` +
       `Your new message should feel like it came from the same advisor who wrote the above.\n`;
   }

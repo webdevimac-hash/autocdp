@@ -15,6 +15,9 @@ type ExampleRow = {
   mail_type: string | null;
   date_sent: string | null;
   notes: string | null;
+  source_type: "text" | "image" | "pdf";
+  file_url: string | null;
+  visual_description: string | null;
   created_at: string;
 };
 
@@ -39,7 +42,7 @@ export async function GET(req: NextRequest) {
   const svc = createServiceClient();
   const { data, error } = await svc
     .from("baseline_mail_examples")
-    .select("id, example_text, mail_type, date_sent, notes, created_at")
+    .select("id, example_text, mail_type, date_sent, notes, source_type, file_url, visual_description, created_at")
     .eq("dealership_id", dealershipId)
     .order("created_at", { ascending: false })
     .limit(100) as unknown as { data: ExampleRow[] | null; error: unknown };
