@@ -2496,6 +2496,8 @@ interface TemplatePreviewProps {
   variantBHeadline?: string | null;
   variantBOffer?: string | null;
   variantBLabel?: string;
+  /** AI layout recommendation from Creative Agent — used to auto-switch effective design style */
+  layoutSuggestion?: string | null;
 }
 
 export function TemplatePreview({
@@ -2522,6 +2524,7 @@ export function TemplatePreview({
   urgencyLine,
   expiresText,
   conditionsText,
+  layoutSuggestion,
 }: TemplatePreviewProps) {
   const qrUrl = qrPropUrl ?? buildPreviewQRImageUrl(
     `${typeof window !== "undefined" ? window.location.origin : ""}/track/preview`,
@@ -2530,7 +2533,18 @@ export function TemplatePreview({
   // Dealership hex overrides the preset color when provided (real brand color from DB)
   const accent = dealershipAccentHex ? hexToAccent(dealershipAccentHex) : ACCENT[accentColor];
 
-  if (!content && designStyle === "standard") {
+  // If AI layout suggestion implies a specific design style, apply it automatically
+  const effectiveDesignStyle = (() => {
+    if (!layoutSuggestion) return designStyle;
+    const s = layoutSuggestion.toLowerCase();
+    if (s.includes("conquest")) return "conquest" as const;
+    if (s.includes("fluorescent") || s.includes("neon")) return "premium-fluorescent" as const;
+    if (s.includes("tri-fold") || s.includes("complex-fold") || s.includes("folded") || s.includes("trifold")) return "complex-fold" as const;
+    if (s.includes("multi-panel") || s.includes("multipanel")) return "multi-panel" as const;
+    return designStyle;
+  })();
+
+  if (!content && effectiveDesignStyle === "standard") {
     return (
       <div className="flex flex-col items-center justify-center h-48 bg-slate-50/60 border-2 border-dashed border-slate-200 rounded-[var(--radius)]">
         <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center mb-3 shadow-card">
@@ -2544,7 +2558,7 @@ export function TemplatePreview({
     );
   }
 
-  if (designStyle === "multi-panel") {
+  if (effectiveDesignStyle === "multi-panel") {
     return (
       <div className="flex justify-center">
         <div className="w-full" style={{ maxWidth: "420px" }}>
@@ -2561,7 +2575,7 @@ export function TemplatePreview({
     );
   }
 
-  if (designStyle === "premium-fluorescent") {
+  if (effectiveDesignStyle === "premium-fluorescent") {
     return (
       <div className="flex justify-center">
         <div className="w-full" style={{ maxWidth: "420px" }}>
@@ -2578,7 +2592,7 @@ export function TemplatePreview({
     );
   }
 
-  if (designStyle === "complex-fold") {
+  if (effectiveDesignStyle === "complex-fold") {
     return (
       <div className="flex justify-center">
         <div className="w-full" style={{ maxWidth: "420px" }}>
@@ -2593,7 +2607,7 @@ export function TemplatePreview({
     );
   }
 
-  if (designStyle === "conquest") {
+  if (effectiveDesignStyle === "conquest") {
     return (
       <div className="flex justify-center">
         <div className="w-full" style={{ maxWidth: "420px" }}>

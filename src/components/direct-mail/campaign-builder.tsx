@@ -433,6 +433,18 @@ interface CampaignBuilderProps {
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
+function parseLayoutSuggestion(suggestion: string): { templateType?: MailTemplateType; designStyle?: DesignStyle } {
+  const s = suggestion.toLowerCase();
+  const result: { templateType?: MailTemplateType; designStyle?: DesignStyle } = {};
+  if (s.includes("conquest")) result.designStyle = "conquest";
+  else if (s.includes("fluorescent") || s.includes("neon")) result.designStyle = "premium-fluorescent";
+  else if (s.includes("tri-fold") || s.includes("complex-fold") || s.includes("folded") || s.includes("trifold")) result.designStyle = "complex-fold";
+  else if (s.includes("multi-panel") || s.includes("multipanel")) result.designStyle = "multi-panel";
+  if (s.includes("letter 8.5") || s.includes("8.5x11") || s.includes("8.5 x 11")) result.templateType = "letter_8.5x11";
+  else if (s.includes("letter")) result.templateType = "letter_6x9";
+  return result;
+}
+
 export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, dealershipPhone, dealershipAddress, dealershipHours }: CampaignBuilderProps) {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<Step>(1);
@@ -490,7 +502,9 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
     urgencyLine: string | null;
     expiresText: string | null;
     conditionsText: string | null;
+    layoutSuggestion: string | null;
   } | null>(null);
+  const [layoutBannerDismissed, setLayoutBannerDismissed] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
   // Variations
@@ -680,6 +694,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
     setGeneratingPreview(true);
     setPreviewError(null);
     setPreviewResult(null);
+    setLayoutBannerDismissed(false);
 
     try {
       const res = await fetch("/api/mail/preview", {
@@ -716,6 +731,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
         urgencyLine: data.structured?.urgencyLine ?? null,
         expiresText: data.structured?.couponBlock?.expiresText ?? null,
         conditionsText: data.structured?.couponBlock?.conditionsText ?? null,
+        layoutSuggestion: data.structured?.layoutSuggestion ?? null,
       });
       setCurrentStep(4);
     } catch (err) {
@@ -1791,6 +1807,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                           urgencyLine: previewResult.urgencyLine,
                           expiresText: previewResult.expiresText,
                           conditionsText: previewResult.conditionsText,
+                          layoutSuggestion: previewResult.layoutSuggestion,
                         });
                       }}
                       className={cn(
@@ -1891,6 +1908,44 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               </div>
             )}
 
+            {/* AI Layout Recommendation Banner */}
+            {previewResult.layoutSuggestion && !layoutBannerDismissed && (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-[var(--radius)] border border-emerald-200 bg-emerald-50/70">
+                <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-3 h-3 text-emerald-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-widest mb-0.5">AI Layout Recommendation</p>
+                  <p className="text-[13px] text-slate-800 leading-snug">{previewResult.layoutSuggestion}</p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                  {(() => {
+                    const parsed = parseLayoutSuggestion(previewResult.layoutSuggestion!);
+                    const hasChange = parsed.templateType || parsed.designStyle;
+                    return hasChange ? (
+                      <button
+                        onClick={() => {
+                          if (parsed.templateType) setTemplateType(parsed.templateType);
+                          if (parsed.designStyle) setDesignStyle(parsed.designStyle);
+                          setLayoutBannerDismissed(true);
+                        }}
+                        className="text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md px-2.5 py-1 transition-colors whitespace-nowrap"
+                      >
+                        Apply Layout
+                      </button>
+                    ) : null;
+                  })()}
+                  <button
+                    onClick={() => setLayoutBannerDismissed(true)}
+                    className="w-5 h-5 rounded flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                    aria-label="Dismiss"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {previewResult.channel === "direct_mail" && previewResult.previewQrUrl && (
               <TemplatePreview
                 templateType={templateType}
@@ -1914,6 +1969,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                 urgencyLine={previewResult.urgencyLine}
                 expiresText={previewResult.expiresText}
                 conditionsText={previewResult.conditionsText}
+                layoutSuggestion={previewResult.layoutSuggestion}
               />
             )}
 
