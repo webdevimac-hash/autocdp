@@ -549,8 +549,9 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
   type VariationResult = {
     customerId: string;
     customerName: string;
-    variantLabel?: string;  // "Relationship" | "Value Offer" | "Timely Hook"
+    variantLabel?: string;   // "Relationship" | "Bold Offer" | "Urgency Hook"
     variantFocus?: string;
+    accentHue?: string;      // "relationship" | "offer" | "urgency"
     content: string;
     smsBody: string | null;
     subject: string | null;
@@ -558,6 +559,15 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
     vehicle: string | null;
     confidence: number;
     designStyle?: DesignStyle;
+    // Structured fields — drive TemplatePreview per variant
+    headline: string | null;
+    subHeadline: string | null;
+    offer: string | null;
+    ctaText: string | null;
+    urgencyLine: string | null;
+    expiresText: string | null;
+    conditionsText: string | null;
+    layoutSuggestion: string | null;
   };
   const [variations, setVariations] = useState<VariationResult[]>([]);
   const [generatingVariations, setGeneratingVariations] = useState(false);
@@ -833,13 +843,19 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
       if (!res.ok || data.error || !data.variants?.length) return;
 
       const built: VariationResult[] = (data.variants as Array<{
-        variantLabel: string; variantFocus: string; content: string;
-        reasoning: string; confidence: number; previewQrUrl: string | null; vehicle: string | null;
+        variantLabel: string; variantFocus: string; accentHue?: string;
+        content: string; reasoning: string; confidence: number;
+        previewQrUrl: string | null; vehicle: string | null;
+        headline: string | null; subHeadline: string | null; offer: string | null;
+        ctaText: string | null; urgencyLine: string | null;
+        expiresText: string | null; conditionsText: string | null;
+        layoutSuggestion: string | null;
       }>).map((v) => ({
         customerId: targetId,
         customerName: data.customerName ?? "",
         variantLabel: v.variantLabel,
         variantFocus: v.variantFocus,
+        accentHue: v.accentHue,
         content: v.content,
         smsBody: null,
         subject: null,
@@ -847,6 +863,14 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
         vehicle: v.vehicle,
         confidence: v.confidence,
         designStyle,
+        headline: v.headline,
+        subHeadline: v.subHeadline,
+        offer: v.offer,
+        ctaText: v.ctaText,
+        urgencyLine: v.urgencyLine,
+        expiresText: v.expiresText,
+        conditionsText: v.conditionsText,
+        layoutSuggestion: v.layoutSuggestion,
       }));
 
       setVariations(built);
@@ -1883,77 +1907,146 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               <strong>AI reasoning:</strong> {previewResult.reasoning}
             </div>
 
-            {/* Style variations carousel */}
-            {variations.length > 0 && (
-              <div className="space-y-3">
+            {/* ── Style Variations Grid ─────────────────────────── */}
+            {generatingVariations && (
+              <div
+                className="rounded-xl p-6 flex flex-col items-center gap-3"
+                style={{ background: "linear-gradient(135deg,#09172A,#0E1F3C)", border: "1px solid rgba(99,102,241,0.2)" }}
+              >
+                <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-white">Generating 3 Variations…</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Running parallel Claude calls — Relationship · Bold Offer · Urgency Hook</p>
+                </div>
+              </div>
+            )}
+
+            {!generatingVariations && variations.length > 0 && (
+              <div className="space-y-4">
+                {/* Header row */}
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <Sparkles className="w-3 h-3 text-indigo-400" /> {variations.length} Style Variations
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded flex items-center justify-center" style={{ background: "rgba(99,102,241,0.15)" }}>
+                      <Sparkles className="w-3 h-3 text-indigo-400" />
+                    </div>
+                    <p className="text-[11px] font-bold text-slate-700 uppercase tracking-widest">
+                      {variations.length} Creative Variants — Choose &amp; Apply
+                    </p>
+                  </div>
                   <button
                     onClick={generateVariations}
                     disabled={generatingVariations}
-                    className="text-[10px] text-indigo-500 font-semibold hover:text-indigo-700 flex items-center gap-1"
+                    className="flex items-center gap-1.5 text-[11px] font-semibold text-indigo-500 hover:text-indigo-700 transition-colors"
                   >
-                    <RefreshCw className={cn("w-3 h-3", generatingVariations && "animate-spin")} />
+                    <RefreshCw className="w-3 h-3" />
                     Regenerate
                   </button>
                 </div>
-                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                  {variations.map((v, i) => (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        setSelectedVariation(i);
-                        setPreviewResult({
-                          content: v.content,
-                          subject: v.subject,
-                          smsBody: v.smsBody,
-                          reasoning: v.variantFocus ?? previewResult.reasoning,
-                          confidence: v.confidence,
-                          previewQrUrl: v.previewQrUrl,
-                          vehicle: v.vehicle,
-                          vehiclePhotoUrl: null,
-                          customerName: previewResult.customerName,
-                          channel: previewResult.channel,
-                          designStyle: v.designStyle,
-                          layoutSpec: previewResult.layoutSpec,
-                          offer: previewResult.offer,
-                          headline: previewResult.headline,
-                          subHeadline: previewResult.subHeadline,
-                          ctaText: previewResult.ctaText,
-                          urgencyLine: previewResult.urgencyLine,
-                          expiresText: previewResult.expiresText,
-                          conditionsText: previewResult.conditionsText,
-                          layoutSuggestion: previewResult.layoutSuggestion,
-                        });
-                      }}
-                      className={cn(
-                        "shrink-0 w-48 text-left p-3 rounded-lg border-2 transition-all space-y-1.5",
-                        selectedVariation === i
-                          ? "border-indigo-400 bg-indigo-50/60 shadow-sm"
-                          : "border-slate-200 bg-white hover:border-indigo-300"
-                      )}
-                    >
-                      <div className="flex items-center justify-between gap-1">
-                        {v.variantLabel && (
-                          <span className={cn(
-                            "text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full",
-                            i === 0 ? "bg-violet-100 text-violet-700"
-                            : i === 1 ? "bg-amber-100 text-amber-700"
-                            : "bg-emerald-100 text-emerald-700"
-                          )}>
-                            {v.variantLabel}
+
+                {/* 3-card grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {variations.map((v, i) => {
+                    const isApplied = selectedVariation === i;
+                    const accentColors = [
+                      { badge: "bg-violet-100 text-violet-700 border-violet-200", border: "#7c3aed", glow: "rgba(124,58,237,0.12)", applyBg: "#7c3aed" },
+                      { badge: "bg-amber-100 text-amber-700 border-amber-200",    border: "#d97706", glow: "rgba(217,119,6,0.12)",  applyBg: "#0f172a" },
+                      { badge: "bg-emerald-100 text-emerald-700 border-emerald-200", border: "#059669", glow: "rgba(5,150,105,0.12)", applyBg: "#059669" },
+                    ][i] ?? { badge: "bg-slate-100 text-slate-600 border-slate-200", border: "#64748b", glow: "rgba(100,116,139,0.12)", applyBg: "#0f172a" };
+
+                    return (
+                      <div
+                        key={i}
+                        className="rounded-xl overflow-hidden flex flex-col transition-all duration-200"
+                        style={{
+                          border: `2px solid ${isApplied ? accentColors.border : "#e2e8f0"}`,
+                          boxShadow: isApplied ? `0 0 0 3px ${accentColors.glow}, 0 4px 16px rgba(0,0,0,0.06)` : "0 1px 4px rgba(0,0,0,0.04)",
+                          background: isApplied ? `${accentColors.glow}` : "#fff",
+                        }}
+                      >
+                        {/* Card header */}
+                        <div className="px-3 pt-3 pb-2 flex items-center justify-between gap-2">
+                          <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border", accentColors.badge)}>
+                            {v.variantLabel ?? `Variant ${i + 1}`}
                           </span>
+                          <span className="text-[10px] font-bold text-emerald-600">{Math.round(v.confidence * 100)}% conf</span>
+                        </div>
+
+                        {/* Focus line */}
+                        {v.variantFocus && (
+                          <p className="px-3 pb-2 text-[10px] text-slate-400 italic leading-snug">{v.variantFocus}</p>
                         )}
-                        <span className="text-[9px] font-bold text-emerald-600 shrink-0 ml-auto">{Math.round(v.confidence * 100)}%</span>
+
+                        {/* Headline */}
+                        {v.headline && (
+                          <p className="px-3 pb-1 text-[12px] font-bold text-slate-900 leading-snug line-clamp-2">{v.headline}</p>
+                        )}
+
+                        {/* Body excerpt */}
+                        <p className="px-3 pb-2 text-[11px] text-slate-600 leading-relaxed line-clamp-4 flex-1">{v.content}</p>
+
+                        {/* Offer pill */}
+                        {v.offer && (
+                          <div className="px-3 pb-2">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              🎁 {v.offer}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Layout suggestion */}
+                        {v.layoutSuggestion && (
+                          <div className="mx-3 mb-2 px-2.5 py-2 rounded-lg text-[10px] leading-relaxed"
+                            style={{ background: "linear-gradient(135deg,#09172A,#0E1F3C)", color: "#34D399" }}>
+                            <span className="font-bold text-[9px] uppercase tracking-widest text-emerald-400 block mb-0.5">AI Layout</span>
+                            <span className="text-slate-300 line-clamp-3">{v.layoutSuggestion}</span>
+                          </div>
+                        )}
+
+                        {/* Apply button */}
+                        <div className="px-3 pb-3">
+                          {isApplied ? (
+                            <div className="h-8 rounded-lg flex items-center justify-center gap-1.5 text-[11px] font-bold"
+                              style={{ background: accentColors.glow, color: accentColors.border, border: `1px solid ${accentColors.border}` }}>
+                              <CheckCircle className="w-3.5 h-3.5" /> Applied
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setSelectedVariation(i);
+                                setLayoutBannerDismissed(false);
+                                setPreviewResult({
+                                  content:          v.content,
+                                  subject:          v.subject,
+                                  smsBody:          v.smsBody,
+                                  reasoning:        v.variantFocus ?? previewResult.reasoning,
+                                  confidence:       v.confidence,
+                                  previewQrUrl:     v.previewQrUrl,
+                                  vehicle:          v.vehicle,
+                                  vehiclePhotoUrl:  null,
+                                  customerName:     previewResult.customerName,
+                                  channel:          previewResult.channel,
+                                  designStyle:      v.designStyle ?? previewResult.designStyle,
+                                  layoutSpec:       previewResult.layoutSpec,
+                                  offer:            v.offer,
+                                  headline:         v.headline,
+                                  subHeadline:      v.subHeadline,
+                                  ctaText:          v.ctaText,
+                                  urgencyLine:      v.urgencyLine,
+                                  expiresText:      v.expiresText,
+                                  conditionsText:   v.conditionsText,
+                                  layoutSuggestion: v.layoutSuggestion,
+                                });
+                              }}
+                              className="w-full h-8 rounded-lg text-[11px] font-bold text-white transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
+                              style={{ background: accentColors.applyBg }}
+                            >
+                              Apply This Variant
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      {v.variantFocus && (
-                        <p className="text-[9px] text-slate-400 italic leading-snug">{v.variantFocus}</p>
-                      )}
-                      <p className="text-[10px] text-slate-600 line-clamp-3 leading-snug">{v.content}</p>
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* A/B test configuration */}

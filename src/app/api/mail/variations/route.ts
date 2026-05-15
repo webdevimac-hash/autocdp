@@ -10,27 +10,73 @@ import type { Customer, Visit, MailTemplateType, DesignStyle } from "@/types";
  * POST /api/mail/variations
  *
  * Generates 3 creative style variations for a single customer in parallel.
- * Each variant uses the same customer + campaign goal but a different
- * creative approach: Relationship / Value Offer / Timely Hook.
+ * Each variant uses the same customer + campaign goal but a meaningfully
+ * different creative approach — Relationship / Bold Offer / Urgency Hook —
+ * so each produces distinct copy, layoutSuggestion, and visual treatment.
+ *
+ * Returns full structured output (headline, bodyCopy, couponBlock, ctaText,
+ * urgencyLine, layoutSuggestion, offer) so the UI can render TemplatePreview
+ * for each variant and let the dealer "Apply" the one they prefer.
  *
  * Body: customerId, templateType, campaignGoal, designStyle?
  */
 
+// Three genuinely distinct creative strategies.
+// Each hint explicitly tells Claude which VISUAL TREATMENT to suggest in its
+// layoutSuggestion so the three cards look meaningfully different.
 const STYLE_VARIANTS = [
   {
     label: "Relationship",
-    focus: "Personal connection — service history, named advisor, warm and specific",
-    hint: "Open with a personal reference to their exact vehicle or how long they've been a customer. Write as if from their service advisor. Warm, specific, relationship-first. The offer is secondary to the connection.",
+    focus: "Personal connection — advisor tone, service history, warm + specific",
+    hint: [
+      "VARIANT APPROACH — RELATIONSHIP:",
+      "Write as the customer's personal service advisor. Open with a warm, specific",
+      "reference to their exact vehicle and how long they've been a customer.",
+      "The offer is secondary — the human connection is the hook.",
+      "Voice: intimate, personal, like a note from someone who actually knows them.",
+      "",
+      "For your layoutSuggestion: Recommend the visual DNA's primary layout style.",
+      "Prioritise the handwritten-note aesthetic — headline is warm and personal",
+      "(not promotional), hero vehicle photo prominent, offer badge understated.",
+      "Eye path: vehicle photo → personal headline → advisor message → soft CTA.",
+    ].join("\n"),
+    accentHue: "relationship",
   },
   {
-    label: "Value Offer",
-    focus: "Lead with a specific, compelling offer relevant to their vehicle",
-    hint: "Open directly with a concrete, specific service offer relevant to their vehicle age or mileage. Be direct about the value. Reference the vehicle by name. Strong, clear call to action. Relationship details support the offer.",
+    label: "Bold Offer",
+    focus: "Oversized offer badge dominates — value drives the eye first",
+    hint: [
+      "VARIANT APPROACH — BOLD OFFER:",
+      "Lead directly with the single most compelling, concrete service offer.",
+      "Open with the dollar amount or named service — make the value unmissable.",
+      "Reference the vehicle by year/make/model. Strong, direct CTA.",
+      "Voice: confident, direct, value-forward. Relationship details support the offer.",
+      "",
+      "For your layoutSuggestion: Suggest a HIGH-CONTRAST layout where the offer",
+      "badge / coupon strip is the DOMINANT visual element — oversized, centre-stage.",
+      "Recommend premium-fluorescent style if the visual DNA examples show dark",
+      "backgrounds, OR a bold-badge treatment on a light background otherwise.",
+      "Eye path: offer badge → vehicle name → short body → urgent CTA.",
+    ].join("\n"),
+    accentHue: "offer",
   },
   {
-    label: "Timely Hook",
-    focus: "Time-sensitive — mileage milestone, seasonal service, or 'it's been X months'",
-    hint: "Open with a time-based hook tied to their last visit date, season, or upcoming mileage milestone. Make it feel naturally urgent without pressure. Reference their specific vehicle and the exact service type it needs.",
+    label: "Urgency Hook",
+    focus: "Deadline banner + mileage milestone — time creates action",
+    hint: [
+      "VARIANT APPROACH — URGENCY HOOK:",
+      "Open with a time-based hook that creates genuine, non-pushy urgency:",
+      "exact months since last visit, upcoming mileage milestone, or seasonal window.",
+      "Name the specific service the vehicle is due for. Expiry date prominent.",
+      "Voice: matter-of-fact, timely, not salesy. 'Your Accord is 18 months out.'",
+      "",
+      "For your layoutSuggestion: Recommend a layout with a prominent URGENCY BANNER",
+      "or deadline ribbon — top strip or bottom strip with expiry date large.",
+      "Suggest the complex-fold or multi-panel format if visual DNA shows folded",
+      "pieces; otherwise suggest a standard postcard with an urgency strip overlay.",
+      "Eye path: urgency banner → vehicle/service hook → offer → CTA with date.",
+    ].join("\n"),
+    accentHue: "urgency",
   },
 ] as const;
 
@@ -108,7 +154,9 @@ export async function POST(req: NextRequest) {
         ((customer?.metadata as Record<string, unknown> | null)?.credit_tier as string | undefined) ?? undefined,
     };
 
-    // Run all 3 style variants in parallel — one Claude call per variant
+    // Run all 3 style variants in parallel — one Claude call per variant.
+    // Each call gets a unique `template` hint that forces a distinct creative approach
+    // AND a distinct layoutSuggestion (see STYLE_VARIANTS above).
     const settled = await Promise.allSettled(
       STYLE_VARIANTS.map((v) => runCreativeAgent({ ...sharedInput, template: v.hint }))
     );
@@ -121,15 +169,34 @@ export async function POST(req: NextRequest) {
       const result = settled[i];
       if (result.status === "rejected") return null;
       const creative = result.value;
+
+      // Pull structured fields — these drive TemplatePreview rendering on the client
+      const couponBlock = creative.structured?.couponBlock as
+        | { offerText?: string; expiresText?: string; conditionsText?: string }
+        | undefined;
+
       return {
-        variantLabel: v.label,
-        variantFocus: v.focus,
-        content: creative.content,
-        reasoning: creative.reasoning,
-        confidence: creative.confidence,
+        variantLabel:      v.label,
+        variantFocus:      v.focus,
+        accentHue:         v.accentHue,
+        // Copy
+        content:           creative.content,
+        reasoning:         creative.reasoning,
+        confidence:        creative.confidence,
+        // Structured fields for TemplatePreview
+        headline:          creative.headline ?? null,
+        subHeadline:       creative.structured?.subHeadline ?? null,
+        offer:             creative.offer ?? null,
+        ctaText:           creative.structured?.ctaText ?? null,
+        urgencyLine:       creative.structured?.urgencyLine ?? null,
+        expiresText:       couponBlock?.expiresText ?? null,
+        conditionsText:    couponBlock?.conditionsText ?? null,
+        // Layout signals
+        layoutSuggestion:  creative.layoutSuggestion ?? null,
+        // Metadata
         previewQrUrl,
         vehicle,
-        lastVisitDate: visits?.[0]?.visit_date ?? null,
+        lastVisitDate:     visits?.[0]?.visit_date ?? null,
       };
     }).filter((v): v is NonNullable<typeof v> => v !== null);
 
