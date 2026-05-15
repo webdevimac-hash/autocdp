@@ -433,15 +433,48 @@ interface CampaignBuilderProps {
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
-function parseLayoutSuggestion(suggestion: string): { templateType?: MailTemplateType; designStyle?: DesignStyle } {
+interface LayoutSuggestionParsed {
+  templateType?: MailTemplateType;
+  designStyle?: DesignStyle;
+  heroTreatment?: "full-bleed" | "side-by-side" | "standard";
+  couponPlacement?: "below-body" | "perforated" | "none";
+  urgencyStyle?: "neon" | "strip" | "none";
+  badgeSize?: "oversized" | "standard";
+  actionRowLayout?: "side-by-side" | "stacked";
+}
+
+function parseLayoutSuggestion(suggestion: string): LayoutSuggestionParsed {
   const s = suggestion.toLowerCase();
-  const result: { templateType?: MailTemplateType; designStyle?: DesignStyle } = {};
+  const result: LayoutSuggestionParsed = {};
+
+  // Design style
   if (s.includes("conquest")) result.designStyle = "conquest";
-  else if (s.includes("fluorescent") || s.includes("neon")) result.designStyle = "premium-fluorescent";
-  else if (s.includes("tri-fold") || s.includes("complex-fold") || s.includes("folded") || s.includes("trifold")) result.designStyle = "complex-fold";
+  else if (s.includes("fluorescent") || (s.includes("neon") && !s.includes("neon urgency") && !s.includes("neon strip"))) result.designStyle = "premium-fluorescent";
+  else if (s.includes("tri-fold") || s.includes("complex-fold") || s.includes("trifold") || s.includes("folded letter")) result.designStyle = "complex-fold";
   else if (s.includes("multi-panel") || s.includes("multipanel")) result.designStyle = "multi-panel";
-  if (s.includes("letter 8.5") || s.includes("8.5x11") || s.includes("8.5 x 11")) result.templateType = "letter_8.5x11";
-  else if (s.includes("letter")) result.templateType = "letter_6x9";
+
+  // Template type
+  if (s.includes("8.5x11") || s.includes("8.5 x 11") || s.includes("letter 8.5")) result.templateType = "letter_8.5x11";
+  else if (s.includes("letter") && !s.includes("folded letter")) result.templateType = "letter_6x9";
+
+  // Hero treatment
+  if (s.includes("full-bleed") || s.includes("full bleed")) result.heroTreatment = "full-bleed";
+  else if (s.includes("side-by-side") || s.includes("side by side")) result.heroTreatment = "side-by-side";
+
+  // Coupon placement
+  if (s.includes("perforated coupon") || s.includes("perforated")) result.couponPlacement = "perforated";
+  else if (s.includes("coupon below") || s.includes("coupon at bottom") || s.includes("coupon strip")) result.couponPlacement = "below-body";
+
+  // Urgency style
+  if (s.includes("neon urgency") || s.includes("neon strip") || s.includes("fluorescent urgency")) result.urgencyStyle = "neon";
+  else if (s.includes("urgency strip") || s.includes("urgency bar") || s.includes("urgency band")) result.urgencyStyle = "strip";
+
+  // Badge size
+  if (s.includes("oversized") || s.includes("large badge") || s.includes("offerbadge") || s.includes("offer badge")) result.badgeSize = "oversized";
+
+  // Action row
+  if (s.includes("side-by-side cta") || s.includes("side-by-side qr") || s.includes("qr + cta")) result.actionRowLayout = "side-by-side";
+
   return result;
 }
 
@@ -505,6 +538,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
     layoutSuggestion: string | null;
   } | null>(null);
   const [layoutBannerDismissed, setLayoutBannerDismissed] = useState(false);
+  const [showWhyTooltip, setShowWhyTooltip] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
   // Variations
@@ -695,6 +729,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
     setPreviewError(null);
     setPreviewResult(null);
     setLayoutBannerDismissed(false);
+    setShowWhyTooltip(false);
 
     try {
       const res = await fetch("/api/mail/preview", {
@@ -1908,17 +1943,75 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               </div>
             )}
 
-            {/* AI Layout Recommendation Banner */}
+            {/* AI Layout Recommendation Banner — premium institutional */}
             {previewResult.layoutSuggestion && !layoutBannerDismissed && (
-              <div className="flex items-start gap-3 px-4 py-3 rounded-[var(--radius)] border border-emerald-200 bg-emerald-50/70">
-                <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                  <Sparkles className="w-3 h-3 text-emerald-600" />
+              <div style={{
+                background: "linear-gradient(135deg, #09172A 0%, #0E1F3C 100%)",
+                border: "1px solid rgba(16,185,129,0.22)",
+                borderLeft: "3px solid #10B981",
+                borderRadius: "var(--radius, 8px)",
+                boxShadow: "0 0 0 1px rgba(16,185,129,0.07), 0 6px 28px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.04)",
+                padding: "14px 16px",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "12px",
+              }}>
+                {/* Sparkle icon */}
+                <div style={{
+                  marginTop: "1px", width: "30px", height: "30px", borderRadius: "8px", flexShrink: 0,
+                  background: "linear-gradient(135deg, rgba(16,185,129,0.22) 0%, rgba(16,185,129,0.10) 100%)",
+                  border: "1px solid rgba(16,185,129,0.30)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <Sparkles className="w-3.5 h-3.5" style={{ color: "#34D399" }} />
                 </div>
+
+                {/* Text content */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-widest mb-0.5">AI Layout Recommendation</p>
-                  <p className="text-[13px] text-slate-800 leading-snug">{previewResult.layoutSuggestion}</p>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "9.5px", fontWeight: 800, color: "#34D399", letterSpacing: "0.12em", textTransform: "uppercase", margin: 0 }}>
+                      AI Autonomous Designer
+                    </p>
+                    {/* Why this? tooltip trigger */}
+                    <div className="relative">
+                      <button
+                        onMouseEnter={() => setShowWhyTooltip(true)}
+                        onMouseLeave={() => setShowWhyTooltip(false)}
+                        onFocus={() => setShowWhyTooltip(true)}
+                        onBlur={() => setShowWhyTooltip(false)}
+                        style={{ width: "14px", height: "14px", borderRadius: "50%", border: "1px solid rgba(52,211,153,0.35)", background: "rgba(52,211,153,0.10)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "default" }}
+                        aria-label="Why this layout?"
+                      >
+                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 800, color: "#34D399", lineHeight: 1 }}>?</span>
+                      </button>
+                      {showWhyTooltip && (
+                        <div style={{
+                          position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+                          width: "260px", background: "#0A1628", border: "1px solid rgba(16,185,129,0.28)",
+                          borderRadius: "8px", padding: "10px 12px",
+                          boxShadow: "0 8px 32px rgba(0,0,0,0.40), 0 0 0 1px rgba(16,185,129,0.08)",
+                          zIndex: 50,
+                        }}>
+                          <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 800, color: "#34D399", letterSpacing: "0.10em", textTransform: "uppercase", marginBottom: "5px" }}>Based on performance history</p>
+                          <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "rgba(226,232,240,0.85)", lineHeight: 1.5, margin: 0 }}>
+                            {previewResult.reasoning.length > 180 ? previewResult.reasoning.slice(0, 180) + "…" : previewResult.reasoning}
+                          </p>
+                          {/* Arrow */}
+                          <div style={{ position: "absolute", bottom: "-5px", left: "50%", transform: "translateX(-50%) rotate(45deg)", width: "8px", height: "8px", background: "#0A1628", borderRight: "1px solid rgba(16,185,129,0.28)", borderBottom: "1px solid rgba(16,185,129,0.28)" }} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: 500, color: "rgba(226,232,240,0.92)", lineHeight: 1.45, margin: 0 }}>
+                    {previewResult.layoutSuggestion}
+                  </p>
+                  <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "10.5px", color: "rgba(148,163,184,0.70)", marginTop: "4px", margin: "4px 0 0" }}>
+                    Recommended based on your dealership's highest-response campaigns
+                  </p>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+
+                {/* Action area */}
+                <div className="flex items-center gap-1.5 shrink-0" style={{ marginTop: "2px" }}>
                   {(() => {
                     const parsed = parseLayoutSuggestion(previewResult.layoutSuggestion!);
                     const hasChange = parsed.templateType || parsed.designStyle;
@@ -1929,7 +2022,15 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                           if (parsed.designStyle) setDesignStyle(parsed.designStyle);
                           setLayoutBannerDismissed(true);
                         }}
-                        className="text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md px-2.5 py-1 transition-colors whitespace-nowrap"
+                        style={{
+                          fontFamily: "'Inter', sans-serif", fontSize: "11.5px", fontWeight: 700,
+                          color: "#09172A", background: "#34D399",
+                          borderRadius: "6px", padding: "6px 12px", border: "none", cursor: "pointer",
+                          whiteSpace: "nowrap", transition: "all 0.15s ease",
+                          boxShadow: "0 2px 8px rgba(52,211,153,0.30)",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "#6EE7B7"; e.currentTarget.style.boxShadow = "0 0 16px rgba(52,211,153,0.55), 0 4px 12px rgba(0,0,0,0.20)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "#34D399"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(52,211,153,0.30)"; e.currentTarget.style.transform = "translateY(0)"; }}
                       >
                         Apply Layout
                       </button>
@@ -1937,7 +2038,9 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                   })()}
                   <button
                     onClick={() => setLayoutBannerDismissed(true)}
-                    className="w-5 h-5 rounded flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                    style={{ width: "22px", height: "22px", borderRadius: "5px", border: "none", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "rgba(148,163,184,0.60)", transition: "color 0.12s, background 0.12s" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(226,232,240,0.80)"; e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(148,163,184,0.60)"; e.currentTarget.style.background = "transparent"; }}
                     aria-label="Dismiss"
                   >
                     <X className="w-3.5 h-3.5" />

@@ -86,6 +86,33 @@ interface AddressRecord {
 
 type PreviewMode = "design" | "realistic";
 
+interface LayoutHints {
+  forceNeonUrgency: boolean;
+  forceOversizedBadge: boolean;
+  forceCouponBottom: boolean;
+  heroFullBleed: boolean;
+  actionSideBySide: boolean;
+}
+
+function deriveLayoutHints(suggestion: string): LayoutHints {
+  const s = suggestion.toLowerCase();
+  return {
+    forceNeonUrgency: s.includes("neon urgency") || s.includes("neon strip") || s.includes("fluorescent urgency"),
+    forceOversizedBadge: s.includes("oversized") || s.includes("large badge") || s.includes("offerbadge") || s.includes("offer badge"),
+    forceCouponBottom: s.includes("perforated coupon") || s.includes("perforated") || s.includes("coupon below") || s.includes("coupon at bottom") || s.includes("coupon strip"),
+    heroFullBleed: s.includes("full-bleed") || s.includes("full bleed"),
+    actionSideBySide: s.includes("side-by-side cta") || s.includes("side-by-side qr") || s.includes("qr + cta") || s.includes("qr+cta"),
+  };
+}
+
+const DEFAULT_LAYOUT_HINTS: LayoutHints = {
+  forceNeonUrgency: false,
+  forceOversizedBadge: false,
+  forceCouponBottom: false,
+  heroFullBleed: false,
+  actionSideBySide: false,
+};
+
 function addrToLines(a: AddressRecord | null | undefined): { line1: string; line2: string } {
   if (!a) return { line1: "", line2: "" };
   const line1 = a.street ?? "";
@@ -616,28 +643,33 @@ function OfferCallout({ offer, accent, expiresText, conditionsText }: { offer: s
 // ── Offer Badge ───────────────────────────────────────────────
 // Floating circular badge overlaid on the vehicle photo hero
 
-function OfferBadge({ offer, accent }: { offer: string; accent: AccentConfig }) {
+function OfferBadge({ offer, accent, oversized }: { offer: string; accent: AccentConfig; oversized?: boolean }) {
   const dollarMatch = offer.match(/\$(\d+(?:\.\d{2})?)/);
   const isFree = /free/i.test(offer);
   if (!dollarMatch && !isFree) return null;
   const amount = dollarMatch ? dollarMatch[1].replace(/\.00$/, "") : null;
+  const sz = oversized ? 160 : 128;
+  const digitSz = oversized ? "54px" : "44px";
+  const labelSz = oversized ? "13px" : "12px";
   return (
     <div style={{
       position: "absolute", top: "8px", right: "8px", zIndex: 10,
-      width: "128px", height: "128px", borderRadius: "50%",
+      width: `${sz}px`, height: `${sz}px`, borderRadius: "50%",
       background: `radial-gradient(circle at 36% 34%, ${adjustBrightness(accent.header, 36)} 0%, ${accent.header} 44%, ${adjustBrightness(accent.header, -44)} 100%)`,
-      boxShadow: `0 16px 48px rgba(0,0,0,0.76), 0 0 0 4px rgba(255,255,255,0.75), 0 0 0 11px ${accent.header}44`,
-      border: "4px solid rgba(255,255,255,0.75)",
+      boxShadow: oversized
+        ? `0 20px 56px rgba(0,0,0,0.82), 0 0 0 5px rgba(255,255,255,0.80), 0 0 0 14px ${accent.header}55, 0 0 40px ${accent.header}66`
+        : `0 16px 48px rgba(0,0,0,0.76), 0 0 0 4px rgba(255,255,255,0.75), 0 0 0 11px ${accent.header}44`,
+      border: `${oversized ? 5 : 4}px solid rgba(255,255,255,0.75)`,
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
     }}>
       {amount ? (
         <>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 900, color: "rgba(255,255,255,0.95)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "44px", fontWeight: 900, color: "#fff", lineHeight: 1, margin: "2px 0", textShadow: "0 2px 6px rgba(0,0,0,0.30)" }}>${amount}</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 900, color: "rgba(255,255,255,0.95)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: labelSz, fontWeight: 900, color: "rgba(255,255,255,0.95)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1 }}>SAVE</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: digitSz, fontWeight: 900, color: "#fff", lineHeight: 1, margin: "2px 0", textShadow: "0 2px 6px rgba(0,0,0,0.30)" }}>${amount}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: labelSz, fontWeight: 900, color: "rgba(255,255,255,0.95)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1 }}>OFF</div>
         </>
       ) : (
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "20px", fontWeight: 900, color: "#fff", lineHeight: 1 }}>FREE</div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: oversized ? "26px" : "20px", fontWeight: 900, color: "#fff", lineHeight: 1 }}>FREE</div>
       )}
     </div>
   );
@@ -838,7 +870,7 @@ function PrintReadyFrame({
 
 function RealPostcardFront({
   content, dealershipName, offer, headline, qrPreviewUrl, logoUrl, accent, dealershipAddress, dealershipPhone, vehiclePhotoUrl,
-  subHeadline, ctaText, urgencyLine, expiresText, conditionsText, insetPhotoUrl,
+  subHeadline, ctaText, urgencyLine, expiresText, conditionsText, insetPhotoUrl, layoutHints,
 }: {
   content: string;
   dealershipName: string;
@@ -856,7 +888,9 @@ function RealPostcardFront({
   expiresText?: string | null;
   conditionsText?: string | null;
   insetPhotoUrl?: string | null;
+  layoutHints?: LayoutHints;
 }) {
+  const hints = layoutHints ?? DEFAULT_LAYOUT_HINTS;
   const addrLines = addrToLines(dealershipAddress);
 
   return (
@@ -881,14 +915,14 @@ function RealPostcardFront({
       <div style={{ position: "relative" }}>
         <VehiclePhotoZone
           heroBg={accent.header}
-          height="238px"
+          height={hints.heroFullBleed ? "290px" : "238px"}
           dealershipName={headline ? undefined : dealershipName}
           imageUrl={vehiclePhotoUrl}
           insetImageUrl={insetPhotoUrl}
           showLabel={!headline}
         />
         {/* Offer badge — top-right corner */}
-        {offer && <OfferBadge offer={offer} accent={accent} />}
+        {offer && <OfferBadge offer={offer} accent={accent} oversized={hints.forceOversizedBadge} />}
         {/* Headline overlay — cinematic gradient, dominant bold text */}
         <div style={{
           position: "absolute", bottom: 0, left: 0, right: 0,
@@ -926,17 +960,22 @@ function RealPostcardFront({
         </div>
       </div>
 
-      {/* Urgency strip — branded accent, not generic amber */}
+      {/* Urgency strip — branded accent; neon override when AI hints forceNeonUrgency */}
       {urgencyLine && (
-        <div style={{
+        <div style={hints.forceNeonUrgency ? {
+          background: "#FFE500",
+          backgroundImage: `repeating-linear-gradient(-45deg, rgba(0,0,0,0.04) 0px, rgba(0,0,0,0.04) 4px, transparent 4px, transparent 10px)`,
+          borderLeft: "6px solid #D4A017",
+          padding: "12px 16px", display: "flex", alignItems: "center", gap: "7px",
+        } : {
           background: adjustBrightness(accent.header, -50),
           backgroundImage: `repeating-linear-gradient(-45deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 4px, transparent 4px, transparent 10px)`,
           borderLeft: `6px solid ${accent.header}`,
           padding: "12px 16px", display: "flex", alignItems: "center", gap: "7px",
         }}>
           <span style={{ fontSize: "11px" }}>⚡</span>
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, color: "#fff", letterSpacing: "0.05em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
-          <div style={{ background: "#fff", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "7.5px", fontWeight: 900, color: accent.header, letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, color: hints.forceNeonUrgency ? "#000" : "#fff", letterSpacing: "0.05em", textTransform: "uppercase", flex: 1 }}>{urgencyLine}</span>
+          <div style={{ background: hints.forceNeonUrgency ? "#000" : "#fff", borderRadius: "3px", padding: "2px 7px", fontFamily: "'Inter', sans-serif", fontSize: "7.5px", fontWeight: 900, color: hints.forceNeonUrgency ? "#FFE500" : accent.header, letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>ACT NOW →</div>
         </div>
       )}
 
@@ -951,6 +990,37 @@ function RealPostcardFront({
           {(() => { const max = offer ? 90 : 150; return content.length > max ? content.slice(0, max - 3) + "…" : content; })()}
         </p>
       </div>
+
+      {/* Perforated coupon strip — rendered below body when AI recommends coupon placement */}
+      {hints.forceCouponBottom && offer && (
+        <div style={{
+          margin: "0 12px 10px",
+          borderRadius: "6px",
+          border: `2px dashed ${accent.header}`,
+          background: `${accent.offerBg}`,
+          padding: "10px 14px",
+          display: "flex", alignItems: "center", gap: "12px",
+          position: "relative",
+        }}>
+          {/* Perforation notch left */}
+          <div style={{ position: "absolute", left: "-10px", top: "50%", transform: "translateY(-50%)", width: "18px", height: "18px", borderRadius: "50%", background: "#FEFCF3", border: `2px solid ${accent.header}` }} />
+          {/* Perforation notch right */}
+          <div style={{ position: "absolute", right: "-10px", top: "50%", transform: "translateY(-50%)", width: "18px", height: "18px", borderRadius: "50%", background: "#FEFCF3", border: `2px solid ${accent.header}` }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8.5px", fontWeight: 800, color: accent.header, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "2px" }}>✂ CLIP & SAVE</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 900, color: accent.header, lineHeight: 1.1 }}>{offer}</div>
+            {expiresText && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", color: "rgba(0,0,0,0.55)", marginTop: "3px" }}>Expires: {expiresText}</div>}
+          </div>
+          <div style={{
+            width: "56px", height: "56px", borderRadius: "50%",
+            background: `linear-gradient(135deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -20)} 100%)`,
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            boxShadow: `0 4px 14px ${accent.header}55`,
+          }}>
+            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "8px", fontWeight: 900, color: "#fff", textAlign: "center", letterSpacing: "0.06em", textTransform: "uppercase", lineHeight: 1.2 }}>BRING<br />IN</span>
+          </div>
+        </div>
+      )}
 
       {/* Action row: QR scan + CTA button side by side */}
       <div style={{ padding: "10px 14px 14px", display: "flex", gap: "10px", alignItems: "stretch" }}>
@@ -1309,7 +1379,7 @@ function PostcardBack({
 function Postcard6x9Preview({
   content, dealershipName, customerName, offer, headline, qrPreviewUrl, logoUrl, accent,
   customerAddress, dealershipAddress, dealershipPhone, vehiclePhotoUrl, initialMode,
-  subHeadline, ctaText, urgencyLine, expiresText, conditionsText, insetPhotoUrl,
+  subHeadline, ctaText, urgencyLine, expiresText, conditionsText, insetPhotoUrl, layoutHints,
 }: {
   content: string;
   dealershipName: string;
@@ -1330,6 +1400,7 @@ function Postcard6x9Preview({
   expiresText?: string | null;
   conditionsText?: string | null;
   insetPhotoUrl?: string | null;
+  layoutHints?: LayoutHints;
 }) {
   const [showBack, setShowBack] = useState(false);
   const [previewMode, setPreviewMode] = useState<PreviewMode>(initialMode ?? "realistic");
@@ -1457,6 +1528,7 @@ function Postcard6x9Preview({
                       vehiclePhotoUrl={vehiclePhotoUrl} insetPhotoUrl={insetPhotoUrl}
                       subHeadline={subHeadline} ctaText={ctaText} urgencyLine={urgencyLine}
                       expiresText={expiresText} conditionsText={conditionsText}
+                      layoutHints={layoutHints}
                     />
                   ) : (
                     <RealPostcardBack
@@ -2538,11 +2610,14 @@ export function TemplatePreview({
     if (!layoutSuggestion) return designStyle;
     const s = layoutSuggestion.toLowerCase();
     if (s.includes("conquest")) return "conquest" as const;
-    if (s.includes("fluorescent") || s.includes("neon")) return "premium-fluorescent" as const;
-    if (s.includes("tri-fold") || s.includes("complex-fold") || s.includes("folded") || s.includes("trifold")) return "complex-fold" as const;
+    if (s.includes("fluorescent") || (s.includes("neon") && !s.includes("neon urgency") && !s.includes("neon strip"))) return "premium-fluorescent" as const;
+    if (s.includes("tri-fold") || s.includes("complex-fold") || s.includes("trifold") || s.includes("folded letter")) return "complex-fold" as const;
     if (s.includes("multi-panel") || s.includes("multipanel")) return "multi-panel" as const;
     return designStyle;
   })();
+
+  // Derive fine-grained visual hints from the suggestion for components that support them
+  const layoutHints: LayoutHints = layoutSuggestion ? deriveLayoutHints(layoutSuggestion) : DEFAULT_LAYOUT_HINTS;
 
   if (!content && effectiveDesignStyle === "standard") {
     return (
@@ -2637,6 +2712,7 @@ export function TemplatePreview({
             insetPhotoUrl={insetPhotoUrl} initialMode={initialMode}
             subHeadline={subHeadline} ctaText={ctaText} urgencyLine={urgencyLine}
             expiresText={expiresText} conditionsText={conditionsText}
+            layoutHints={layoutHints}
           />
         </div>
       ) : (
