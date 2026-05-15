@@ -318,12 +318,15 @@ function HandwrittenContent({
 // Shows a real vehicle photo when available; falls back to branded SVG placeholder
 
 function VehiclePhotoZone({
-  heroBg, height = "140px", dealershipName, showLabel = true, imageUrl,
+  heroBg, height = "140px", dealershipName, showLabel = true, imageUrl, insetImageUrl,
 }: {
-  heroBg: string; height?: string; dealershipName?: string; showLabel?: boolean; imageUrl?: string | null;
+  heroBg: string; height?: string; dealershipName?: string; showLabel?: boolean;
+  imageUrl?: string | null; insetImageUrl?: string | null;
 }) {
   const [imgFailed, setImgFailed] = useState(false);
+  const [insetFailed, setInsetFailed] = useState(false);
   const hasRealPhoto = !!imageUrl && !imgFailed;
+  const hasInset = !!insetImageUrl && !insetFailed && hasRealPhoto;
 
   return (
     <div style={{ width: "100%", height, position: "relative", overflow: "hidden", flexShrink: 0 }}>
@@ -389,6 +392,33 @@ function VehiclePhotoZone({
         pointerEvents: "none",
       }} />
 
+      {/* Inset vehicle photo — perspective-angled overlay bottom-left */}
+      {hasInset && (
+        <div style={{
+          position: "absolute", bottom: "38px", left: "10px",
+          width: "30%", aspectRatio: "16/10",
+          borderRadius: "4px", overflow: "hidden",
+          border: "2.5px solid rgba(255,255,255,0.72)",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.54), 0 1px 4px rgba(0,0,0,0.30)",
+          transform: "perspective(280px) rotateY(7deg) scale(0.97)",
+          zIndex: 6,
+        }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={insetImageUrl!}
+            alt="Vehicle alternate view"
+            onError={() => setInsetFailed(true)}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block",
+              filter: "brightness(0.82) contrast(1.10) saturate(1.10)" }}
+          />
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "35%",
+            background: "linear-gradient(to top, rgba(0,0,0,0.32) 0%, transparent 100%)" }} />
+          <div style={{ position: "absolute", top: "3px", left: "4px", fontFamily: "'Inter', sans-serif",
+            fontSize: "4.5px", fontWeight: 800, color: "rgba(255,255,255,0.80)",
+            letterSpacing: "0.12em", textTransform: "uppercase" }}>ALSO AVAILABLE</div>
+        </div>
+      )}
+
       {/* VEHICLE PHOTO label — only on placeholder, not on real photos */}
       {showLabel && !hasRealPhoto && (
         <div style={{
@@ -423,57 +453,104 @@ function adjustBrightness(hex: string, amount: number): string {
   return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
 
+// ── Dynamic accent from any hex color ────────────────────────
+// Builds a full AccentConfig from an arbitrary dealership hex brand color.
+// Used when dealershipAccentHex overrides the preset AccentColor enum.
+
+function hexToAccent(hex: string): AccentConfig {
+  const h = /^#/.test(hex) ? hex : `#${hex}`;
+  const r = parseInt(h.slice(1, 3), 16);
+  const g = parseInt(h.slice(3, 5), 16);
+  const b = parseInt(h.slice(5, 7), 16);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  // offerText: if the header color is dark use a brightened shade, else darken
+  const offerText = lum < 0.48 ? adjustBrightness(h, 80) : adjustBrightness(h, -68);
+  return {
+    header: h,
+    offerBg: `${h}1a`,
+    offerBorder: h,
+    offerText,
+    letterBorder: `2px solid ${h}`,
+    highlightGlow: `0 0 0 2px ${h}44`,
+    isHighlight: lum > 0.58,
+  };
+}
+
 // ── Coupon Strip ───────────────────────────────────────────────
 
 function CouponStrip({ offer, accent, expiresText, conditionsText }: { offer: string; accent: AccentConfig; expiresText?: string; conditionsText?: string }) {
   const dollarMatch = offer.match(/\$(\d+(?:\.\d{2})?)/);
+  const percentMatch = !dollarMatch ? offer.match(/(\d+)\s*%/) : null;
   const isFree = /free/i.test(offer);
   const savingsAmount = dollarMatch ? dollarMatch[1].replace(/\.00$/, "") : null;
+  const savingsPercent = percentMatch ? percentMatch[1] : null;
+  const hasBadge = !!(savingsAmount || savingsPercent || isFree);
+
+  // Strip leading "expires/valid/use by" prefix so VALID THRU label looks clean
+  const expiryClean = expiresText
+    ? expiresText.replace(/^(expires?\s*(on)?|valid\s*(thru|until|through)?|use\s*by|exp\.?)\s*/i, "").toUpperCase()
+    : null;
+
   return (
     <div style={{ position: "relative" }}>
       {/* Eyebrow label */}
-      <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "5px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "4px" }}>
         <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", fontWeight: 900, color: accent.header, letterSpacing: "0.12em", textTransform: "uppercase" }}>★ FEATURED OFFER</span>
         <div style={{ flex: 1, height: "1px", background: `linear-gradient(90deg, ${accent.header}44 0%, transparent 100%)` }} />
       </div>
+
+      {/* ✂ Scissors + dashed cut-here line */}
+      <div style={{ display: "flex", alignItems: "center", gap: "3px", marginBottom: "4px" }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="#B0BEC5" style={{ flexShrink: 0 }}>
+          <path d="M9.64 7.64c.23-.5.36-1.05.36-1.64 0-2.21-1.79-4-4-4S2 3.79 2 6s1.79 4 4 4c.59 0 1.14-.13 1.64-.36L10 12l-2.36 2.36C7.14 14.13 6.59 14 6 14c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4c0-.59-.13-1.14-.36-1.64L12 14l7 7h3v-1L9.64 7.64zM6 8c-1.1 0-2-.89-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm0 12c-1.1 0-2-.89-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm6-7.5c-.28 0-.5-.22-.5-.5s.22-.5.5-.5.5.22.5.5-.22.5-.5.5zM19 3l-7 7 2 2 8-8V3z"/>
+        </svg>
+        <div style={{ flex: 1, borderTop: "1.5px dashed #D1D5DB" }} />
+        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "5px", fontWeight: 700, color: "#B0BEC5", letterSpacing: "0.14em", textTransform: "uppercase", flexShrink: 0 }}>CUT HERE</span>
+        <div style={{ flex: 1, borderTop: "1.5px dashed #D1D5DB" }} />
+      </div>
+
       {/* Coupon body */}
-      <div style={{ display: "flex", border: `2px solid ${accent.offerBorder}`, borderRadius: "5px", overflow: "hidden", background: "white", boxShadow: `0 2px 8px ${accent.header}22` }}>
-        <div style={{
-          background: `linear-gradient(160deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -20)} 100%)`,
-          color: "white", padding: "14px 16px",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          minWidth: "88px", flexShrink: 0, gap: "2px",
-        }}>
-          {savingsAmount ? (
-            <>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, letterSpacing: "0.10em", textTransform: "uppercase", opacity: 0.92 }}>SAVE</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "38px", fontWeight: 900, lineHeight: 1, margin: "1px 0" }}>${savingsAmount}</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, letterSpacing: "0.10em", textTransform: "uppercase", opacity: 0.92 }}>OFF</div>
-            </>
-          ) : isFree ? (
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 900, lineHeight: 1 }}>FREE</div>
-          ) : (
-            <>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", opacity: 0.88 }}>SAVE</div>
-              <svg width="18" height="18" viewBox="0 0 16 16" style={{ marginTop: "2px" }}>
-                <path d="M 8 0 L 9.8 5.4 L 15.5 5.4 L 10.9 8.7 L 12.7 14.1 L 8 10.8 L 3.3 14.1 L 5.1 8.7 L 0.5 5.4 L 6.2 5.4 Z" fill="rgba(255,255,255,0.90)" />
-              </svg>
-            </>
-          )}
-        </div>
-        {/* Perforation divider */}
-        <div style={{ width: "2px", background: "repeating-linear-gradient(180deg, white 0px, white 4px, transparent 4px, transparent 8px)", flexShrink: 0 }} />
-        <div style={{ flex: 1, padding: "9px 11px", background: accent.offerBg }}>
+      <div style={{ display: "flex", border: `2px solid ${accent.offerBorder}`, borderRadius: "5px", overflow: "hidden", background: "white", boxShadow: `0 2px 10px ${accent.header}28` }}>
+        {hasBadge && (
+          <div style={{
+            background: `linear-gradient(160deg, ${accent.header} 0%, ${adjustBrightness(accent.header, -20)} 100%)`,
+            color: "white", padding: "14px 16px",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            minWidth: "88px", flexShrink: 0, gap: "2px",
+          }}>
+            {savingsAmount ? (
+              <>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, letterSpacing: "0.10em", textTransform: "uppercase", opacity: 0.92 }}>SAVE</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "38px", fontWeight: 900, lineHeight: 1, margin: "1px 0" }}>${savingsAmount}</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, letterSpacing: "0.10em", textTransform: "uppercase", opacity: 0.92 }}>OFF</div>
+              </>
+            ) : savingsPercent ? (
+              <>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, letterSpacing: "0.10em", textTransform: "uppercase", opacity: 0.92 }}>SAVE</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "36px", fontWeight: 900, lineHeight: 1, margin: "1px 0" }}>{savingsPercent}%</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 900, letterSpacing: "0.10em", textTransform: "uppercase", opacity: 0.92 }}>OFF</div>
+              </>
+            ) : (
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 900, lineHeight: 1 }}>FREE</div>
+            )}
+          </div>
+        )}
+        {/* True perforation divider: semi-transparent dashed border */}
+        {hasBadge && (
+          <div style={{ width: "1px", flexShrink: 0, background: "repeating-linear-gradient(180deg, rgba(0,0,0,0.22) 0px, rgba(0,0,0,0.22) 5px, transparent 5px, transparent 10px)", margin: "0 4px" }} />
+        )}
+        <div style={{ flex: 1, padding: "10px 12px", background: accent.offerBg }}>
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", fontWeight: 800, color: accent.offerText, lineHeight: 1.2 }}>
             {offer}
           </div>
-          {expiresText && (
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "7px", color: "#B45309", marginTop: "3px", fontWeight: 700, letterSpacing: "0.02em" }}>
-              🕐 {expiresText}
+          {expiryClean && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "3px", marginTop: "5px", background: "#FEF3C7", border: "1px solid #FCD34D", borderRadius: "3px", padding: "2px 6px" }}>
+              <span style={{ fontSize: "7px" }}>🕐</span>
+              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "6.5px", color: "#92400E", fontWeight: 800, letterSpacing: "0.04em" }}>VALID THRU: {expiryClean}</span>
             </div>
           )}
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", color: "#9CA3AF", marginTop: "3px", letterSpacing: "0.03em", lineHeight: 1.4 }}>
-            {conditionsText ?? "Cannot be combined with other offers"}
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", color: "#9CA3AF", marginTop: "4px", letterSpacing: "0.03em", lineHeight: 1.45 }}>
+            {conditionsText ?? "Cannot be combined with other offers. One per customer."}
           </div>
         </div>
       </div>
@@ -742,6 +819,16 @@ function PrintReadyFrame({
       }}>
         {width >= 480 ? '6″ × 9″' : '8.5″ × 11″'}&nbsp;&middot;&nbsp;300 DPI&nbsp;&middot;&nbsp;PostGrid&nbsp;&middot;&nbsp;1/8″ bleed
       </div>
+      {/* Diagonal proof watermark — visible only in preview, not in final print file */}
+      <div style={{
+        position: "absolute", top: "50%", left: "50%",
+        transform: "translate(-50%, -50%) rotate(-32deg)",
+        fontFamily: "'Inter', sans-serif", fontSize: "17px", fontWeight: 900,
+        color: "rgba(155,130,121,0.10)", letterSpacing: "0.20em", textTransform: "uppercase",
+        whiteSpace: "nowrap", pointerEvents: "none", userSelect: "none", zIndex: 99,
+      }}>
+        POSTGRID PREVIEW
+      </div>
       {children}
     </div>
   );
@@ -751,7 +838,7 @@ function PrintReadyFrame({
 
 function RealPostcardFront({
   content, dealershipName, offer, headline, qrPreviewUrl, logoUrl, accent, dealershipAddress, dealershipPhone, vehiclePhotoUrl,
-  subHeadline, ctaText, urgencyLine, expiresText, conditionsText,
+  subHeadline, ctaText, urgencyLine, expiresText, conditionsText, insetPhotoUrl,
 }: {
   content: string;
   dealershipName: string;
@@ -768,6 +855,7 @@ function RealPostcardFront({
   urgencyLine?: string | null;
   expiresText?: string | null;
   conditionsText?: string | null;
+  insetPhotoUrl?: string | null;
 }) {
   const addrLines = addrToLines(dealershipAddress);
 
@@ -796,6 +884,7 @@ function RealPostcardFront({
           height="238px"
           dealershipName={headline ? undefined : dealershipName}
           imageUrl={vehiclePhotoUrl}
+          insetImageUrl={insetPhotoUrl}
           showLabel={!headline}
         />
         {/* Offer badge — top-right corner */}
@@ -1100,19 +1189,34 @@ function RealLetterPreview({
       </div>
 
       {!contentHasSignoff && (
-        <div style={{ padding: "10px 22px 18px" }}>
+        <div style={{ padding: "10px 22px 18px", position: "relative" }}>
           <div style={{ fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: is8511 ? 17 : 15, color: "#374151", lineHeight: 1.2 }}>Sincerely,</div>
-          <div style={{
-            fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: is8511 ? 22 : 19, color: "#1F2937",
-            fontWeight: 700, marginTop: "8px", letterSpacing: "0.01em",
-            borderBottom: "1px solid rgba(0,0,0,0.08)", paddingBottom: "4px",
-            display: "inline-block", minWidth: "100px",
-          }}>
-            {dealershipName.split(" ")[0]}
+          <div style={{ position: "relative", display: "inline-block", marginTop: "8px" }}>
+            {/* Faint logo stamp behind signature — printed "seal" effect */}
+            {logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt=""
+                style={{ position: "absolute", right: "-12px", top: "50%", transform: "translateY(-50%)",
+                  height: "30px", opacity: 0.07, filter: "grayscale(1) contrast(2)", pointerEvents: "none" }}
+                onError={() => {}}
+              />
+            )}
+            <div style={{
+              fontFamily: "'Patrick Hand', 'Caveat', cursive", fontSize: is8511 ? 24 : 20, color: "#1F2937",
+              fontWeight: 700, letterSpacing: "0.01em",
+              borderBottom: "1.5px solid rgba(0,0,0,0.10)", paddingBottom: "3px",
+              display: "inline-block", minWidth: "110px",
+              // Ink pressure variation — variable opacity per stroke simulation
+              textShadow: "0.6px 0.6px 0 rgba(0,0,0,0.14), -0.3px 0.1px 0 rgba(0,0,0,0.07), 0 0 1px rgba(0,0,0,0.06)",
+            }}>
+              {dealershipName.split(" ")[0]}
+            </div>
           </div>
-          <div style={{ fontSize: "7.5px", fontFamily: "'Inter', sans-serif", color: "#9CA3AF", marginTop: "3px" }}>
+          <div style={{ fontSize: "7.5px", fontFamily: "'Inter', sans-serif", color: "#9CA3AF", marginTop: "4px" }}>
             {dealershipName} — Service Department
           </div>
+          {/* Accent rule — subtle branding line beneath signoff */}
+          <div style={{ marginTop: "10px", width: "40px", height: "2px", background: accent.header, borderRadius: "1px", opacity: 0.55 }} />
         </div>
       )}
 
@@ -1204,7 +1308,7 @@ function PostcardBack({
 function Postcard6x9Preview({
   content, dealershipName, customerName, offer, headline, qrPreviewUrl, logoUrl, accent,
   customerAddress, dealershipAddress, dealershipPhone, vehiclePhotoUrl, initialMode,
-  subHeadline, ctaText, urgencyLine, expiresText, conditionsText,
+  subHeadline, ctaText, urgencyLine, expiresText, conditionsText, insetPhotoUrl,
 }: {
   content: string;
   dealershipName: string;
@@ -1224,6 +1328,7 @@ function Postcard6x9Preview({
   urgencyLine?: string | null;
   expiresText?: string | null;
   conditionsText?: string | null;
+  insetPhotoUrl?: string | null;
 }) {
   const [showBack, setShowBack] = useState(false);
   const [previewMode, setPreviewMode] = useState<PreviewMode>(initialMode ?? "realistic");
@@ -1262,7 +1367,7 @@ function Postcard6x9Preview({
               <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
               {/* Vehicle photo — tall hero with offer badge + headline overlay */}
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={accent.header} height="204px" imageUrl={vehiclePhotoUrl} showLabel={!headline} dealershipName={headline ? undefined : dealershipName} />
+                <VehiclePhotoZone heroBg={accent.header} height="204px" imageUrl={vehiclePhotoUrl} insetImageUrl={insetPhotoUrl} showLabel={!headline} dealershipName={headline ? undefined : dealershipName} />
                 {offer && <OfferBadge offer={offer} accent={accent} />}
                 <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "52px 14px 10px", background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.52) 60%, transparent 100%)", pointerEvents: "none" }}>
                   {headline ? (
@@ -1347,7 +1452,7 @@ function Postcard6x9Preview({
                       content={content} dealershipName={dealershipName} offer={offer} headline={headline}
                       qrPreviewUrl={qrPreviewUrl} logoUrl={logoUrl} accent={accent}
                       dealershipAddress={dealershipAddress} dealershipPhone={dealershipPhone}
-                      vehiclePhotoUrl={vehiclePhotoUrl}
+                      vehiclePhotoUrl={vehiclePhotoUrl} insetPhotoUrl={insetPhotoUrl}
                       subHeadline={subHeadline} ctaText={ctaText} urgencyLine={urgencyLine}
                       expiresText={expiresText} conditionsText={conditionsText}
                     />
@@ -1505,11 +1610,11 @@ function LetterPreview({
 
 function MultiPanelPreview({
   content, dealershipName, customerName, offer, qrPreviewUrl, logoUrl, layoutSpec, accent, vehiclePhotoUrl,
-  headline: headlineProp, ctaText, expiresText, conditionsText, urgencyLine,
+  headline: headlineProp, ctaText, expiresText, conditionsText, urgencyLine, insetPhotoUrl,
 }: {
   content: string; dealershipName: string; customerName?: string; offer?: string | null;
   qrPreviewUrl: string; logoUrl?: string | null; layoutSpec?: LayoutSpec; accent: AccentConfig;
-  vehiclePhotoUrl?: string | null;
+  vehiclePhotoUrl?: string | null; insetPhotoUrl?: string | null;
   headline?: string | null; ctaText?: string | null;
   expiresText?: string | null; conditionsText?: string | null;
   urgencyLine?: string | null;
@@ -1541,7 +1646,7 @@ function MultiPanelPreview({
             <div className="w-full rounded-xl border border-slate-200 shadow-xl overflow-hidden" style={{ maxWidth: "420px", background: "#fff" }}>
               <BoldHeaderBand dealershipName={dealershipName} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} logoUrl={logoUrl} dealershipPhone={undefined} />
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={heroBg} height="228px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                <VehiclePhotoZone heroBg={heroBg} height="228px" showLabel={false} imageUrl={vehiclePhotoUrl} insetImageUrl={insetPhotoUrl} />
                 {offer && <OfferBadge offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex, offerBg: accent.offerBg, offerText: accent.offerText, letterBorder: accent.letterBorder, highlightGlow: accent.highlightGlow, isHighlight: accent.isHighlight }} />}
                 <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "60px 16px 13px", background: `linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.58) 55%, transparent 100%)`, pointerEvents: "none" }}>
                   {offer && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5px", fontWeight: 900, letterSpacing: "0.22em", color: accentHex, textTransform: "uppercase", marginBottom: "4px", lineHeight: 1 }}>★ EXCLUSIVE OFFER</div>}
@@ -1601,7 +1706,7 @@ function MultiPanelPreview({
                     <div className="w-full rounded-xl border border-slate-200 shadow-xl overflow-hidden" style={{ maxWidth: "520px", background: "#fff" }}>
                       <BoldHeaderBand dealershipName={dealershipName} accent={{ ...accent, header: accentHex, offerBorder: accentHex }} logoUrl={logoUrl} dealershipPhone={undefined} />
                       <div style={{ position: "relative" }}>
-                        <VehiclePhotoZone heroBg={heroBg} height="240px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                        <VehiclePhotoZone heroBg={heroBg} height="240px" showLabel={false} imageUrl={vehiclePhotoUrl} insetImageUrl={insetPhotoUrl} />
                         {offer && <OfferBadge offer={offer} accent={{ ...accent, header: accentHex, offerBorder: accentHex, offerBg: accent.offerBg, offerText: accent.offerText, letterBorder: accent.letterBorder, highlightGlow: accent.highlightGlow, isHighlight: accent.isHighlight }} />}
                         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "62px 16px 13px", background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.60) 55%, transparent 100%)", pointerEvents: "none" }}>
                           {offer && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5px", fontWeight: 900, letterSpacing: "0.22em", color: accentHex, textTransform: "uppercase", marginBottom: "4px", lineHeight: 1 }}>★ EXCLUSIVE OFFER</div>}
@@ -1670,12 +1775,12 @@ function MultiPanelPreview({
 
 function PremiumFluorescentPreview({
   content, dealershipName, customerName, offer, qrPreviewUrl, logoUrl, layoutSpec, vehiclePhotoUrl,
-  headline: headlineProp, subHeadline, ctaText, urgencyLine, expiresText, conditionsText,
+  headline: headlineProp, subHeadline, ctaText, urgencyLine, expiresText, conditionsText, insetPhotoUrl,
 }: {
   content: string; dealershipName: string; customerName?: string; offer?: string | null;
   qrPreviewUrl: string; logoUrl?: string | null; layoutSpec?: LayoutSpec; vehiclePhotoUrl?: string | null;
   headline?: string | null; subHeadline?: string | null; ctaText?: string | null; urgencyLine?: string | null;
-  expiresText?: string | null; conditionsText?: string | null;
+  expiresText?: string | null; conditionsText?: string | null; insetPhotoUrl?: string | null;
 }) {
   const [showBack, setShowBack] = useState(false);
   const [previewMode, setPreviewMode] = useState<PreviewMode>("realistic");
@@ -1730,7 +1835,7 @@ function PremiumFluorescentPreview({
               </div>
               {/* Hero — photo with headline overlaid at bottom */}
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={bg} height="236px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                <VehiclePhotoZone heroBg={bg} height="236px" showLabel={false} imageUrl={vehiclePhotoUrl} insetImageUrl={insetPhotoUrl} />
                 {/* Dominant headline overlaid at bottom of hero */}
                 <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "60px 16px 12px", background: `linear-gradient(to top, ${bg} 0%, ${bg}d0 44%, transparent 100%)`, pointerEvents: "none" }}>
                   <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "38px", color: textCol, lineHeight: 0.98, letterSpacing: "-0.038em", textShadow: "0 2px 18px rgba(0,0,0,0.82)" }}>{resolvedHeadline}</div>
@@ -1827,7 +1932,7 @@ function PremiumFluorescentPreview({
                       </div>
                       {/* Hero — photo with headline overlaid at bottom */}
                       <div style={{ position: "relative" }}>
-                        <VehiclePhotoZone heroBg={bg} height="236px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                        <VehiclePhotoZone heroBg={bg} height="236px" showLabel={false} imageUrl={vehiclePhotoUrl} insetImageUrl={insetPhotoUrl} />
                         {/* Dominant headline overlaid at bottom of hero */}
                         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "66px 18px 12px", background: `linear-gradient(to top, ${bg} 0%, ${bg}d0 46%, transparent 100%)`, pointerEvents: "none" }}>
                           <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "42px", color: textCol, lineHeight: 0.98, letterSpacing: "-0.042em", textShadow: "0 3px 22px rgba(0,0,0,0.84)" }}>{resolvedHeadline}</div>
@@ -1918,11 +2023,12 @@ function PremiumFluorescentPreview({
 
 function ComplexFoldPreview({
   dealershipName, customerName, offer, qrPreviewUrl, logoUrl, layoutSpec, vehiclePhotoUrl,
-  content, headline, ctaText, urgencyLine,
+  content, headline, ctaText, urgencyLine, insetPhotoUrl,
 }: {
   dealershipName: string; customerName?: string; offer?: string | null;
   qrPreviewUrl: string; logoUrl?: string | null; layoutSpec?: LayoutSpec; vehiclePhotoUrl?: string | null;
   content?: string; headline?: string | null; ctaText?: string | null; urgencyLine?: string | null;
+  insetPhotoUrl?: string | null;
 }) {
   const [activePanel, setActivePanel] = useState<"cover" | "inner-left" | "inner-right">("cover");
   const cover = layoutSpec?.panels?.find((p) => p.role === "cover") ?? layoutSpec?.panels?.[0];
@@ -1964,7 +2070,7 @@ function ComplexFoldPreview({
               </div>
               {/* Hero — taller with headline overlaid at bottom */}
               <div style={{ position: "relative" }}>
-                <VehiclePhotoZone heroBg={bg} height="244px" showLabel={false} imageUrl={vehiclePhotoUrl} />
+                <VehiclePhotoZone heroBg={bg} height="244px" showLabel={false} imageUrl={vehiclePhotoUrl} insetImageUrl={insetPhotoUrl} />
                 {/* Dominant headline overlaid at bottom of photo */}
                 <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "66px 18px 12px", background: "linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.58) 55%, transparent 100%)", pointerEvents: "none" }}>
                   <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 900, fontSize: "42px", color: "#fff", lineHeight: 0.98, letterSpacing: "-0.042em", textShadow: "0 4px 22px rgba(0,0,0,0.88)" }}>
@@ -2069,14 +2175,14 @@ function ComplexFoldPreview({
 function ConquestFront({
   content, dealershipName, offer, qrPreviewUrl, logoUrl, accent,
   dealershipAddress, dealershipPhone, vehiclePhotoUrl, layoutSpec,
-  headline: headlineProp, ctaText, urgencyLine, expiresText, conditionsText,
+  headline: headlineProp, ctaText, urgencyLine, expiresText, conditionsText, insetPhotoUrl,
 }: {
   content: string; dealershipName: string; offer?: string | null;
   qrPreviewUrl: string; logoUrl?: string | null; accent: AccentConfig;
   dealershipAddress?: AddressRecord | null; dealershipPhone?: string | null;
   vehiclePhotoUrl?: string | null; layoutSpec?: LayoutSpec;
   headline?: string | null; ctaText?: string | null; urgencyLine?: string | null;
-  expiresText?: string | null; conditionsText?: string | null;
+  expiresText?: string | null; conditionsText?: string | null; insetPhotoUrl?: string | null;
 }) {
   const front = layoutSpec?.panels?.find((p) => p.role === "front") ?? layoutSpec?.panels?.[0];
   const headline = headlineProp ?? front?.headline ?? "An exclusive offer, just for you.";
@@ -2094,7 +2200,7 @@ function ConquestFront({
       {/* Dealer identity bar — always at top */}
       <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
       <div style={{ position: "relative" }}>
-        <VehiclePhotoZone heroBg={accent.header} height="198px" imageUrl={vehiclePhotoUrl} showLabel={false} />
+        <VehiclePhotoZone heroBg={accent.header} height="198px" imageUrl={vehiclePhotoUrl} insetImageUrl={insetPhotoUrl} showLabel={false} />
         {offer && <OfferBadge offer={offer} accent={accent} />}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "56px 16px 13px", background: "linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.58) 55%, transparent 100%)", pointerEvents: "none" }}>
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.88)", marginBottom: "5px" }}>EXCLUSIVE OFFER · {dealershipName}</div>
@@ -2164,14 +2270,14 @@ function ConquestFront({
 function RealConquestFront({
   content, dealershipName, offer, qrPreviewUrl, logoUrl, accent,
   dealershipAddress, dealershipPhone, vehiclePhotoUrl, layoutSpec,
-  headline: headlineProp, ctaText, urgencyLine, expiresText, conditionsText,
+  headline: headlineProp, ctaText, urgencyLine, expiresText, conditionsText, insetPhotoUrl,
 }: {
   content: string; dealershipName: string; offer?: string | null;
   qrPreviewUrl: string; logoUrl?: string | null; accent: AccentConfig;
   dealershipAddress?: AddressRecord | null; dealershipPhone?: string | null;
   vehiclePhotoUrl?: string | null; layoutSpec?: LayoutSpec;
   headline?: string | null; ctaText?: string | null; urgencyLine?: string | null;
-  expiresText?: string | null; conditionsText?: string | null;
+  expiresText?: string | null; conditionsText?: string | null; insetPhotoUrl?: string | null;
 }) {
   const front = layoutSpec?.panels?.find((p) => p.role === "front") ?? layoutSpec?.panels?.[0];
   const headline = headlineProp ?? front?.headline ?? "An exclusive offer, just for you.";
@@ -2193,7 +2299,7 @@ function RealConquestFront({
       {/* Dealer identity bar — always at top */}
       <BoldHeaderBand dealershipName={dealershipName} accent={accent} logoUrl={logoUrl} dealershipPhone={dealershipPhone} />
       <div style={{ position: "relative" }}>
-        <VehiclePhotoZone heroBg={accent.header} height="228px" imageUrl={vehiclePhotoUrl} showLabel={false} />
+        <VehiclePhotoZone heroBg={accent.header} height="228px" imageUrl={vehiclePhotoUrl} insetImageUrl={insetPhotoUrl} showLabel={false} />
         {offer && <OfferBadge offer={offer} accent={accent} />}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "62px 14px 13px", background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.60) 55%, transparent 100%)", pointerEvents: "none" }}>
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "6px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.88)", marginBottom: "5px" }}>EXCLUSIVE OFFER · {dealershipName}</div>
@@ -2263,14 +2369,14 @@ function RealConquestFront({
 function ConquestPostcardPreview({
   content, dealershipName, customerName, offer, qrPreviewUrl, logoUrl, accent,
   customerAddress, dealershipAddress, dealershipPhone, vehiclePhotoUrl, layoutSpec,
-  headline, ctaText, urgencyLine, expiresText, conditionsText,
+  headline, ctaText, urgencyLine, expiresText, conditionsText, insetPhotoUrl,
 }: {
   content: string; dealershipName: string; customerName?: string; offer?: string | null;
   qrPreviewUrl: string; logoUrl?: string | null; accent: AccentConfig;
   customerAddress?: AddressRecord | null; dealershipAddress?: AddressRecord | null;
   dealershipPhone?: string | null; vehiclePhotoUrl?: string | null; layoutSpec?: LayoutSpec;
   headline?: string | null; ctaText?: string | null; urgencyLine?: string | null;
-  expiresText?: string | null; conditionsText?: string | null;
+  expiresText?: string | null; conditionsText?: string | null; insetPhotoUrl?: string | null;
 }) {
   const [showBack, setShowBack] = useState(false);
   const [previewMode, setPreviewMode] = useState<PreviewMode>("realistic");
@@ -2299,7 +2405,7 @@ function ConquestPostcardPreview({
                 dealershipAddress={dealershipAddress} dealershipPhone={dealershipPhone}
                 vehiclePhotoUrl={vehiclePhotoUrl} layoutSpec={layoutSpec}
                 headline={headline} ctaText={ctaText} urgencyLine={urgencyLine}
-                expiresText={expiresText} conditionsText={conditionsText}
+                expiresText={expiresText} conditionsText={conditionsText} insetPhotoUrl={insetPhotoUrl}
               />
             </div>
           ) : (
@@ -2319,7 +2425,7 @@ function ConquestPostcardPreview({
                       dealershipAddress={dealershipAddress} dealershipPhone={dealershipPhone}
                       vehiclePhotoUrl={vehiclePhotoUrl} layoutSpec={layoutSpec}
                       headline={headline} ctaText={ctaText} urgencyLine={urgencyLine}
-                      expiresText={expiresText} conditionsText={conditionsText}
+                      expiresText={expiresText} conditionsText={conditionsText} insetPhotoUrl={insetPhotoUrl}
                     />
                   ) : (
                     <RealPostcardBack
@@ -2365,9 +2471,13 @@ interface TemplatePreviewProps {
   qrPreviewUrl?: string;
   logoUrl?: string | null;
   accentColor?: AccentColor;
+  /** Arbitrary hex color from dealership brand settings — overrides accentColor preset */
+  dealershipAccentHex?: string | null;
   designStyle?: DesignStyle;
   layoutSpec?: LayoutSpec;
   vehiclePhotoUrl?: string | null;
+  /** Secondary vehicle photo — shown as a perspective-angled inset overlay on the hero zone */
+  insetPhotoUrl?: string | null;
   customerAddress?: { street?: string | null; city?: string | null; state?: string | null; zip?: string | null } | null;
   dealershipAddress?: { street?: string | null; city?: string | null; state?: string | null; zip?: string | null } | null;
   dealershipPhone?: string | null;
@@ -2377,6 +2487,11 @@ interface TemplatePreviewProps {
   urgencyLine?: string | null;
   expiresText?: string | null;
   conditionsText?: string | null;
+  /** A/B: content for the B variant — enables side-by-side comparison via ABTemplatePreview */
+  variantBContent?: string | null;
+  variantBHeadline?: string | null;
+  variantBOffer?: string | null;
+  variantBLabel?: string;
 }
 
 export function TemplatePreview({
@@ -2389,9 +2504,11 @@ export function TemplatePreview({
   qrPreviewUrl: qrPropUrl,
   logoUrl,
   accentColor = "indigo",
+  dealershipAccentHex,
   designStyle = "standard",
   layoutSpec,
   vehiclePhotoUrl,
+  insetPhotoUrl,
   customerAddress,
   dealershipAddress,
   dealershipPhone,
@@ -2406,7 +2523,8 @@ export function TemplatePreview({
     `${typeof window !== "undefined" ? window.location.origin : ""}/track/preview`,
     80
   );
-  const accent = ACCENT[accentColor];
+  // Dealership hex overrides the preset color when provided (real brand color from DB)
+  const accent = dealershipAccentHex ? hexToAccent(dealershipAccentHex) : ACCENT[accentColor];
 
   if (!content && designStyle === "standard") {
     return (
@@ -2430,6 +2548,7 @@ export function TemplatePreview({
             content={content} dealershipName={dealershipName} customerName={customerName}
             offer={offer} qrPreviewUrl={qrUrl} logoUrl={logoUrl}
             layoutSpec={layoutSpec} accent={accent} vehiclePhotoUrl={vehiclePhotoUrl}
+            insetPhotoUrl={insetPhotoUrl}
             headline={headline} ctaText={ctaText} urgencyLine={urgencyLine}
             expiresText={expiresText} conditionsText={conditionsText}
           />
@@ -2446,6 +2565,7 @@ export function TemplatePreview({
             content={content} dealershipName={dealershipName} customerName={customerName}
             offer={offer} qrPreviewUrl={qrUrl} logoUrl={logoUrl}
             layoutSpec={layoutSpec} vehiclePhotoUrl={vehiclePhotoUrl}
+            insetPhotoUrl={insetPhotoUrl}
             headline={headline} subHeadline={subHeadline} ctaText={ctaText} urgencyLine={urgencyLine}
             expiresText={expiresText} conditionsText={conditionsText}
           />
@@ -2461,7 +2581,7 @@ export function TemplatePreview({
           <ComplexFoldPreview
             dealershipName={dealershipName} customerName={customerName} offer={offer}
             qrPreviewUrl={qrUrl} logoUrl={logoUrl} layoutSpec={layoutSpec}
-            vehiclePhotoUrl={vehiclePhotoUrl}
+            vehiclePhotoUrl={vehiclePhotoUrl} insetPhotoUrl={insetPhotoUrl}
             content={content} headline={headline} ctaText={ctaText} urgencyLine={urgencyLine}
           />
         </div>
@@ -2478,7 +2598,7 @@ export function TemplatePreview({
             offer={offer} qrPreviewUrl={qrUrl} logoUrl={logoUrl} accent={accent}
             customerAddress={customerAddress} dealershipAddress={dealershipAddress}
             dealershipPhone={dealershipPhone} vehiclePhotoUrl={vehiclePhotoUrl}
-            layoutSpec={layoutSpec}
+            insetPhotoUrl={insetPhotoUrl} layoutSpec={layoutSpec}
             headline={headline} ctaText={ctaText} urgencyLine={urgencyLine}
             expiresText={expiresText} conditionsText={conditionsText}
           />
@@ -2496,7 +2616,7 @@ export function TemplatePreview({
             offer={offer} headline={headline} qrPreviewUrl={qrUrl} logoUrl={logoUrl} accent={accent}
             customerAddress={customerAddress} dealershipAddress={dealershipAddress}
             dealershipPhone={dealershipPhone} vehiclePhotoUrl={vehiclePhotoUrl}
-            initialMode={initialMode}
+            insetPhotoUrl={insetPhotoUrl} initialMode={initialMode}
             subHeadline={subHeadline} ctaText={ctaText} urgencyLine={urgencyLine}
             expiresText={expiresText} conditionsText={conditionsText}
           />
@@ -2511,6 +2631,64 @@ export function TemplatePreview({
           expiresText={expiresText} conditionsText={conditionsText}
         />
       )}
+    </div>
+  );
+}
+
+// ── A/B Template Preview ──────────────────────────────────────
+// Shows two mailer variants side-by-side (tab toggle) so dealers
+// can compare creative direction before selecting one to send.
+
+interface ABTemplatePreviewProps {
+  propsA: TemplatePreviewProps;
+  propsB: TemplatePreviewProps;
+  labelA?: string;
+  labelB?: string;
+}
+
+export function ABTemplatePreview({
+  propsA,
+  propsB,
+  labelA = "Variant A",
+  labelB = "Variant B",
+}: ABTemplatePreviewProps) {
+  const [active, setActive] = useState<"A" | "B">("A");
+  const activeProps = active === "A" ? propsA : propsB;
+
+  return (
+    <div className="space-y-3">
+      {/* A/B tab toggle */}
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <div style={{ display: "inline-flex", background: "#F0EBE3", borderRadius: "10px", padding: "3px", gap: "2px" }}>
+          {(["A", "B"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setActive(v)}
+              style={{
+                padding: "7px 22px", borderRadius: "7px", border: "none", cursor: "pointer",
+                fontFamily: "'Inter', sans-serif", fontSize: "12px", fontWeight: 800,
+                background: active === v ? "white" : "transparent",
+                color: active === v ? "#1e293b" : "#6B7280",
+                boxShadow: active === v ? "0 2px 6px rgba(0,0,0,0.14)" : "none",
+                transition: "all 0.15s ease",
+                letterSpacing: "0.02em",
+              }}
+            >
+              {v === "A" ? labelA : labelB}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Active variant — re-uses the same TemplatePreview logic */}
+      <TemplatePreview {...activeProps} />
+
+      {/* Comparison chip */}
+      <div className="text-center">
+        <span className="chip chip-slate text-[10px]">
+          A/B Preview · {labelA} vs {labelB} · Click tabs to compare
+        </span>
+      </div>
     </div>
   );
 }
