@@ -311,6 +311,12 @@ export interface StructuredMailContent {
   urgencyLine?: string;
   featuredVehicle?: string;
   recommendedTemplateReason?: string;
+  /**
+   * AI-proposed visual layout — e.g. "Use Conquest Postcard with full-bleed hero + perforated
+   * coupon below body" or "Switch to Premium Fluorescent with neon urgency strip and oversized
+   * OfferBadge". Derived from historical scan-rate winners for this dealership.
+   */
+  layoutSuggestion?: string;
 }
 
 // send_direct_mail Anthropic tool input/output shapes

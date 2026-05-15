@@ -135,6 +135,7 @@ export async function runOptimizationAgent(
 
     type Bucket = {
       template_type: string;
+      design_style: string;    // e.g. "standard", "conquest", "premium-fluorescent"
       vehicle_segment: string; // model token only e.g. "F-150", "Camry"
       service_type: string;
       offer_preview: string;   // first 60 chars of offer — no names/addresses
@@ -150,6 +151,8 @@ export async function runOptimizationAgent(
     const buckets = new Map<string, Bucket>();
     // Separate A/B variant tracking for cross-variant comparison
     const abBuckets = new Map<string, { variant: string; sent: number; scans: number }>();
+    // Design-style scan rate tracking for layout_preference patterns
+    const designBuckets = new Map<string, { design_style: string; template_type: string; sent: number; scans: number }>();
 
     for (const piece of sentPieces) {
       const vars = (piece.variables ?? {}) as Record<string, string>;
@@ -158,6 +161,7 @@ export async function runOptimizationAgent(
       const vehicleSegment = vehicleParts[vehicleParts.length - 1] ?? "";
       const serviceType = vars.service_type ?? "";
       const offerPreview = (vars.offer ?? "general offer").slice(0, 60);
+      const designStyle = vars.design_style ?? "standard";
       const abVariant = vars.ab_variant ?? undefined;
 
       // Anonymize the copy opening — strip first/last name tokens, keep structure
@@ -168,11 +172,12 @@ export async function runOptimizationAgent(
         .trim()
         .slice(0, 45);
 
-      const key = `${piece.template_type}||${vehicleSegment}||${serviceType}${abVariant ? `||${abVariant}` : ""}`;
+      const key = `${piece.template_type}||${designStyle}||${vehicleSegment}||${serviceType}${abVariant ? `||${abVariant}` : ""}`;
 
       if (!buckets.has(key)) {
         buckets.set(key, {
           template_type: piece.template_type,
+          design_style: designStyle,
           vehicle_segment: vehicleSegment,
           service_type: serviceType,
           offer_preview: offerPreview,
@@ -189,6 +194,13 @@ export async function runOptimizationAgent(
       b.scans += piece.scanned_count ?? 0;
       if (piece.status === "delivered") b.delivered++;
 
+      // Track design style separately for layout_preference patterns
+      const dsKey = `${piece.template_type}||${designStyle}`;
+      const ds = designBuckets.get(dsKey) ?? { design_style: designStyle, template_type: piece.template_type, sent: 0, scans: 0 };
+      ds.sent++;
+      ds.scans += piece.scanned_count ?? 0;
+      designBuckets.set(dsKey, ds);
+
       // Track A/B variants separately for comparison patterns
       if (abVariant) {
         const abKey = `${piece.template_type}||${vehicleSegment}||${abVariant}`;
@@ -204,6 +216,18 @@ export async function runOptimizationAgent(
       scan_rate_pct: b.sent > 0 ? +((b.scans / b.sent) * 100).toFixed(2) : 0,
       delivery_rate_pct: b.sent > 0 ? +((b.delivered / b.sent) * 100).toFixed(2) : 0,
     }));
+
+    // Design-style scan rate comparison — sorted descending to surface best performers
+    const designRows = Array.from(designBuckets.values())
+      .map((d) => ({
+        template_type: d.template_type,
+        design_style: d.design_style,
+        sent: d.sent,
+        scans: d.scans,
+        scan_rate_pct: d.sent > 0 ? +((d.scans / d.sent) * 100).toFixed(2) : 0,
+      }))
+      .sort((a, b) => b.scan_rate_pct - a.scan_rate_pct);
+    const hasDesignData = designRows.length >= 2;
 
     // A/B comparison rows — only populated when experiments were run
     const abRows = Array.from(abBuckets.values()).map((ab) => ({
@@ -227,7 +251,7 @@ export async function runOptimizationAgent(
     // ── 4. Claude — extract actionable patterns ─────────────
     const systemPrompt = `You are the Optimization Agent for AutoCDP, an AI CRM for auto dealerships.
 
-Your job: analyze anonymized direct mail performance data and extract reusable, specific patterns that will make future AI-generated campaigns measurably more effective.
+Your job: analyze anonymized direct mail performance data and extract reusable, specific patterns that will make future AI-generated campaigns measurably more effective — including both COPY patterns and LAYOUT/VISUAL patterns.
 
 STRICT RULES:
 - Zero customer names, emails, addresses, phone numbers, or any PII
@@ -235,31 +259,39 @@ STRICT RULES:
 - Every pattern must be specific enough to be injected into a Creative Agent system prompt and immediately actionable
 - Flag confidence < 0.5 for groups with fewer than 3 pieces
 - Do not duplicate existing global_learnings unless new data materially changes the confidence
-- Pattern types: "offer_performance" | "template_performance" | "vehicle_segment" | "copy_element" | "timing" | "ab_test_result"
-- For "copy_element" patterns: the copy_snippet field contains anonymized opening text — identify structural or tonal patterns that correlate with higher scan rates
-- For "ab_test_result" patterns: only write if A/B data is present and one variant outperforms the other by ≥2 percentage points with n≥3 per variant
+- Pattern types: "offer_performance" | "template_performance" | "vehicle_segment" | "copy_element" | "timing" | "ab_test_result" | "layout_preference" | "design_style"
+- For "copy_element" patterns: the copy_snippet field contains anonymized opening text — identify structural or tonal patterns (specific vehicle reference, dollar offer, urgency line) that correlate with higher scan rates
+- For "ab_test_result" patterns: only write if A/B data is present and one variant outperforms by ≥2 percentage points with n≥3 per variant
+- For "layout_preference" patterns: analyze the DESIGN STYLE BREAKDOWN section — identify which template_type + design_style combinations drove the highest scan rates for this specific dealership. Be explicit: name the winner and the runner-up with their rates.
+- For "design_style" patterns: note when a specific visual approach (conquest, premium-fluorescent, complex-fold, multi-panel, standard) consistently outperforms others across multiple vehicle segments or service types — this is high-value signal for the Creative Agent's layoutSuggestion field.
 
 Strong pattern (accept):
-  "postcard_6x9 with 15%-off service headline for F-150 owners → 9.2% QR scan rate, 3× the 3% network baseline"
+  "offer_performance: postcard_6x9 with 15%-off service headline for F-150 owners → 9.2% QR scan rate, 3× the 3% network baseline (n=14)"
   "copy_element: opening with specific vehicle model name (e.g. '■ ■ Camry') → 7.1% scan rate vs 2.9% for generic openers (n=18)"
+  "layout_preference: conquest design_style outperforms standard postcard_6x9 for this dealership — 11.4% vs 3.2% scan rate (n=9 vs n=22); Creative Agent should default to conquest for new customer segments"
+  "design_style: premium-fluorescent with urgency strip drove 2.3× higher scan rate vs standard for oil-change offers (n=14); recommend for time-sensitive service campaigns"
   "ab_test_result: Variant A (relationship tone) outperformed Variant B (offer-first) 8.2% vs 4.1% scan rate for Camry segment (n=12)"
 
 Weak pattern (reject):
   "Postcards work better than letters" — too vague, not actionable
   "Customers with recent visits respond better" — obvious, not novel
+  "Design matters" — meaningless without specifics
 
 Return a JSON array (empty [] is valid if data is insufficient):
 [
   {
-    "pattern_type": "offer_performance",
-    "description": "one-sentence, specific, actionable finding",
+    "pattern_type": "layout_preference",
+    "description": "one-sentence, specific, actionable finding — include template type, design style, scan rate, and sample size",
     "pattern_data": {
       "template_type": "postcard_6x9",
+      "design_style": "conquest",
       "vehicle_segment": "F-150",
       "service_type": "oil_change",
       "scan_rate_pct": 9.2,
+      "runner_up_design_style": "standard",
+      "runner_up_scan_rate_pct": 3.1,
       "sample_size": 14,
-      "key_insight": "brief mechanic explanation"
+      "key_insight": "brief mechanic explanation of WHY this layout worked"
     },
     "confidence": 0.78,
     "sample_size": 14,
@@ -272,8 +304,9 @@ Return a JSON array (empty [] is valid if data is insufficient):
 SUMMARY
 Pieces analyzed: ${sentPieces.length} | Total QR scans: ${totalScans} | Overall scan rate: ${overallScanRatePct}%
 
-SEGMENT BREAKDOWN (anonymized — no PII):
+SEGMENT BREAKDOWN — template × design_style × vehicle × service (anonymized — no PII):
 ${JSON.stringify(statsRows, null, 2)}
+${hasDesignData ? `\nDESIGN STYLE BREAKDOWN (sorted by scan rate — use for layout_preference and design_style patterns):\n${JSON.stringify(designRows, null, 2)}` : ""}
 ${hasABData ? `\nA/B VARIANT COMPARISON:\n${JSON.stringify(abRows, null, 2)}` : ""}
 
 EXISTING GLOBAL PATTERNS (do not duplicate without new supporting evidence):

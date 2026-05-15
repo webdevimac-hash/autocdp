@@ -14,6 +14,16 @@ import { applyGuardrails } from "../guardrails";
 import { appendDisclaimer } from "@/lib/compliance/disclaimers";
 import type { AgentContext, Customer, Visit, PersonalizedMessage, CommunicationChannel, InventoryVehicle, DesignStyle, LayoutSpec, StructuredMailContent } from "@/types";
 
+/** Anonymized snapshot of a high-performing past mail piece for this dealership. */
+export interface BestPerformingExample {
+  templateType: string;
+  designStyle?: string | null;
+  offerText?: string | null;
+  scanCount: number;
+  /** First ~120 chars of personalized text with proper nouns stripped. */
+  copySnippet: string;
+}
+
 export interface DealershipProfile {
   phone?: string | null;
   address?: { street?: string; city?: string; state?: string; zip?: string } | null;
@@ -57,6 +67,11 @@ export interface CreativeAgentInput {
    * FCRA-safe: we personalize the offer type, not the score.
    */
   customerCreditTier?: string;
+  /**
+   * Top-performing historical mail pieces for this dealership (sorted by QR scan rate).
+   * When omitted, the agent auto-loads them from the mail_pieces table.
+   */
+  bestPerformingExamples?: BestPerformingExample[];
 }
 
 export interface CreativeAgentOutput extends PersonalizedMessage {
@@ -67,6 +82,8 @@ export interface CreativeAgentOutput extends PersonalizedMessage {
   headline?: string | null;
   offer?: string | null;
   structured?: StructuredMailContent;
+  /** AI-proposed layout for the next campaign iteration (e.g. template style + visual treatment). */
+  layoutSuggestion?: string | null;
 }
 
 // Extract model token from visit (e.g. year=2019, make="Ford", model="F-150" → "F-150")
@@ -216,6 +233,50 @@ function postProcessMailCopy(text: string, channel: string): string {
     .trim();
 }
 
+// ── Best-performing examples loader ───────────────────────────
+// Loads the top-N mail pieces sorted by QR scan count (highest engagement proxy).
+// Returns anonymized snapshots — no customer PII, no full copy.
+
+export async function loadBestPerformingMailExamples(
+  supabase: ReturnType<typeof createServiceClient>,
+  dealershipId: string,
+  limit = 5
+): Promise<BestPerformingExample[]> {
+  try {
+    type PieceRow = {
+      template_type: string;
+      variables: Record<string, string> | null;
+      personalized_text: string | null;
+      scanned_count: number | null;
+    };
+    const { data } = await (supabase
+      .from("mail_pieces")
+      .select("template_type, variables, personalized_text, scanned_count")
+      .eq("dealership_id", dealershipId)
+      .gte("scanned_count", 1)
+      .in("status", ["delivered", "in_transit", "in_production"])
+      .order("scanned_count", { ascending: false })
+      .limit(limit) as unknown as Promise<{ data: PieceRow[] | null }>);
+
+    if (!data?.length) return [];
+
+    return data.map((p) => ({
+      templateType: p.template_type,
+      designStyle: p.variables?.design_style ?? null,
+      offerText: p.variables?.offer ?? null,
+      scanCount: p.scanned_count ?? 0,
+      // Anonymize: strip capitalized tokens (names), keep structure
+      copySnippet: (p.personalized_text ?? "")
+        .replace(/\b[A-Z][a-z]{1,}\b/g, "■")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 120),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 // ── Main function ──────────────────────────────────────────────
 
 export async function runCreativeAgent(
@@ -308,6 +369,12 @@ export async function runCreativeAgent(
     }
   } catch {
     // Non-fatal
+  }
+
+  // ── 2.5. Best-performing historical examples ───────────────
+  let bestExamples: BestPerformingExample[] = input.bestPerformingExamples ?? [];
+  if (!bestExamples.length) {
+    bestExamples = await loadBestPerformingMailExamples(supabase, input.context.dealershipId);
   }
 
   // ── 3. Build prompts ───────────────────────────────────────
@@ -517,10 +584,29 @@ export async function runCreativeAgent(
     ].join("\n"),
   }[input.channel];
 
+  // Best-performing historical few-shot block
+  const bestPerformingSection = bestExamples.length > 0
+    ? `\nHIGH-PERFORMING HISTORICAL EXAMPLES — these ${bestExamples.length} mail piece(s) from ` +
+      `${input.context.dealershipName} achieved the highest QR scan rates among all campaigns sent. ` +
+      `Study the template type, design style, offer structure, and copy angle that drove real-world results. ` +
+      `Weight these formats heavily in your layoutSuggestion — they are proven for THIS dealership's customer base:\n\n` +
+      bestExamples.map((ex, i) => {
+        const styleTag = ex.designStyle && ex.designStyle !== "standard" ? ` / ${ex.designStyle}` : "";
+        return `Top Performer ${i + 1} [${ex.templateType}${styleTag}] — ${ex.scanCount} QR scan(s):\n` +
+          (ex.offerText ? `  Offer: "${ex.offerText}"\n` : "") +
+          `  Copy opening: "${ex.copySnippet}"\n`;
+      }).join("\n") +
+      `\nIf the above examples share a consistent template or offer type, THAT format has proven resonance with ` +
+      `${input.context.dealershipName}'s audience — reference it explicitly in your layoutSuggestion.\n`
+    : "";
+
   const learningsSection =
     patternLines.length > 0
-      ? `\nNETWORK LEARNINGS — patterns proven to drive higher response rates across dealerships.\n` +
-        `Apply the most relevant ones naturally:\n${patternLines.join("\n")}\n`
+      ? `\nNETWORK LEARNINGS — patterns proven to drive higher scan rates, booked appointments, and revenue lift ` +
+        `across the AutoCDP dealer network. This includes layout preferences (template style, design approach, ` +
+        `headline treatment, offer placement, urgency banners, coupon usage), copy tone patterns, and A/B test ` +
+        `results. Apply the most relevant ones naturally — especially any layout_preference or design_style patterns ` +
+        `when deciding your layoutSuggestion:\n${patternLines.join("\n")}\n`
       : "";
 
   const designStyle = input.designStyle ?? "standard";
@@ -664,7 +750,10 @@ export async function runCreativeAgent(
     insightsSection || null,
     creditSection || null,
 
-    // Data-driven patterns
+    // Historical performance examples (few-shot from this dealership's best campaigns)
+    bestPerformingSection || null,
+
+    // Data-driven patterns (network-wide)
     learningsSection || null,
 
     // Inventory
@@ -804,8 +893,9 @@ export async function runCreativeAgent(
     `  "urgencyLine": "One-line urgency hook — omit entirely if no genuine urgency",`,
     `  "featuredVehicle": "Year Make Model from visit or inventory — null if unknown",`,
     `  "recommendedTemplateReason": "1 sentence on why this template fits this customer",`,
+    `  "layoutSuggestion": "Proactive, specific visual layout recommendation for maximum impact — e.g. 'Use Conquest Postcard with full-bleed hero image + perforated coupon strip below body + side-by-side QR+CTA action row' or 'Switch to Premium Fluorescent: dark navy background, neon urgency strip, oversized OfferBadge top-right — this format drove the highest scan rates in the historical examples'. Reference historical winners when relevant. Omit if no meaningful improvement to current layout.",`,
     isAdvancedDesign ? layoutSpecSchema : null,
-    `  "reasoning": "2–3 sentences: what specific data points drove your hook, offer, and CTA choices",`,
+    `  "reasoning": "2–3 sentences: what specific data points drove your hook, offer, and CTA choices — including any performance patterns or historical examples that influenced your layout suggestion",`,
     `  "confidence": 0.9`,
     `}`,
   ].filter((s): s is string => s !== null && s !== undefined).join("\n");
@@ -833,6 +923,9 @@ export async function runCreativeAgent(
     : (parsed.content ?? "");
   const rawOffer = (parsed.couponBlock as { offerText?: string } | null)?.offerText ?? null;
   const rawHeadline = typeof parsed.headline === "string" ? parsed.headline : null;
+  const rawLayoutSuggestion = typeof parsed.layoutSuggestion === "string" && parsed.layoutSuggestion.trim()
+    ? parsed.layoutSuggestion.trim()
+    : null;
 
   const cleanedContent = postProcessMailCopy(rawContent, input.channel);
 
@@ -870,6 +963,7 @@ export async function runCreativeAgent(
         urgencyLine: typeof parsed.urgencyLine === "string" ? parsed.urgencyLine : undefined,
         featuredVehicle: typeof parsed.featuredVehicle === "string" ? parsed.featuredVehicle : undefined,
         recommendedTemplateReason: typeof parsed.recommendedTemplateReason === "string" ? parsed.recommendedTemplateReason : undefined,
+        layoutSuggestion: rawLayoutSuggestion ?? undefined,
       }
     : undefined;
 
@@ -887,5 +981,6 @@ export async function runCreativeAgent(
     headline: rawHeadline,
     offer: rawOffer,
     structured,
+    layoutSuggestion: rawLayoutSuggestion,
   };
 }

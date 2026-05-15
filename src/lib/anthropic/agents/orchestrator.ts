@@ -10,7 +10,7 @@
 import { getAnthropicClient, MODELS } from "../client";
 import { runDataAgent } from "./data-agent";
 import { runTargetingAgent } from "./targeting-agent";
-import { runCreativeAgent } from "./creative-agent";
+import { runCreativeAgent, loadBestPerformingMailExamples, type BestPerformingExample } from "./creative-agent";
 import { runOptimizationAgent } from "./optimization-agent";
 import { runCoopAgent, type CoopAgentOutput } from "./coop-agent";
 import {
@@ -42,6 +42,26 @@ import type {
   InventoryVehicle, AgedInventoryMatch,
   SendDirectMailToolInput, SendDirectMailToolResult, DesignStyle,
 } from "@/types";
+
+// ── Shared: format best-performing examples as a system prompt section ───────
+
+function formatBestExamplesSection(examples: BestPerformingExample[], dealershipName: string): string {
+  if (!examples.length) return "";
+  return (
+    `\nHIGH-PERFORMING HISTORICAL EXAMPLES — these ${examples.length} mail piece(s) from ${dealershipName} ` +
+    `achieved the highest QR scan rates. Mirror their template type, design style, offer structure, and ` +
+    `copy angle — these formats are proven to resonate with ${dealershipName}'s customers:\n\n` +
+    examples.map((ex, i) => {
+      const styleTag = ex.designStyle && ex.designStyle !== "standard" ? ` / ${ex.designStyle}` : "";
+      return (
+        `Top Performer ${i + 1} [${ex.templateType}${styleTag}] — ${ex.scanCount} QR scan(s):\n` +
+        (ex.offerText ? `  Offer: "${ex.offerText}"\n` : "") +
+        `  Copy opening: "${ex.copySnippet}"\n`
+      );
+    }).join("\n") +
+    `\nIf the above examples share a consistent template or offer type, default to that format for new campaigns unless the campaign goal explicitly requires a different approach.\n`
+  );
+}
 
 // ── Original orchestrator (preview only, no mail sent) ────────
 
@@ -103,11 +123,12 @@ Output JSON: {"plan": "summary", "priority_segments": ["segment1"], "risk_flags"
     });
     totalTokens += planResponse.usage.input_tokens + planResponse.usage.output_tokens;
 
-    const [customersRes, dealershipRes, baselineExamples, dealershipInsightsRaw] = await Promise.all([
+    const [customersRes, dealershipRes, baselineExamples, dealershipInsightsRaw, bestMailExamples] = await Promise.all([
       supabase.from("customers").select("*").eq("dealership_id", input.context.dealershipId).order("last_visit_date", { ascending: false }).limit(200),
       supabase.from("dealerships").select("phone, address, hours, logo_url, website_url, settings").eq("id", input.context.dealershipId).single(),
       loadBaselineExamples(input.context.dealershipId),
       loadDealershipInsights(input.context.dealershipId),
+      loadBestPerformingMailExamples(supabase, input.context.dealershipId),
     ]);
     const insightsContext = formatInsightsForPrompt(dealershipInsightsRaw);
     const customers = customersRes.data;
@@ -167,6 +188,7 @@ Output JSON: {"plan": "summary", "priority_segments": ["segment1"], "risk_flags"
         baselineExamples,
         dealershipInsights: insightsContext,
         customerCreditTier,
+        bestPerformingExamples: bestMailExamples,
       });
       totalTokens += creative.tokensUsed;
 
@@ -297,7 +319,7 @@ export async function runDirectMailOrchestrator(
 
   try {
     // Load the selected customers + their most recent visits + dealership profile + baseline
-    const [{ data: customers }, { data: dealershipProfile }, dmBaselineExamples, dealerMemories, dmInsightsRaw] = await Promise.all([
+    const [{ data: customers }, { data: dealershipProfile }, dmBaselineExamples, dealerMemories, dmInsightsRaw, dmBestExamples] = await Promise.all([
       supabase
         .from("customers")
         .select("*")
@@ -311,8 +333,10 @@ export async function runDirectMailOrchestrator(
       loadBaselineExamples(input.context.dealershipId),
       loadDealershipMemories(input.context.dealershipId),
       loadDealershipInsights(input.context.dealershipId),
+      loadBestPerformingMailExamples(supabase, input.context.dealershipId),
     ]);
     const dmInsightsContext = formatInsightsForPrompt(dmInsightsRaw);
+    const dmBestExamplesSection = formatBestExamplesSection(dmBestExamples, input.context.dealershipName);
 
     const xtimeUrl = (dealershipProfile?.settings?.xtime_url as string | undefined) ?? null;
 
@@ -485,6 +509,7 @@ export async function runDirectMailOrchestrator(
         `1. Write personalized ${input.templateType} copy for this customer based on their visit history.\n` +
         `2. Call send_direct_mail with the copy and appropriate variables.\n` +
         `3. Report the result.\n\n` +
+        `Campaign goal: ${input.campaignGoal}\n` +
         `Tone: ${input.dealershipTone ?? "friendly and professional"}\n` +
         `Template: ${input.templateType}\n` +
         (input.dryRun ? `⚠ DRY RUN MODE: Generate copy and call the tool, but note this is a simulation.\n` : "") +
@@ -494,6 +519,7 @@ export async function runDirectMailOrchestrator(
           ? coopOutput.coopContext
           : "") +
         dealershipContactSection +
+        dmBestExamplesSection +
         dmBaselineSection +
         dealerMemoriesSection +
         dmInsightsContext +
@@ -807,7 +833,7 @@ export async function runOmnichannelOrchestrator(
     .single();
 
   try {
-    const [{ data: customers }, { data: omnichannelDealershipProfile }, omniBaselineExamples, omniInsightsRaw, omniDealerMemories] = await Promise.all([
+    const [{ data: customers }, { data: omnichannelDealershipProfile }, omniBaselineExamples, omniInsightsRaw, omniDealerMemories, omniBestExamples] = await Promise.all([
       supabase
         .from("customers")
         .select("*")
@@ -821,9 +847,11 @@ export async function runOmnichannelOrchestrator(
       loadBaselineExamples(input.context.dealershipId),
       loadDealershipInsights(input.context.dealershipId),
       loadDealershipMemories(input.context.dealershipId),
+      loadBestPerformingMailExamples(supabase, input.context.dealershipId),
     ]);
     const omniInsightsContext = formatInsightsForPrompt(omniInsightsRaw);
     const omniMemoriesSection  = formatMemoriesForPrompt(omniDealerMemories);
+    const omniBestExamplesSection = formatBestExamplesSection(omniBestExamples, input.context.dealershipName);
 
     const omnichannelXtimeUrl = (omnichannelDealershipProfile?.settings?.xtime_url as string | undefined) ?? null;
 
@@ -973,6 +1001,7 @@ export async function runOmnichannelOrchestrator(
         `You are the AutoCDP Orchestrator for ${input.context.dealershipName}.\n` +
         `Available tools: ${tools.map((t) => t.name).join(", ")}.\n` +
         `${channelNote}\n` +
+        `Campaign goal: ${input.campaignGoal}\n` +
         `Tone: ${input.dealershipTone ?? "friendly and professional"}\n` +
         (input.dryRun ? `⚠ DRY RUN MODE: Generate copy and call the tool — this is a simulation.\n` : "") +
         (input.campaignType === "aged_inventory"
@@ -981,6 +1010,7 @@ export async function runOmnichannelOrchestrator(
           ? omnichannelCoopOutput.coopContext
           : "") +
         omnichannelContactSection +
+        omniBestExamplesSection +
         omniBaselineSection +
         omniMemoriesSection +
         omniInsightsContext +
