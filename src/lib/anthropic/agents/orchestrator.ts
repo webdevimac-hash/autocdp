@@ -13,6 +13,7 @@ import { runTargetingAgent } from "./targeting-agent";
 import { runCreativeAgent, loadBestPerformingMailExamples, type BestPerformingExample } from "./creative-agent";
 import { runOptimizationAgent } from "./optimization-agent";
 import { runCoopAgent, type CoopAgentOutput } from "./coop-agent";
+import { planCampaignSequence } from "./sequence-planner";
 import {
   SEND_DIRECT_MAIL_TOOL_DEFINITION,
   executeSendDirectMailTool,
@@ -713,6 +714,25 @@ export async function runDirectMailOrchestrator(
       }).catch((err) =>
         console.warn("[orchestrator] post-send optimization failed:", err)
       );
+
+      // ── Fire-and-forget Sequence Planner ─────────────────────
+      // Plans 1–2 intelligent follow-up touches (SMS/email) based on
+      // scan/no-scan status after the initial mailer window passes.
+      if (input.context.campaignId) {
+        const hasPhone = cadenceFiltered.some((c) => !!(c as Customer & { phone?: string }).phone);
+        const hasEmail = cadenceFiltered.some((c) => !!(c as Customer & { email?: string }).email);
+        void planCampaignSequence({
+          context: input.context,
+          campaignId: input.context.campaignId,
+          campaignGoal: input.campaignGoal,
+          channel: "direct_mail",
+          sentCount: successCount,
+          hasPhoneNumbers: hasPhone,
+          hasEmailAddresses: hasEmail,
+        }).catch((err) =>
+          console.warn("[orchestrator] post-send sequence planning failed:", err)
+        );
+      }
     }
 
     // Record orchestrator billing event

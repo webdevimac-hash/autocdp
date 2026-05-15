@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { runCreativeAgent } from "@/lib/anthropic/agents/creative-agent";
+import { createServiceClient } from "@/lib/supabase/server";
+import { runCreativeAgent, computePredictiveScore } from "@/lib/anthropic/agents/creative-agent";
 import { buildPreviewQRImageUrl } from "@/lib/qrcode-gen";
 import { loadDealershipMemories, formatMemoriesForPrompt } from "@/lib/memories";
 import { loadBaselineExamples } from "@/lib/anthropic/baseline";
 import { resolveVehiclePhoto, placeholderPhotoFor } from "@/lib/inventory-photos";
-import type { Customer, Visit, CommunicationChannel, MailTemplateType } from "@/types";
+import type { Customer, Visit, CommunicationChannel, MailTemplateType, DesignStyle } from "@/types";
 
 /**
  * POST /api/mail/preview
@@ -45,7 +46,14 @@ export async function POST(req: NextRequest) {
       .single() as { data: Record<string, unknown> | null };
 
     const body = await req.json();
-    const { customerId, templateType, campaignGoal, channel = "direct_mail", tone, designStyle = "standard" } = body;
+    const {
+      customerId, templateType, campaignGoal,
+      channel = "direct_mail", tone, designStyle = "standard",
+      audienceSize,
+    } = body as {
+      customerId: string; templateType?: MailTemplateType; campaignGoal: string;
+      channel?: string; tone?: string; designStyle?: DesignStyle; audienceSize?: number;
+    };
 
     if (!customerId || !campaignGoal) {
       return NextResponse.json({ error: "customerId and campaignGoal are required" }, { status: 400 });
@@ -113,6 +121,16 @@ export async function POST(req: NextRequest) {
         ((customer?.metadata as Record<string, unknown> | null)?.credit_tier as string | undefined) ?? undefined,
     });
 
+    // Predictive score — compute in parallel with vehicle photo lookup (direct mail only)
+    const predictiveScore = resolvedChannel === "direct_mail"
+      ? await computePredictiveScore(
+          createServiceClient(),
+          ud.dealership_id,
+          designStyle,
+          audienceSize ?? 1
+        ).catch(() => null)
+      : null;
+
     // QR preview URL — only relevant for direct mail
     const previewTrackingUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/track/preview`;
     const previewQrUrl = resolvedChannel === "direct_mail"
@@ -177,6 +195,7 @@ export async function POST(req: NextRequest) {
       structured: creative.structured ?? null,
       // Convenience — cleaned SMS body (strip HTML if any)
       smsBody: resolvedChannel === "sms" ? creative.content.replace(/<[^>]+>/g, "").slice(0, 160) : null,
+      predictiveScore,
     });
   } catch (error) {
     console.error("[/api/mail/preview]", error);

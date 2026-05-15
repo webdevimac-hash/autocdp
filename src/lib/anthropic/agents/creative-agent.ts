@@ -984,3 +984,200 @@ export async function runCreativeAgent(
     layoutSuggestion: rawLayoutSuggestion,
   };
 }
+
+// ── Offer Inventor ─────────────────────────────────────────────
+// Generates data-driven, compliant offer proposals for a campaign.
+// Fast Haiku call — used as a sub-step in the preview pipeline.
+
+export interface InventedOffer {
+  offerText: string;
+  predictedLiftPct: number;   // rough lift vs. baseline (0–50)
+  reasoning: string;
+  complianceNotes: string[];
+}
+
+export interface InventOfferInput {
+  context: AgentContext;
+  campaignGoal: string;
+  customerSegment: string;     // e.g. "lapsed VIP F-150 owners"
+  /** Winning offers from historical examples to mirror */
+  historicalWinners?: string[];
+  /** Current inventory context (make/model/price) */
+  inventoryContext?: string;
+  /** Co-op rules or restrictions */
+  coopRestrictions?: string;
+}
+
+export async function inventOffer(
+  input: InventOfferInput
+): Promise<InventedOffer[]> {
+  const client = getAnthropicClient();
+
+  const historicalSection = input.historicalWinners?.length
+    ? `\nHISTORICAL WINNING OFFERS (mirror structure, not exact text):\n${input.historicalWinners.map((o, i) => `  ${i + 1}. "${o}"`).join("\n")}\n`
+    : "";
+
+  const inventorySection = input.inventoryContext
+    ? `\nINVENTORY CONTEXT:\n${input.inventoryContext}\n`
+    : "";
+
+  const coopSection = input.coopRestrictions
+    ? `\nCO-OP RESTRICTIONS (must comply):\n${input.coopRestrictions}\n`
+    : "";
+
+  try {
+    const resp = await client.messages.create({
+      model: MODELS.fast,
+      max_tokens: 512,
+      system:
+        `You are an AutoCDP Offer Inventor for ${input.context.dealershipName}. ` +
+        `Generate 2–3 fresh, data-driven, legally compliant offers for the given campaign segment. ` +
+        `Output JSON only — an array: ` +
+        `[{"offerText":"string","predictedLiftPct":number,"reasoning":"string","complianceNotes":["string"]}]` +
+        `\nRules: offers must be specific (dollar amount or % off a named service), achievable, and FCRA/FTC-safe. ` +
+        `Do NOT fabricate inventory. Do NOT promise financing terms. Keep each offer ≤ 12 words.`,
+      messages: [
+        {
+          role: "user",
+          content:
+            `Campaign goal: ${input.campaignGoal}\n` +
+            `Target segment: ${input.customerSegment}\n` +
+            historicalSection +
+            inventorySection +
+            coopSection +
+            `\nPropose 2–3 fresh offers optimized for this segment.`,
+        },
+      ],
+    });
+
+    const text = resp.content[0].type === "text" ? resp.content[0].text : "[]";
+    const match = text.match(/\[[\s\S]+\]/);
+    if (!match) return [];
+
+    const parsed = JSON.parse(match[0]) as InventedOffer[];
+    return parsed.slice(0, 3);
+  } catch {
+    return [];
+  }
+}
+
+// ── Predictive Performance Scorer ─────────────────────────────
+// Computes expected scan rate, booking lift, and ROI for a given
+// dealership + design style + customer segment — from historical data only.
+// No LLM call — pure statistics. Returns in < 200 ms.
+
+export interface PredictiveScore {
+  expectedScanRatePct: number;     // e.g. 4.2
+  expectedBookingLiftPct: number;  // rough estimate above baseline
+  roiEstimate: string;             // e.g. "$320–$640 per 100 pieces"
+  confidence: "high" | "medium" | "low";
+  sampleSize: number;
+  breakdown: string[];             // 2–3 bullet reasons
+}
+
+export async function computePredictiveScore(
+  supabase: ReturnType<typeof createServiceClient>,
+  dealershipId: string,
+  designStyle: string,
+  customerCount: number
+): Promise<PredictiveScore> {
+  try {
+    type PieceRow = {
+      scanned_count: number | null;
+      status: string | null;
+      variables: Record<string, string> | null;
+    };
+
+    const { data: pieces } = await (supabase
+      .from("mail_pieces")
+      .select("scanned_count, status, variables")
+      .eq("dealership_id", dealershipId)
+      .in("status", ["delivered", "in_transit", "in_production"])
+      .limit(300) as unknown as Promise<{ data: PieceRow[] | null }>);
+
+    const all = pieces ?? [];
+    const delivered = all.filter((p) =>
+      ["delivered", "in_transit"].includes(p.status ?? "")
+    );
+    const styleMatches = delivered.filter(
+      (p) => (p.variables?.design_style ?? "standard") === designStyle
+    );
+
+    const computeRate = (rows: PieceRow[]) => {
+      if (!rows.length) return null;
+      const scanned = rows.filter((p) => (p.scanned_count ?? 0) > 0).length;
+      return (scanned / rows.length) * 100;
+    };
+
+    const styleRate = computeRate(styleMatches);
+    const overallRate = computeRate(delivered);
+
+    // Determine effective rate (prefer style-specific, fall back to overall, then baseline)
+    const baselineByChannel: Record<string, number> = {
+      standard: 3.2,
+      "multi-panel": 4.1,
+      "premium-fluorescent": 5.3,
+      conquest: 3.8,
+      "complex-fold": 4.6,
+    };
+    const baseline = baselineByChannel[designStyle] ?? 3.2;
+
+    let effectiveRate: number;
+    let sampleSize: number;
+    let confidence: "high" | "medium" | "low";
+
+    if (styleRate !== null && styleMatches.length >= 10) {
+      effectiveRate = styleRate;
+      sampleSize = styleMatches.length;
+      confidence = styleMatches.length >= 50 ? "high" : "medium";
+    } else if (overallRate !== null && delivered.length >= 10) {
+      // Adjust overall rate by style-specific baseline ratio
+      effectiveRate = overallRate * (baseline / (baselineByChannel["standard"] ?? 3.2));
+      sampleSize = delivered.length;
+      confidence = delivered.length >= 50 ? "medium" : "low";
+    } else {
+      effectiveRate = baseline;
+      sampleSize = 0;
+      confidence = "low";
+    }
+
+    effectiveRate = Math.min(25, Math.max(0.5, +effectiveRate.toFixed(1)));
+
+    // Booking lift: typically 0.4–0.8 of scan rate convert to bookings at avg $185 RO
+    const bookingLiftPct = +(effectiveRate * 0.5).toFixed(1);
+    const avgRO = 185;
+    const lowROI = Math.round(customerCount * (effectiveRate / 100) * 0.4 * avgRO);
+    const highROI = Math.round(customerCount * (effectiveRate / 100) * 0.8 * avgRO);
+    const roiEstimate = customerCount > 0
+      ? `$${lowROI.toLocaleString()}–$${highROI.toLocaleString()} for this batch`
+      : `~${effectiveRate.toFixed(1)}% scan rate expected`;
+
+    const breakdown: string[] = [];
+    if (sampleSize > 0) {
+      breakdown.push(`Based on ${sampleSize} historical ${designStyle} pieces from your dealership`);
+    } else {
+      breakdown.push(`Industry baseline for ${designStyle} design (no local history yet)`);
+    }
+    if (effectiveRate > 5) breakdown.push("Above-average scan rate — this design style is performing well");
+    else if (effectiveRate < 2.5) breakdown.push("Below-average scan rate — consider a higher-contrast design style");
+    if (confidence === "low") breakdown.push("Low confidence — run 20+ pieces to calibrate predictions");
+
+    return {
+      expectedScanRatePct: effectiveRate,
+      expectedBookingLiftPct: bookingLiftPct,
+      roiEstimate,
+      confidence,
+      sampleSize,
+      breakdown,
+    };
+  } catch {
+    return {
+      expectedScanRatePct: 3.2,
+      expectedBookingLiftPct: 1.6,
+      roiEstimate: "Industry baseline estimate",
+      confidence: "low",
+      sampleSize: 0,
+      breakdown: ["Using industry baseline — run campaigns to build local predictions"],
+    };
+  }
+}

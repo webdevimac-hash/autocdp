@@ -497,7 +497,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
   const [xtimeUrl, setXtimeUrl] = useState<string | null>(null);
   const [baselineCount, setBaselineCount] = useState<number | null>(null);
 
-  // Load X-Time URL and baseline example count on mount
+  // Load X-Time URL, baseline example count, and trigger opportunities on mount
   useState(() => {
     fetch("/api/integrations/xtime/settings")
       .then((r) => r.ok ? r.json() : null)
@@ -506,6 +506,10 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
     fetch("/api/dealership/baseline-examples")
       .then((r) => r.ok ? r.json() : null)
       .then((d: { examples?: unknown[] } | null) => { if (d?.examples) setBaselineCount(d.examples.length); })
+      .catch(() => null);
+    fetch("/api/ai/triggers")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { opportunities?: TriggerOpportunity[] } | null) => { if (d?.opportunities?.length) setTriggers(d.opportunities); })
       .catch(() => null);
   });
 
@@ -581,6 +585,27 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
   const [dryRun, setDryRun] = useState(true);
   const [sendResults, setSendResults] = useState<ChannelResult[] | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+
+  // AI Trigger Opportunities (loaded on mount)
+  type TriggerOpportunity = {
+    id: string; type: string; urgency: "high" | "medium" | "low"; title: string;
+    description: string; customerCount: number; suggestedGoal: string;
+    suggestedChannel: string; estimatedROI: string; customerIds: string[];
+  };
+  const [triggers, setTriggers] = useState<TriggerOpportunity[]>([]);
+  const [triggersDismissed, setTriggersDismissed] = useState<Set<string>>(new Set());
+
+  // Predictive score (from preview result)
+  type PredictiveScore = {
+    expectedScanRatePct: number; expectedBookingLiftPct: number;
+    roiEstimate: string; confidence: "high" | "medium" | "low";
+    sampleSize: number; breakdown: string[];
+  };
+  const [predictiveScore, setPredictiveScore] = useState<PredictiveScore | null>(null);
+
+  // Sequence preview (after send)
+  type SequenceStep = { stepIndex: number; channel: string; dayOffset: number; condition: string; messageHint: string; estimatedCostLabel: string };
+  const [sequenceSteps, setSequenceSteps] = useState<SequenceStep[]>([]);
 
   // GM Approval flow
   type ApprovalUiState = "idle" | "input_gm" | "submitting" | "sent" | "error";
@@ -728,6 +753,8 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
     setGeneratingPreview(true);
     setPreviewError(null);
     setPreviewResult(null);
+    setPredictiveScore(null);
+    setSequenceSteps([]);
     setLayoutBannerDismissed(false);
     setShowWhyTooltip(false);
 
@@ -741,6 +768,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
           campaignGoal,
           channel: channel === "multi_channel" ? "email" : channel,
           designStyle: channel === "direct_mail" ? designStyle : undefined,
+          audienceSize: selectedIds.size || 1,
         }),
       });
       const data = await res.json();
@@ -768,6 +796,7 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
         conditionsText: data.structured?.couponBlock?.conditionsText ?? null,
         layoutSuggestion: data.structured?.layoutSuggestion ?? null,
       });
+      if (data.predictiveScore) setPredictiveScore(data.predictiveScore as PredictiveScore);
       setCurrentStep(4);
     } catch (err) {
       setPreviewError(err instanceof Error ? err.message : "Unknown error");
@@ -927,6 +956,14 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
       }
 
       setCurrentStep(5);
+
+      // Build sequence preview locally (mirrors sequence-planner logic, no API call needed)
+      if (channel === "direct_mail" && !dryRun) {
+        const steps: SequenceStep[] = [];
+        if (withPhone > 0) steps.push({ stepIndex: 1, channel: "sms", dayOffset: 14, condition: "no_scan_14d", messageHint: "SMS nudge for customers who haven't scanned the postcard yet.", estimatedCostLabel: "$0.02 / SMS" });
+        if (withEmail > 0) steps.push({ stepIndex: 2, channel: "email", dayOffset: 21, condition: "no_scan_21d", messageHint: "Email follow-up with fresh angle for non-responders.", estimatedCostLabel: "$0.001 / email" });
+        setSequenceSteps(steps);
+      }
     } catch (err) {
       setSendError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -1294,6 +1331,52 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
             {selectedCount > 0 && <span className="chip chip-indigo">{selectedCount} selected</span>}
           </div>
           <div className="p-5 space-y-3">
+
+            {/* AI Trigger Suggestions */}
+            {triggers.filter((t) => !triggersDismissed.has(t.id)).length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3 text-amber-500" /> AI Detected Opportunities
+                </p>
+                {triggers.filter((t) => !triggersDismissed.has(t.id)).slice(0, 3).map((t) => (
+                  <div key={t.id} className={cn(
+                    "rounded-[var(--radius)] border p-3 flex items-start gap-3 transition-all",
+                    t.urgency === "high" ? "border-red-200 bg-red-50/50" :
+                    t.urgency === "medium" ? "border-amber-200 bg-amber-50/50" :
+                    "border-slate-200 bg-slate-50/50"
+                  )}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className={cn("text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
+                          t.urgency === "high" ? "bg-red-100 text-red-700" :
+                          t.urgency === "medium" ? "bg-amber-100 text-amber-700" :
+                          "bg-slate-100 text-slate-500")}>{t.urgency}</span>
+                        <p className="text-[12px] font-semibold text-slate-900 truncate">{t.title}</p>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-snug">{t.description}</p>
+                      <p className="text-[10px] text-emerald-600 font-medium mt-1">{t.estimatedROI}</p>
+                    </div>
+                    <div className="flex flex-col gap-1 shrink-0">
+                      <button
+                        className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 whitespace-nowrap"
+                        onClick={() => {
+                          if (t.customerIds.length > 0) {
+                            setSelectedIds(new Set(t.customerIds.filter((id) => customers.some((c) => c.id === id))));
+                          }
+                          setCampaignGoal(t.suggestedGoal);
+                          setCurrentStep(2);
+                        }}
+                      >Use this →</button>
+                      <button
+                        className="text-[10px] text-slate-400 hover:text-slate-600"
+                        onClick={() => setTriggersDismissed((prev) => new Set([...prev, t.id]))}
+                      >Dismiss</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="flex gap-2 flex-wrap">
               {["all", "lapsed", "at_risk", "active", "vip"].map((stage) => (
                 <button key={stage} onClick={() => setFilterStage(stage)}
@@ -2093,6 +2176,44 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
               </div>
             )}
 
+            {/* Predictive Performance Score */}
+            {predictiveScore && channel === "direct_mail" && (
+              <div className="rounded-[var(--radius)] border border-slate-200 bg-white overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-indigo-500 shrink-0" />
+                  <p className="text-[12px] font-semibold text-slate-900 flex-1">Predicted Performance</p>
+                  <span className={cn("text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
+                    predictiveScore.confidence === "high" ? "bg-emerald-100 text-emerald-700" :
+                    predictiveScore.confidence === "medium" ? "bg-amber-100 text-amber-700" :
+                    "bg-slate-100 text-slate-500"
+                  )}>{predictiveScore.confidence} confidence · {predictiveScore.sampleSize} samples</span>
+                </div>
+                <div className="px-4 py-3 grid grid-cols-3 gap-3">
+                  <div className="text-center">
+                    <p className="text-[22px] font-bold text-indigo-600">{predictiveScore.expectedScanRatePct}%</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Expected scan rate</p>
+                  </div>
+                  <div className="text-center border-x border-slate-100">
+                    <p className="text-[22px] font-bold text-emerald-600">+{predictiveScore.expectedBookingLiftPct}%</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Booking lift</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{predictiveScore.roiEstimate}</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Est. ROI</p>
+                  </div>
+                </div>
+                {predictiveScore.breakdown.length > 0 && (
+                  <div className="px-4 pb-3 space-y-1">
+                    {predictiveScore.breakdown.map((b, i) => (
+                      <p key={i} className="text-[11px] text-slate-500 flex items-start gap-1.5">
+                        <span className="text-indigo-400 mt-0.5 shrink-0">•</span>{b}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Credit Insight — shown for existing customers only (FCRA) */}
             <CreditInsightPanel
               selectedCustomers={customers.filter((c) => selectedIds.has(c.id))}
@@ -2316,6 +2437,37 @@ export function CampaignBuilder({ customers, dealershipName, dealershipLogoUrl, 
                           <span className="chip chip-slate capitalize">{r.channel.replace("_", " ")}</span>
                         </div>
                         <p className="text-xs text-slate-400">{r.message}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Autonomous Follow-Up Sequence */}
+            {sequenceSteps.length > 0 && !dryRun && (
+              <div className="rounded-[var(--radius)] border border-indigo-200 bg-indigo-50/40 overflow-hidden">
+                <div className="px-4 py-3 border-b border-indigo-100 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-indigo-500 shrink-0" />
+                  <div>
+                    <p className="text-[12px] font-semibold text-indigo-900">Autonomous Follow-Up Sequence Planned</p>
+                    <p className="text-[10px] text-indigo-500 mt-0.5">The swarm will automatically fire these touches if customers don't respond.</p>
+                  </div>
+                </div>
+                <div className="p-4 space-y-2">
+                  {sequenceSteps.map((step) => (
+                    <div key={step.stepIndex} className="flex items-start gap-3">
+                      <div className="w-7 h-7 rounded-full border-2 border-indigo-200 bg-white flex items-center justify-center text-[10px] font-bold text-indigo-600 shrink-0">{step.stepIndex}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className={cn("chip text-[10px] capitalize",
+                            step.channel === "sms" ? "chip-violet" : step.channel === "email" ? "chip-emerald" : "chip-indigo"
+                          )}>{step.channel}</span>
+                          <span className="text-[11px] font-semibold text-slate-700">Day {step.dayOffset}</span>
+                          <span className="text-[10px] text-slate-400">if {step.condition.replace(/_/g, " ")}</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{step.messageHint}</p>
+                        <p className="text-[10px] text-slate-400">{step.estimatedCostLabel}</p>
                       </div>
                     </div>
                   ))}
