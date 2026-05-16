@@ -144,6 +144,7 @@ export default async function IntegrationsPage({
       xtimeUrl={xtimeUrl}
       inventoryInsights={inventoryInsights}
       queueStats={queueStats}
+      appUrl={APP_URL}
     />
   );
 }

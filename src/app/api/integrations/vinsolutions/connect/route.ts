@@ -2,12 +2,18 @@
  * POST /api/integrations/vinsolutions/connect
  *
  * Body: { apiKey: string; dealerId: string }
+ *
+ * On first connect: validates credentials, generates webhook token + secret,
+ * saves connection with merged metadata.
+ * On reconnect: preserves existing plugin_mode, webhook credentials, and
+ * event stats — only updates encrypted_tokens.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { encryptTokens } from "@/lib/dms/encrypt";
 import { runSync } from "@/lib/dms/sync-engine";
 import { fetchVinContacts } from "@/lib/dms/vinsolutions";
+import { generateWebhookToken, generateWebhookSecret } from "@/lib/dms/webhook-verify";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +23,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json() as { apiKey?: string; dealerId?: string };
-  const apiKey = body.apiKey?.trim();
+  const apiKey   = body.apiKey?.trim();
   const dealerId = body.dealerId?.trim();
   if (!apiKey || !dealerId) {
     return NextResponse.json({ error: "apiKey and dealerId are required" }, { status: 400 });
@@ -44,22 +50,40 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Fetch existing metadata so we never wipe plugin_mode or webhook settings
+  const { data: existing } = await svc
+    .from("dms_connections")
+    .select("metadata")
+    .eq("dealership_id", ud.dealership_id)
+    .eq("provider", "vinsolutions")
+    .maybeSingle() as { data: { metadata: Record<string, unknown> } | null };
+
+  const existingMeta = (existing?.metadata ?? {}) as Record<string, unknown>;
+
+  // Preserve existing webhook creds; generate if missing
+  const metadata: Record<string, unknown> = {
+    ...existingMeta,
+    webhook_token:        (existingMeta.webhook_token  as string) || generateWebhookToken(),
+    webhook_secret:       (existingMeta.webhook_secret as string) || generateWebhookSecret(),
+    webhook_event_count:  (existingMeta.webhook_event_count as number) ?? 0,
+  };
+
   const encrypted = await encryptTokens({ apiKey, dealerId });
 
   const { data: conn, error: upsertErr } = await svc
     .from("dms_connections")
     .upsert(
       {
-        dealership_id: ud.dealership_id,
-        provider: "vinsolutions",
-        status: "active",
+        dealership_id:    ud.dealership_id,
+        provider:         "vinsolutions",
+        status:           "active",
         encrypted_tokens: encrypted,
-        metadata: {},
+        metadata,
       },
       { onConflict: "dealership_id,provider" }
     )
     .select("id")
-    .single();
+    .single() as unknown as { data: { id: string } | null; error: { message: string } | null };
 
   if (upsertErr || !conn) {
     return NextResponse.json({ error: "Failed to save connection" }, { status: 500 });
@@ -67,10 +91,14 @@ export async function POST(req: NextRequest) {
 
   void runSync({
     dealershipId: ud.dealership_id,
-    connectionId: conn.id as string,
-    provider: "vinsolutions",
-    jobType: "full",
+    connectionId: conn.id,
+    provider:     "vinsolutions",
+    jobType:      "full",
   }).catch((e) => console.error("[vinsolutions/connect] Initial sync failed:", e));
 
-  return NextResponse.json({ ok: true, connectionId: conn.id });
+  return NextResponse.json({
+    ok:           true,
+    connectionId: conn.id,
+    webhookToken: metadata.webhook_token,
+  });
 }

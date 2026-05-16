@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ConnectionCard, type ConnectionStatus } from "@/components/integrations/connection-card";
 import { parseCsvToRows } from "@/lib/csv";
-import { Database, RefreshCw, AlertCircle, CheckCircle2, Info, Car, CreditCard, FileText, Webhook, Copy, Check, ArrowLeftRight, Zap, TriangleAlert } from "lucide-react";
+import { Database, RefreshCw, AlertCircle, CheckCircle2, Info, Car, CreditCard, FileText, Webhook, Copy, Check, ArrowLeftRight, Zap, TriangleAlert, Eye, EyeOff, ChevronDown, ChevronUp, Radio } from "lucide-react";
 
 type DmsProvider =
   | "cdk_fortellis"
@@ -50,6 +50,7 @@ interface Props {
   xtimeUrl?: string | null;
   inventoryInsights?: InventoryInsights | null;
   queueStats?: QueueStats | null;
+  appUrl?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -586,7 +587,199 @@ function PluginModePanel({
   );
 }
 
-export function IntegrationsClient({ connections, latestCounts, successParam, errorParam, dealerFunnelStats, xtimeUrl, inventoryInsights, queueStats }: Props) {
+// ---------------------------------------------------------------------------
+// Webhook info panel — shown below each connected CRM card
+// ---------------------------------------------------------------------------
+
+const WEBHOOK_INSTRUCTIONS: Record<string, { path: string; steps: string[]; headerName: string }> = {
+  vinsolutions: {
+    path:       "VinSolutions Admin Panel → API Settings → Webhooks → Add Endpoint",
+    headerName: "X-VinSolutions-Signature",
+    steps: [
+      "Open VinSolutions and go to Admin Panel → API Settings → Webhooks.",
+      "Click Add Endpoint and paste the Endpoint URL below.",
+      "Paste the Signing Secret into the Secret field.",
+      "Select events: Contacts (created, updated, opted-out), Leads (created, updated, status changed), Activities (completed).",
+      "Save. VinSolutions will send a test event — check the Last Event timestamp below to confirm.",
+    ],
+  },
+  dealertrack: {
+    path:       "DT Connect Portal → Partner Settings → Event Subscriptions → Register Endpoint",
+    headerName: "X-DT-Signature",
+    steps: [
+      "Log in to the Dealertrack DT Connect Partner Portal.",
+      "Navigate to Partner Settings → Event Subscriptions → Register Endpoint.",
+      "Paste the Endpoint URL below into the Webhook URL field.",
+      "Paste the Signing Secret into the Signing Secret field.",
+      "Select events: lead.created, lead.updated, lead.status_changed, contact.optout.",
+      "Save and confirm with the test ping.",
+    ],
+  },
+  elead: {
+    path:       "Elead Admin Portal → Integrations → Webhooks → New Webhook",
+    headerName: "X-Elead-Signature",
+    steps: [
+      "Log in to the Elead Admin Portal (CDK Global).",
+      "Go to Integrations → Webhooks → New Webhook.",
+      "Paste the Endpoint URL below into the URL field.",
+      "Paste the Signing Secret into the Secret Key field.",
+      "Select events: lead.created, lead.updated, lead.status_changed, contact.dnc.",
+      "Click Save and send a test to confirm delivery.",
+    ],
+  },
+};
+
+function WebhookInfoPanel({
+  provider,
+  webhookToken,
+  webhookSecret,
+  lastWebhookAt,
+  webhookEventCount,
+  appUrl,
+}: {
+  provider: string;
+  webhookToken: string;
+  webhookSecret: string;
+  lastWebhookAt?: string | null;
+  webhookEventCount?: number;
+  appUrl: string;
+}) {
+  const [showSecret,  setShowSecret]  = useState(false);
+  const [showSetup,   setShowSetup]   = useState(false);
+  const [copiedUrl,   setCopiedUrl]   = useState(false);
+  const [copiedSec,   setCopiedSec]   = useState(false);
+
+  const endpointUrl = `${appUrl}/api/webhooks/${provider}?token=${webhookToken}`;
+  const cfg         = WEBHOOK_INSTRUCTIONS[provider];
+
+  function copyUrl() {
+    navigator.clipboard.writeText(endpointUrl).then(() => {
+      setCopiedUrl(true); setTimeout(() => setCopiedUrl(false), 2000);
+    });
+  }
+  function copySecret() {
+    navigator.clipboard.writeText(webhookSecret).then(() => {
+      setCopiedSec(true); setTimeout(() => setCopiedSec(false), 2000);
+    });
+  }
+
+  function fmtRelative(iso: string): string {
+    const diff = Date.now() - new Date(iso).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1)   return "just now";
+    if (m < 60)  return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24)  return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
+  }
+
+  return (
+    <div className="-mt-px rounded-b-xl border-x border-b border-violet-200 bg-violet-50/60 px-4 pt-3 pb-4 space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Radio className="w-3.5 h-3.5 text-violet-500" />
+          <span className="text-[12px] font-semibold text-violet-900">Real-Time Webhook</span>
+          {lastWebhookAt ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+              Live
+            </span>
+          ) : (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 font-medium">
+              Awaiting first event
+            </span>
+          )}
+        </div>
+        {lastWebhookAt && webhookEventCount != null && (
+          <span className="text-[11px] text-violet-600">
+            Last: {fmtRelative(lastWebhookAt)} · {webhookEventCount.toLocaleString()} events
+          </span>
+        )}
+      </div>
+
+      {/* Endpoint URL */}
+      <div className="space-y-1">
+        <p className="text-[11px] font-medium text-violet-700">Endpoint URL</p>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 text-[10px] bg-white border border-violet-200 rounded-lg px-2.5 py-1.5 text-gray-700 truncate select-all">
+            {endpointUrl}
+          </code>
+          <button
+            onClick={copyUrl}
+            className="shrink-0 p-1.5 rounded-lg border border-violet-200 bg-white hover:bg-violet-50 transition-colors"
+            title="Copy endpoint URL"
+          >
+            {copiedUrl ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-violet-500" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Signing Secret */}
+      <div className="space-y-1">
+        <p className="text-[11px] font-medium text-violet-700">
+          Signing Secret <span className="text-violet-400 font-normal">(paste into {providerLabel(provider)})</span>
+        </p>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 text-[10px] bg-white border border-violet-200 rounded-lg px-2.5 py-1.5 text-gray-700 font-mono truncate">
+            {showSecret ? webhookSecret : "•".repeat(32)}
+          </code>
+          <button
+            onClick={() => setShowSecret((s) => !s)}
+            className="shrink-0 p-1.5 rounded-lg border border-violet-200 bg-white hover:bg-violet-50 transition-colors"
+            title={showSecret ? "Hide secret" : "Reveal secret"}
+          >
+            {showSecret
+              ? <EyeOff className="w-3.5 h-3.5 text-violet-500" />
+              : <Eye    className="w-3.5 h-3.5 text-violet-500" />}
+          </button>
+          <button
+            onClick={copySecret}
+            className="shrink-0 p-1.5 rounded-lg border border-violet-200 bg-white hover:bg-violet-50 transition-colors"
+            title="Copy secret"
+          >
+            {copiedSec ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-violet-500" />}
+          </button>
+        </div>
+        {cfg && (
+          <p className="text-[10px] text-violet-500">
+            Signature header: <code className="font-mono">{cfg.headerName}</code>
+          </p>
+        )}
+      </div>
+
+      {/* Collapsible setup instructions */}
+      {cfg && (
+        <button
+          onClick={() => setShowSetup((s) => !s)}
+          className="flex items-center gap-1.5 text-[11px] font-medium text-violet-600 hover:text-violet-800 transition-colors"
+        >
+          {showSetup
+            ? <ChevronUp   className="w-3.5 h-3.5" />
+            : <ChevronDown className="w-3.5 h-3.5" />}
+          {showSetup ? "Hide setup instructions" : "Show setup instructions"}
+        </button>
+      )}
+      {showSetup && cfg && (
+        <div className="bg-white border border-violet-200 rounded-lg px-3.5 py-3 space-y-2">
+          <p className="text-[11px] font-semibold text-violet-900">{cfg.path}</p>
+          <ol className="space-y-1.5 list-none">
+            {cfg.steps.map((step, i) => (
+              <li key={i} className="flex gap-2 text-[11px] text-gray-600">
+                <span className="shrink-0 w-4 h-4 rounded-full bg-violet-100 text-violet-700 font-bold flex items-center justify-center text-[9px]">
+                  {i + 1}
+                </span>
+                {step}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function IntegrationsClient({ connections, latestCounts, successParam, errorParam, dealerFunnelStats, xtimeUrl, inventoryInsights, queueStats, appUrl = "https://app.autocdp.com" }: Props) {
   const router = useRouter();
   const [openModal, setOpenModal] = useState<DmsProvider | "csv_upload" | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -915,6 +1108,16 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
                 deadCount={(pluginModeMap["vinsolutions"] ?? false) ? (queueStats?.dead ?? 0) : 0}
               />
             )}
+            {getStatus("vinsolutions") === "active" && vinConn?.metadata?.webhook_token && (
+              <WebhookInfoPanel
+                provider="vinsolutions"
+                webhookToken={vinConn.metadata.webhook_token as string}
+                webhookSecret={vinConn.metadata.webhook_secret as string}
+                lastWebhookAt={vinConn.metadata.last_webhook_at as string | null}
+                webhookEventCount={vinConn.metadata.webhook_event_count as number | undefined}
+                appUrl={appUrl}
+              />
+            )}
           </div>
 
           {/* Dealertrack */}
@@ -942,6 +1145,16 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
                 deadCount={(pluginModeMap["dealertrack"] ?? false) ? (queueStats?.dead ?? 0) : 0}
               />
             )}
+            {getStatus("dealertrack") === "active" && dtConn?.metadata?.webhook_token && (
+              <WebhookInfoPanel
+                provider="dealertrack"
+                webhookToken={dtConn.metadata.webhook_token as string}
+                webhookSecret={dtConn.metadata.webhook_secret as string}
+                lastWebhookAt={dtConn.metadata.last_webhook_at as string | null}
+                webhookEventCount={dtConn.metadata.webhook_event_count as number | undefined}
+                appUrl={appUrl}
+              />
+            )}
           </div>
 
           {/* Elead */}
@@ -967,6 +1180,16 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
                 loading={pluginModeLoading["elead"] ?? false}
                 onToggle={(v) => handlePluginModeToggle("elead", v)}
                 deadCount={(pluginModeMap["elead"] ?? false) ? (queueStats?.dead ?? 0) : 0}
+              />
+            )}
+            {getStatus("elead") === "active" && eleadConn?.metadata?.webhook_token && (
+              <WebhookInfoPanel
+                provider="elead"
+                webhookToken={eleadConn.metadata.webhook_token as string}
+                webhookSecret={eleadConn.metadata.webhook_secret as string}
+                lastWebhookAt={eleadConn.metadata.last_webhook_at as string | null}
+                webhookEventCount={eleadConn.metadata.webhook_event_count as number | undefined}
+                appUrl={appUrl}
               />
             )}
           </div>
