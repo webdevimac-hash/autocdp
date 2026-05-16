@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { RefreshCw, Printer, ChevronLeft, ChevronRight, Zap } from "lucide-react";
 import type { AccentColor } from "./template-preview";
+import { buildPreviewQRImageUrl } from "@/lib/qrcode-gen";
 
 // ── Sample messages ───────────────────────────────────────────
 
@@ -11,7 +12,7 @@ const SAMPLE_MESSAGES = [
     recipient: "James Chen",
     address: "4821 Oak Creek Dr",
     cityStateZip: "Scottsdale, AZ 85254",
-    body: `James,\n\nYour 2021 Tacoma is coming up on its 30,000-mile service. I wanted to reach out personally — we have a $30 coupon just for you, good any Tuesday or Wednesday this month.\n\nWould love to see you back in. Just give us a call or book online anytime.\n\nWarmly,\nMike`,
+    body: `James,\n\nYour 2021 Tacoma is coming up on its 30,000-mile service. I wanted to reach out personally — we have a $30 coupon just for you, good any Tuesday or Wednesday this month.\n\nDoes either of those days work for you?\n\nWarmly,\nMike`,
     vehicle: "2021 Toyota Tacoma",
     advisor: "Mike",
     offer: "$30 off service · Good Tue/Wed only",
@@ -20,7 +21,7 @@ const SAMPLE_MESSAGES = [
     recipient: "Sarah Martinez",
     address: "711 Mesa View Ln",
     cityStateZip: "Tempe, AZ 85281",
-    body: `Sarah,\n\nIt's been a while since we serviced your Pilot — I hope it's treating you well!\n\nWe're running a complimentary multi-point inspection this month, no strings attached. I'd love to get you back in before summer heat sets in.\n\nJust call or book online — takes two minutes.\n\nBest,\nTom`,
+    body: `Sarah,\n\nIt's been a while since your Pilot came in — I hope it's treating you well!\n\nWe're doing free multi-point inspections this month, no strings. Summer heat is no joke out here and I'd hate for you to get caught with a surprise.\n\nHave you noticed anything off lately?\n\nBest,\nTom`,
     vehicle: "2019 Honda Pilot",
     advisor: "Tom",
     offer: "Free multi-point inspection · No purchase required",
@@ -29,7 +30,7 @@ const SAMPLE_MESSAGES = [
     recipient: "Robert & Linda Walsh",
     address: "2200 Sunrise Blvd",
     cityStateZip: "Gilbert, AZ 85234",
-    body: `Robert & Linda,\n\nThank you for being such loyal customers over the years. It truly means a lot to our whole team.\n\nWe're holding a VIP appreciation event next Saturday — free coffee, complimentary tire rotation, and a first look at the new lineup.\n\nWe'd love to see you there.\n\nWarmly,\nThe Sunrise Team`,
+    body: `Robert & Linda,\n\nThank you for being such loyal customers over the years — it really does mean a lot to our whole team.\n\nWe're holding a VIP appreciation event next Saturday, 10 to 2. Free coffee, tire rotation, and a first look at the new lineup.\n\nCan we count you in?\n\nWarmly,\nThe Sunrise Team`,
     vehicle: "Multiple vehicles",
     advisor: "The Sunrise Team",
     offer: "VIP Appreciation Event · Saturday, 10am–2pm",
@@ -99,26 +100,32 @@ const ACCENT_META: Record<AccentColor, {
 };
 
 // ── Handwriting engine — 3-scale, prime-length arrays ─────────
-// Different prime lengths (19 / 17 / 23) prevent visual periodicity
-// across the line × word × character axes.
+// Different prime lengths (19 / 17 / 23) prevent visual periodicity.
+// Ranges are deliberately wide: real ballpoint pens vary far more than
+// "pretty" calligraphy apps. The goal is maximally believable, not neat.
 
-// Line-level (19 elements)
-const L_DRIFT = [-1.0,-0.5,0.0,0.5,-0.8,-0.2,0.6,-0.6,0.3,-0.7,0.7,-0.3,0.9,-0.1,0.5,-0.8,0.2,-0.5,0.8] as const;
+// Line-level (19 elements) — slow sinusoidal wander per line
+const L_DRIFT = [-1.8,-0.9,0.0,0.7,-1.3,-0.4,1.0,-1.0,0.5,-1.2,1.1,-0.5,1.4,-0.2,0.8,-1.4,0.3,-0.8,1.3] as const;
 
-// Word-level (17 elements)
-const W_DRIFT_Y = [-1.9,-1.2,-0.5,-0.1,0.2,0.7,1.2,1.8,-1.4,-0.7,-0.2,0.4,1.4,-0.9,0.9,-1.6,0.7] as const;
-const W_LEAN    = [-0.55,-0.25,-0.1,0.0,0.1,0.25,0.48,-0.42,0.15,-0.15,0.35,-0.35,0.2,-0.2,0.32,-0.32,0.12] as const;
+// Word-level (17 elements) — dramatic height + lean variation word-to-word
+const W_DRIFT_Y = [-3.2,-2.1,-0.8,-0.2,0.4,1.2,2.0,3.0,-2.4,-1.2,-0.4,0.8,2.3,-1.6,1.6,-2.8,1.1] as const;
+const W_LEAN    = [-0.90,-0.48,-0.18,0.0,0.18,0.44,0.82,-0.72,0.26,-0.26,0.60,-0.60,0.36,-0.36,0.55,-0.55,0.20] as const;
 
-// Character-level (23 elements)
-const C_ROT  = [-3.2,-2.4,-1.7,-1.0,-0.5,-0.2,0.1,0.5,0.9,1.6,2.3,3.0,-2.8,-1.8,-0.7,0.7,1.8,2.7,-1.1,-0.3,0.3,1.1,-2.0] as const;
-const C_TY   = [-2.3,-1.7,-1.0,-0.5,-0.15,0.2,0.6,1.0,1.5,2.1,-1.9,-1.3,-0.6,0.0,0.5,1.0,1.4,-1.5,-0.8,0.3,-0.4,1.2,-0.9] as const;
-// Wider pressure range (0.44–1.00) — more dramatic feathering on lifted strokes
-const C_PRES = [0.44,0.54,0.63,0.73,0.82,0.88,0.93,0.97,1.00,0.99,0.95,0.90,0.84,0.77,0.70,0.64,0.92,0.85,0.75,0.80,0.88,0.67,0.96] as const;
-const C_SX   = [0.93,0.95,0.97,0.98,0.99,1.00,1.01,1.02,1.03,0.96,0.98,1.00,1.02,0.94,0.99,1.01,0.97,1.03,0.95,1.00,0.98,1.02,0.96] as const;
-const C_SY   = [0.95,0.97,0.98,0.99,1.00,1.01,1.02,0.96,0.98,1.01,0.97,0.99,1.01,0.95,1.00,0.98,1.02,0.97,0.99,1.00,0.96,1.03,0.98] as const;
-// Wider opacity range (0.52–1.00) for more pronounced light/heavy stroke contrast
-const C_OPQ  = [0.52,0.60,0.68,0.76,0.83,0.89,0.93,0.97,1.00,0.98,0.94,0.89,0.83,0.76,0.69,0.63,0.92,0.85,0.74,0.80,0.88,0.67,0.96] as const;
-const C_SPC  = [-0.5,-0.3,-0.2,-0.1,0.0,0.1,0.2,0.3,-0.4,0.15,-0.15,0.25,-0.25,0.05,-0.05,0.2,-0.1,0.0,0.15,-0.2,0.3,-0.35,0.08] as const;
+// Character-level (23 elements) — maximum believable variation
+// C_ROT: ±5° — real writing tilts far more than apps show
+const C_ROT  = [-5.0,-3.6,-2.4,-1.4,-0.6,-0.2,0.2,0.7,1.4,2.5,3.5,4.8,-4.2,-2.8,-1.0,1.0,2.8,4.2,-1.6,-0.4,0.5,1.8,-3.1] as const;
+// C_TY: ±3.8px — characters bob significantly above/below baseline
+const C_TY   = [-3.8,-2.8,-1.6,-0.8,-0.25,0.35,0.9,1.6,2.4,3.4,-3.2,-2.1,-0.9,0.0,0.8,1.6,2.2,-2.5,-1.3,0.5,-0.7,2.0,-1.5] as const;
+// C_PRES: 0.28–1.00 — light strokes nearly disappear (pen barely touching paper)
+const C_PRES = [0.28,0.38,0.50,0.62,0.74,0.84,0.91,0.97,1.00,0.99,0.95,0.88,0.80,0.71,0.62,0.54,0.90,0.82,0.70,0.77,0.86,0.60,0.94] as const;
+// C_SX: 0.87–1.07 — wide horizontal squish/stretch per character
+const C_SX   = [0.87,0.90,0.93,0.96,0.98,1.00,1.02,1.04,1.07,0.91,0.95,1.00,1.04,0.89,0.97,1.03,0.92,1.06,0.94,1.01,0.97,1.05,0.93] as const;
+// C_SY: 0.84–1.09 — chars get taller/shorter independently from width
+const C_SY   = [0.84,0.88,0.92,0.96,0.98,1.00,1.03,1.06,0.90,0.95,1.02,0.91,0.97,1.01,1.08,0.86,0.99,0.93,1.09,0.89,1.04,0.87,1.06] as const;
+// C_OPQ: 0.38–1.00 — very faded strokes (ink-starved pen) to full density
+const C_OPQ  = [0.38,0.48,0.58,0.67,0.76,0.84,0.90,0.96,1.00,0.98,0.93,0.86,0.78,0.70,0.62,0.54,0.90,0.82,0.70,0.77,0.86,0.60,0.94] as const;
+// C_SPC: ±1.1px — irregular letter spacing, some letters crowd, some open up
+const C_SPC  = [-1.1,-0.7,-0.4,-0.2,0.0,0.2,0.4,0.7,-0.8,0.30,-0.30,0.50,-0.50,0.10,-0.10,0.35,-0.20,0.0,0.25,-0.40,0.60,-0.65,0.15] as const;
 
 type LookupArr = readonly number[];
 function pick(arr: LookupArr, n: number): number {
@@ -129,26 +136,41 @@ function hseed(charOff: number, code: number, li: number, pi: number): number {
   return (charOff * 31 + code * 17 + li * 7 + pi * 3) | 0;
 }
 
-// 6-layer ink shadow: nonlinear pressure + per-character jitter + pooling
+// 8-layer ink shadow: nonlinear pressure + capillary fiber bleed + pooling + ambient
+// Layer breakdown:
+//   1. Sharp core deposit    — dense ink directly at stroke center (high pressure)
+//   2. Horizontal fiber bleed — ink races along paper fibers sideways (low pressure)
+//   3. Vertical fiber bleed  — downward fiber absorption
+//   4. Counter-bleed upward  — slight bleed above stroke on pen lift
+//   5. Downward drip         — gravity-assisted pooling on downstrokes
+//   6. Zero-blur pool        — hard ink blob on high pressure + high-pool chars
+//   7. Capillary whisker     — thin bleed in fiber direction (ink-starved strokes)
+//   8. Wide ambient scatter  — photon scatter in paper (always-on, very faint)
 function inkShadow(pressure: number, seed = 0): string {
-  const jx = (((seed * 7919 + 13) & 0xff) / 255 - 0.5) * 0.18;
-  const jy = (((seed * 6271 + 17) & 0xff) / 255 - 0.5) * 0.13;
+  const jx = (((seed * 7919 + 13) & 0xff) / 255 - 0.5) * 0.30;
+  const jy = (((seed * 6271 + 17) & 0xff) / 255 - 0.5) * 0.24;
   const jp = ((seed * 5003 + 23) & 0xff) / 255;
-  const bleedRadius = (0.55 - 0.28 * pressure).toFixed(2);
-  const sharpRadius = (0.18 + 0.22 * pressure).toFixed(2);
-  const a1 = (pressure * pressure * 0.28).toFixed(3);
-  const a2 = (pressure * 0.14 + (1 - pressure) * 0.09).toFixed(3);
-  const a3 = ((1 - pressure) * 0.13 + pressure * 0.06).toFixed(3);
-  const a4 = (pressure * 0.09).toFixed(3);
-  const a5 = ((1 - pressure) * 0.09).toFixed(3);
-  const a6 = (pressure * jp * 0.07).toFixed(3);
+  const jf = ((seed * 3571 + 31) & 0xff) / 255;
+  const bleedR = (0.72 - 0.40 * pressure).toFixed(2);
+  const sharpR = (0.10 + 0.28 * pressure).toFixed(2);
+  const wideR  = (parseFloat(bleedR) * 2.4).toFixed(2);
+  const a1 = (pressure * pressure * 0.38).toFixed(3);
+  const a2 = ((1 - pressure) * 0.20 + pressure * 0.08).toFixed(3);
+  const a3 = ((1 - pressure) * 0.16 + pressure * 0.06).toFixed(3);
+  const a4 = ((1 - pressure) * 0.11 + pressure * 0.04).toFixed(3);
+  const a5 = (pressure * 0.13).toFixed(3);
+  const a6 = (pressure * jp * 0.12).toFixed(3);
+  const a7 = ((1 - pressure) * jf * 0.11).toFixed(3);
+  const a8 = (0.025 + pressure * 0.010).toFixed(3);
   return [
-    ` ${(0.30 + jx).toFixed(2)}px  ${(0.22 + jy).toFixed(2)}px ${sharpRadius}px rgba(18,22,52,${a1})`,
-    `${(-0.16 + jx * 0.5).toFixed(2)}px  ${(0.10 + jy * 0.5).toFixed(2)}px ${bleedRadius}px rgba(18,22,52,${a2})`,
-    ` ${(0.10 + jx * 0.7).toFixed(2)}px ${(-0.16 + jy * 0.7).toFixed(2)}px ${bleedRadius}px rgba(18,22,52,${a3})`,
-    ` ${jx.toFixed(2)}px     ${(0.38 + jy).toFixed(2)}px ${sharpRadius}px rgba(18,22,52,${a4})`,
-    ` 0px     0px    ${(parseFloat(bleedRadius) * 1.6).toFixed(2)}px rgba(18,22,52,${a5})`,
-    ` ${(jx * 0.4).toFixed(2)}px  ${(jy * 0.4).toFixed(2)}px 0px rgba(18,22,52,${a6})`,
+    ` ${(0.36 + jx).toFixed(2)}px  ${(0.30 + jy).toFixed(2)}px ${sharpR}px rgba(18,22,52,${a1})`,
+    ` ${(0.58 + jx * 0.6).toFixed(2)}px  ${(0.06 + jy * 0.2).toFixed(2)}px ${bleedR}px rgba(18,22,52,${a2})`,
+    `${(-0.22 + jx * 0.5).toFixed(2)}px  ${(0.14 + jy * 0.5).toFixed(2)}px ${bleedR}px rgba(18,22,52,${a3})`,
+    ` ${(0.13 + jx * 0.6).toFixed(2)}px ${(-0.22 + jy * 0.6).toFixed(2)}px ${bleedR}px rgba(18,22,52,${a4})`,
+    ` ${jx.toFixed(2)}px     ${(0.48 + jy).toFixed(2)}px ${sharpR}px rgba(18,22,52,${a5})`,
+    ` ${(jx * 0.5).toFixed(2)}px  ${(jy * 0.5).toFixed(2)}px 0px    rgba(18,22,52,${a6})`,
+    ` ${(jx * 1.6 + jf * 0.35).toFixed(2)}px ${(jy * 0.9).toFixed(2)}px ${bleedR}px rgba(18,22,52,${a7})`,
+    ` 0px 0px ${wideR}px rgba(18,22,52,${a8})`,
   ].join(",");
 }
 
@@ -544,28 +566,30 @@ export function HandwritingPreview() {
 
               {/* Handwritten body */}
               <div
-                className="px-5 sm:px-6 pt-4 pb-5"
+                className="px-5 sm:px-6 pt-4 pb-3"
                 style={{
                   fontFamily: "'Patrick Hand', 'Caveat', cursive",
-                  fontSize: "clamp(16px, 2.8vw, 18px)",
-                  lineHeight: "31px",
+                  fontSize: "clamp(13px, 2.2vw, 15px)",
+                  lineHeight: "27px",
                   color: "#1e293b",
-                  letterSpacing: "0.012em",
+                  letterSpacing: "0.014em",
                 }}
               >
                 <HandwrittenBody text={sample.body} />
               </div>
 
-              {/* Offer strip */}
-              <div className="px-5 sm:px-6 pb-6">
+              {/* Offer strip + QR code row */}
+              <div className="px-5 sm:px-6 pb-6 pt-2 flex items-end gap-3">
+                {/* Offer strip */}
                 <div style={{
+                  flex: 1,
                   padding: "8px 12px",
                   background: meta.isHighlight
                     ? `linear-gradient(105deg, ${meta.offerBg} 0%, ${meta.offerBg}cc 50%, ${meta.offerBg} 100%)`
                     : meta.offerBg,
                   borderLeft: `4px solid ${meta.offerBorder}`,
                   borderRadius: meta.isHighlight ? "2px 6px 6px 2px" : "4px",
-                  fontSize: "12px",
+                  fontSize: "11px",
                   color: meta.offerText,
                   fontFamily: "'Inter', sans-serif",
                   fontWeight: meta.isHighlight ? 700 : 600,
@@ -573,6 +597,7 @@ export function HandwritingPreview() {
                   boxShadow: meta.isHighlight ? `0 0 0 2px ${meta.offerBg}88` : undefined,
                   position: "relative",
                   overflow: "hidden",
+                  minWidth: 0,
                 }}>
                   {meta.isHighlight && (
                     <div style={{
@@ -583,6 +608,22 @@ export function HandwritingPreview() {
                     }} />
                   )}
                   <span style={{ position: "relative" }}>{sample.offer}</span>
+                </div>
+                {/* QR code — bottom-right, always present */}
+                <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
+                  <div style={{ background: "white", border: `2.5px solid ${meta.swatch}`, borderRadius: "7px", padding: "3px", boxShadow: `0 3px 10px ${meta.swatch}44` }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={buildPreviewQRImageUrl("https://autocdp.com", 60)}
+                      alt="Scan to Schedule"
+                      width={60}
+                      height={60}
+                      style={{ display: "block", borderRadius: "4px" }}
+                    />
+                  </div>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "5.5px", fontWeight: 800, color: meta.swatch, letterSpacing: "0.06em", textTransform: "uppercase", textAlign: "center", lineHeight: 1.3 }}>
+                    SCAN TO<br />SCHEDULE
+                  </div>
                 </div>
               </div>
             </div>

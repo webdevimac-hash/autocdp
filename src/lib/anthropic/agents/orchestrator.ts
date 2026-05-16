@@ -593,11 +593,17 @@ export async function runDirectMailOrchestrator(
         `\nPostcard guidelines (50–100 words, warm, personal, ends with soft CTA):\n` +
         `- Reference specific vehicle or service if known\n` +
         `- Include a clear offer or reason to return\n` +
-        `- Sign off naturally\n\n` +
+        `- Sign off naturally\n` +
+        `- End ~60% of postcards with a natural one-line question just before the sign-off when tone allows\n` +
+        `  Good examples: "Does Tuesday work for you?", "Have you noticed anything off lately?",\n` +
+        `  "Is there anything else on the car I can help with?", "Can we count you in?"\n` +
+        `  Bad: forced, awkward, or off-topic questions. Only use when it flows naturally.\n\n` +
         `Letter guidelines (150–250 words, conversational business letter format):\n` +
         `- Formal but warm opening\n` +
         `- Reference service history specifically\n` +
         `- Make an offer or invitation\n` +
+        `- End with a natural question that makes replying feel easy and expected\n` +
+        `  (e.g. "Would [day] work for you?", "Is there anything on the car I can look into while you're in?")\n` +
         `- Include next steps` +
         agedVehicleNote;
 

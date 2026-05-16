@@ -137,27 +137,39 @@ export function buildPostcardFrontHTML(
   }
   .message {
     font-family: 'Caveat', cursive;
-    font-size: 18pt;
-    line-height: 1.7;
-    color: #1f2937;
+    font-size: 15pt;
+    line-height: 1.78;
+    color: #1a1f36;
     position: relative;
     z-index: 1;
+    /* Multi-layer ink simulation: sharp core + fiber bleed + ambient scatter */
+    text-shadow:
+      0.4px 0.3px 0.15px rgba(18,22,52,0.30),
+      0.7px 0.1px 0.5px  rgba(18,22,52,0.12),
+      -0.2px 0.2px 0.5px rgba(18,22,52,0.10),
+      0px 0px 1.4px       rgba(18,22,52,0.04);
+    letter-spacing: 0.015em;
   }
   .qr-block {
     position: absolute;
-    bottom: 0.4in;
-    right: 0.4in;
+    bottom: 0.38in;
+    right: 0.38in;
     text-align: center;
   }
   .qr-block img {
-    width: 72pt;
-    height: 72pt;
+    width: 68pt;
+    height: 68pt;
     display: block;
+    border-radius: 5pt;
+    border: 2pt solid #e2d9c8;
   }
   .qr-label {
     font-family: 'Inter', sans-serif;
-    font-size: 7pt;
+    font-size: 6.5pt;
+    font-weight: 700;
     color: #6b7280;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     margin-top: 4pt;
   }
 </style>
@@ -171,7 +183,7 @@ export function buildPostcardFrontHTML(
   </div>
   <div class="qr-block">
     <img src="${qrCodeDataUrl}" alt="QR Code" />
-    <div class="qr-label">Scan for offer</div>
+    <div class="qr-label">Scan to Schedule</div>
   </div>
 </body>
 </html>`;
@@ -318,7 +330,8 @@ export function buildLetterHTML(
   dealershipName: string,
   dealershipAddress: PostGridAddress,
   customerName: string,
-  variables: Record<string, unknown> = {}
+  variables: Record<string, unknown> = {},
+  qrCodeDataUrl = ""
 ): string {
   const htmlText = personalizedText
     .replace(/&/g, "&amp;")
@@ -344,7 +357,8 @@ export function buildLetterHTML(
     background: #ffffff;
     padding: 1in 1.25in;
     font-family: 'Caveat', cursive;
-    color: #1f2937;
+    color: #1a1f36;
+    position: relative;
   }
   .letterhead {
     display: flex;
@@ -374,19 +388,48 @@ export function buildLetterHTML(
     margin-bottom: 20pt;
   }
   .salutation {
-    font-size: 18pt;
+    font-size: 15pt;
     margin-bottom: 10pt;
     color: #374151;
   }
   .body {
-    font-size: 17pt;
-    line-height: 1.85;
-    color: #1f2937;
+    font-size: 14pt;
+    line-height: 1.88;
+    color: #1a1f36;
+    letter-spacing: 0.014em;
+    /* Multi-layer ink simulation */
+    text-shadow:
+      0.4px 0.3px 0.15px rgba(18,22,52,0.28),
+      0.7px 0.1px 0.55px rgba(18,22,52,0.11),
+      -0.2px 0.15px 0.55px rgba(18,22,52,0.09),
+      0px 0px 1.5px rgba(18,22,52,0.04);
   }
   .signature {
-    margin-top: 30pt;
-    font-size: 16pt;
+    margin-top: 28pt;
+    font-size: 15pt;
     color: #374151;
+  }
+  .qr-block {
+    position: absolute;
+    bottom: 1.0in;
+    right: 1.25in;
+    text-align: center;
+  }
+  .qr-block img {
+    width: 68pt;
+    height: 68pt;
+    display: block;
+    border-radius: 5pt;
+    border: 1.5pt solid #e2e8f0;
+  }
+  .qr-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 6.5pt;
+    font-weight: 700;
+    color: #6b7280;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 4pt;
   }
   .footer {
     margin-top: 0.6in;
@@ -417,6 +460,10 @@ export function buildLetterHTML(
 
   <div class="footer">
     © ${new Date().getFullYear()} ${dealershipName} · This is a personalized communication for ${customerName}
+  </div>
+  <div class="qr-block">
+    <img src="${qrCodeDataUrl}" alt="Scan to Schedule" />
+    <div class="qr-label">Scan to<br>Schedule</div>
   </div>
 </body>
 </html>`;
@@ -481,8 +528,9 @@ ${layoutSpec.dieCutInstructions ? `<!-- DIE-CUT: ${layoutSpec.dieCutInstructions
   }
   .content { padding: 14pt 0.4in 0; }
   .message {
-    font-family: 'Caveat', cursive; font-size: 17pt; line-height: 1.75;
-    color: ${cs.text}; margin-bottom: 12pt;
+    font-family: 'Caveat', cursive; font-size: 14pt; line-height: 1.80;
+    color: ${cs.text}; margin-bottom: 12pt; letter-spacing: 0.014em;
+    text-shadow: 0.4px 0.3px 0.15px rgba(18,22,52,0.26), 0.6px 0.08px 0.5px rgba(18,22,52,0.10), 0px 0px 1.4px rgba(18,22,52,0.04);
   }
   .offer-strip {
     background: ${cs.accent}22; border-left: 4pt solid ${cs.accent};
@@ -498,7 +546,7 @@ ${layoutSpec.dieCutInstructions ? `<!-- DIE-CUT: ${layoutSpec.dieCutInstructions
   }
   .qr-block { text-align: center; }
   .qr-block img { width: 58pt; height: 58pt; border-radius: 4pt; }
-  .qr-label { font-size: 6.5pt; color: #94a3b8; margin-top: 2pt; font-family: 'Inter'; letter-spacing: 0.04em; }
+  .qr-label { font-size: 6.5pt; font-weight: 700; color: #64748b; margin-top: 3pt; font-family: 'Inter'; letter-spacing: 0.08em; text-transform: uppercase; }
 </style>
 </head>
 <body>
@@ -514,7 +562,7 @@ ${layoutSpec.dieCutInstructions ? `<!-- DIE-CUT: ${layoutSpec.dieCutInstructions
       <div class="cta-btn">${cta}</div>
       <div class="qr-block">
         <img src="${qrCodeDataUrl}" alt="Scan for offer">
-        <div class="qr-label">SCAN FOR OFFER</div>
+        <div class="qr-label">SCAN TO SCHEDULE</div>
       </div>
     </div>
   </div>
@@ -578,8 +626,9 @@ ${layoutSpec.dieCutInstructions ? `<!-- DIE-CUT: ${layoutSpec.dieCutInstructions
   }
   .divider { width: 32pt; height: 3pt; background: ${accent}; border-radius: 2pt; margin-bottom: 18pt; }
   .message {
-    font-family: 'Caveat', cursive; font-size: 16pt; line-height: 1.75;
-    color: ${textColor}dd; margin-bottom: 18pt;
+    font-family: 'Caveat', cursive; font-size: 13pt; line-height: 1.80;
+    color: ${textColor}dd; margin-bottom: 18pt; letter-spacing: 0.014em;
+    text-shadow: 0.3px 0.2px 0.12px rgba(255,255,255,0.18), 0.5px 0.06px 0.4px rgba(255,255,255,0.08), 0px 0px 1.2px rgba(255,255,255,0.04);
   }
   ${offer ? `.offer-badge {
     display: inline-block; background: ${accent}; color: ${isNeon ? "#000" : "#fff"};
@@ -677,7 +726,7 @@ ${layoutSpec.printNotes ? `<!-- PRINT SPECS: ${layoutSpec.printNotes} -->` : ""}
   .inner-left-content { padding: 0.4in 0.55in; }
   .inner-date { font-size: 9pt; color: #94a3b8; margin-bottom: 8pt; }
   .inner-name { font-size: 13pt; font-weight: 700; color: #1e293b; margin-bottom: 12pt; }
-  .inner-message { font-family: 'Caveat', cursive; font-size: 16pt; line-height: 1.8; color: #334155; }
+  .inner-message { font-family: 'Caveat', cursive; font-size: 13pt; line-height: 1.84; color: #1e2940; letter-spacing: 0.014em; text-shadow: 0.4px 0.3px 0.15px rgba(18,22,52,0.26), 0.6px 0.08px 0.5px rgba(18,22,52,0.10), 0px 0px 1.4px rgba(18,22,52,0.04); }
   /* ── Inner-right (action) panel ─── */
   .panel-inner-right { background: #fff; }
   .action-content { padding: 0.4in 0.55in; display: grid; grid-template-columns: 1fr auto; gap: 0.3in; height: 100%; align-content: start; }
@@ -866,7 +915,8 @@ export async function sendMailPiece(
         params.dealership.name,
         fromAddr,
         `${params.customer.first_name} ${params.customer.last_name}`,
-        { ...params.variables, phone: params.dealership.phone ?? undefined }
+        { ...params.variables, phone: params.dealership.phone ?? undefined },
+        params.qrCodeDataUrl
       );
     }
     result = await sendLetter({ to: toAddr, from: fromAddr, html, description });
