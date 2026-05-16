@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { toApiError } from "@/lib/errors";
 import { getActiveDealershipId } from "@/lib/dealership";
 import { logAudit } from "@/lib/audit";
+import { fireWriteback } from "@/lib/dms/crm-writeback";
 import type { MailTemplateType } from "@/types";
 
 export async function POST(req: NextRequest) {
@@ -112,6 +113,23 @@ export async function POST(req: NextRequest) {
       abTestConfig: abTestConfig ?? undefined,
       createdBy: user.id,
     });
+
+    // Plugin Mode write-back — after a real (non-dry-run) send, notify each
+    // customer's CRM that a campaign was dispatched. Fire-and-forget.
+    if (!dryRun && result.results) {
+      for (const r of result.results as Array<{ customerId?: string; offer?: string }>) {
+        if (r.customerId) {
+          fireWriteback({
+            dealershipId: dealershipId,
+            customerId:   r.customerId,
+            eventType:    "campaign_sent",
+            channel:      "direct_mail",
+            campaignGoal: campaignGoal,
+            offer:        (r.offer ?? null) as string | null,
+          });
+        }
+      }
+    }
 
     // Audit log — fire and forget
     void logAudit({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { tokenToCommId } from "@/lib/tracking";
+import { fireWriteback } from "@/lib/dms/crm-writeback";
 
 const FALLBACK_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://autocdp.com";
 
@@ -20,7 +21,7 @@ export async function GET(
     // Only set clicked_at on the first click
     const { data: comm } = await svc
       .from("communications")
-      .select("clicked_at, dealership_id")
+      .select("clicked_at, dealership_id, customer_id, campaign_goal, content, offer, channel")
       .eq("id", commId)
       .single();
 
@@ -29,6 +30,20 @@ export async function GET(
         .from("communications")
         .update({ clicked_at: new Date().toISOString() })
         .eq("id", commId);
+
+      // Plugin Mode write-back — fire-and-forget, never blocks the redirect
+      if (comm.dealership_id && comm.customer_id) {
+        fireWriteback({
+          dealershipId:    comm.dealership_id as string,
+          customerId:      comm.customer_id as string,
+          eventType:       "qr_scanned",
+          channel:         (comm.channel ?? "direct_mail") as "direct_mail" | "sms" | "email",
+          campaignGoal:    (comm.campaign_goal ?? undefined) as string | undefined,
+          copyExcerpt:     comm.content ? String(comm.content).slice(0, 300) : undefined,
+          offer:           (comm.offer ?? null) as string | null,
+          communicationId: commId,
+        });
+      }
     }
 
     // Resolve redirect target: explicit ?u= param, else dealership website

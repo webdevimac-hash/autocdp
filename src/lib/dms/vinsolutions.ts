@@ -180,3 +180,88 @@ export async function fetchVinEmailEvents(
   if (pageToken) params.set("pageToken", pageToken);
   return vinFetch<VinEmailEventPage>(`/email/events?${params}`, apiKey, dealerId);
 }
+
+// ---------------------------------------------------------------------------
+// Push — Create activity against a contact (write-back after campaign / scan)
+// ---------------------------------------------------------------------------
+
+export interface VinActivityPayload {
+  contactId: string;
+  activityType: string;  // "AutoCDP Campaign" | "AutoCDP Scan" | "AutoCDP Booking"
+  subject: string;
+  notes: string;
+  activityDate: string;  // ISO 8601
+  completedDate?: string;
+}
+
+export async function createVinActivity(
+  apiKey: string,
+  dealerId: string,
+  payload: VinActivityPayload
+): Promise<{ activityId: string }> {
+  const res = await fetch(`${VINSOLUTIONS_API_BASE}/activities`, {
+    method: "POST",
+    headers: {
+      "X-Api-Key": apiKey,
+      "X-Dealer-Id": dealerId,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`VinSolutions POST /activities → ${res.status}`);
+  return res.json() as Promise<{ activityId: string }>;
+}
+
+// ---------------------------------------------------------------------------
+// Push — Add note to a contact
+// ---------------------------------------------------------------------------
+
+export async function createVinNote(
+  apiKey: string,
+  dealerId: string,
+  contactId: string,
+  note: string
+): Promise<{ noteId: string }> {
+  const res = await fetch(
+    `${VINSOLUTIONS_API_BASE}/contacts/${encodeURIComponent(contactId)}/notes`,
+    {
+      method: "POST",
+      headers: {
+        "X-Api-Key": apiKey,
+        "X-Dealer-Id": dealerId,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ content: note }),
+    }
+  );
+  if (!res.ok) throw new Error(`VinSolutions POST /contacts/${contactId}/notes → ${res.status}`);
+  return res.json() as Promise<{ noteId: string }>;
+}
+
+// ---------------------------------------------------------------------------
+// Push — Update lead status
+// ---------------------------------------------------------------------------
+
+export async function updateVinLeadStatus(
+  apiKey: string,
+  dealerId: string,
+  leadId: string,
+  status: string
+): Promise<void> {
+  const res = await fetch(
+    `${VINSOLUTIONS_API_BASE}/leads/${encodeURIComponent(leadId)}`,
+    {
+      method: "PATCH",
+      headers: {
+        "X-Api-Key": apiKey,
+        "X-Dealer-Id": dealerId,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ leadStatus: status }),
+    }
+  );
+  if (!res.ok) throw new Error(`VinSolutions PATCH /leads/${leadId} → ${res.status}`);
+}

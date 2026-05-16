@@ -4,9 +4,17 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ConnectionCard, type ConnectionStatus } from "@/components/integrations/connection-card";
 import { parseCsvToRows } from "@/lib/csv";
-import { Database, RefreshCw, AlertCircle, CheckCircle2, Info, Car, CreditCard, FileText, Webhook, Copy, Check } from "lucide-react";
+import { Database, RefreshCw, AlertCircle, CheckCircle2, Info, Car, CreditCard, FileText, Webhook, Copy, Check, ArrowLeftRight, Zap } from "lucide-react";
 
-type DmsProvider = "cdk_fortellis" | "reynolds" | "vinsolutions" | "vauto" | "seven_hundred_credit" | "general_crm";
+type DmsProvider =
+  | "cdk_fortellis"
+  | "reynolds"
+  | "vinsolutions"
+  | "dealertrack"
+  | "elead"
+  | "vauto"
+  | "seven_hundred_credit"
+  | "general_crm";
 
 interface DmsConnection {
   id: string;
@@ -42,12 +50,14 @@ interface Props {
 // ---------------------------------------------------------------------------
 
 const PROVIDER_LABELS: Record<DmsProvider, string> = {
-  cdk_fortellis: "CDK Fortellis",
-  reynolds: "Reynolds & Reynolds",
-  vinsolutions: "VinSolutions",
-  vauto: "vAuto",
+  cdk_fortellis:        "CDK Fortellis",
+  reynolds:             "Reynolds & Reynolds",
+  vinsolutions:         "VinSolutions",
+  dealertrack:          "Dealertrack",
+  elead:                "Elead CRM",
+  vauto:                "vAuto",
   seven_hundred_credit: "700Credit",
-  general_crm: "General CRM",
+  general_crm:          "General CRM",
 };
 
 function providerLabel(provider: string): string {
@@ -485,10 +495,86 @@ function XTimeCard({ currentUrl, onSave }: { currentUrl?: string | null; onSave:
   );
 }
 
+// ---------------------------------------------------------------------------
+// Plugin Mode panel — rendered beneath each CRM card when connected
+// ---------------------------------------------------------------------------
+
+function PluginModePanel({
+  provider,
+  enabled,
+  loading,
+  onToggle,
+}: {
+  provider: string;
+  enabled: boolean;
+  loading: boolean;
+  onToggle: (value: boolean) => void;
+}) {
+  const label = PROVIDER_LABELS[provider as DmsProvider] ?? provider;
+
+  return (
+    <div
+      className={`-mt-2 rounded-b-xl border-x border-b px-4 py-3 flex items-center justify-between gap-4 transition-colors ${
+        enabled
+          ? "bg-indigo-50 border-indigo-200"
+          : "bg-gray-50 border-gray-200"
+      }`}
+    >
+      <div className="flex items-start gap-2.5 min-w-0">
+        <div className={`mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+          enabled ? "bg-indigo-100" : "bg-gray-200"
+        }`}>
+          <ArrowLeftRight className={`w-3.5 h-3.5 ${enabled ? "text-indigo-600" : "text-gray-400"}`} />
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-[13px] font-semibold ${enabled ? "text-indigo-900" : "text-gray-700"}`}>
+              Plugin Mode
+            </span>
+            {enabled && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-600 text-white">
+                <Zap className="w-2.5 h-2.5" /> ACTIVE
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-gray-500 leading-snug mt-0.5">
+            {enabled
+              ? `AutoCDP writes campaign sends, QR scans, and bookings back into ${label} as native activities.`
+              : `Enable to push AutoCDP campaign results into ${label} automatically — no manual CRM entry needed.`}
+          </p>
+        </div>
+      </div>
+      <button
+        onClick={() => onToggle(!enabled)}
+        disabled={loading}
+        aria-pressed={enabled}
+        title={enabled ? "Disable Plugin Mode" : "Enable Plugin Mode"}
+        className={`relative shrink-0 w-10 h-6 rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-indigo-500 disabled:opacity-60 ${
+          enabled ? "bg-indigo-600" : "bg-gray-300"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${
+            enabled ? "translate-x-4" : "translate-x-0"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
 export function IntegrationsClient({ connections, latestCounts, successParam, errorParam, dealerFunnelStats, xtimeUrl, inventoryInsights }: Props) {
   const router = useRouter();
   const [openModal, setOpenModal] = useState<DmsProvider | "csv_upload" | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [pluginModeMap, setPluginModeMap] = useState<Record<string, boolean>>(() => {
+    const map: Record<string, boolean> = {};
+    for (const conn of connections) {
+      map[conn.provider] = (conn.metadata?.plugin_mode as boolean) ?? false;
+    }
+    return map;
+  });
+  const [pluginModeLoading, setPluginModeLoading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (successParam === "cdk_connected") {
@@ -520,14 +606,37 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
     return conn.status as ConnectionStatus;
   }
 
+  async function handlePluginModeToggle(provider: DmsProvider, enabled: boolean) {
+    setPluginModeLoading((m) => ({ ...m, [provider]: true }));
+    try {
+      const res = await fetch(`/api/integrations/${provider}/plugin-mode`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!res.ok) {
+        const d = await res.json() as { error?: string };
+        throw new Error(d.error ?? "Failed to update Plugin Mode");
+      }
+      setPluginModeMap((m) => ({ ...m, [provider]: enabled }));
+      setToast({ type: "success", message: `Plugin Mode ${enabled ? "enabled" : "disabled"} for ${providerLabel(provider)}.` });
+    } catch (err) {
+      setToast({ type: "error", message: err instanceof Error ? err.message : "Failed" });
+    } finally {
+      setPluginModeLoading((m) => ({ ...m, [provider]: false }));
+    }
+  }
+
   async function handleSync(provider: DmsProvider) {
     const slugMap: Record<DmsProvider, string> = {
-      cdk_fortellis: "cdk",
-      reynolds: "reynolds",
-      vinsolutions: "vinsolutions",
-      vauto: "vauto",
+      cdk_fortellis:        "cdk",
+      reynolds:             "reynolds",
+      vinsolutions:         "vinsolutions",
+      dealertrack:          "dealertrack",
+      elead:                "elead",
+      vauto:                "vauto",
       seven_hundred_credit: "700credit",
-      general_crm: "general-crm",
+      general_crm:          "general-crm",
     };
     const res = await fetch(`/api/integrations/${slugMap[provider]}/sync`, { method: "POST" });
     if (!res.ok) {
@@ -540,12 +649,14 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
 
   async function handleConnect(provider: DmsProvider, values: Record<string, string>) {
     const slugMap: Record<DmsProvider, string> = {
-      cdk_fortellis: "cdk",
-      reynolds: "reynolds",
-      vinsolutions: "vinsolutions",
-      vauto: "vauto",
+      cdk_fortellis:        "cdk",
+      reynolds:             "reynolds",
+      vinsolutions:         "vinsolutions",
+      dealertrack:          "dealertrack",
+      elead:                "elead",
+      vauto:                "vauto",
       seven_hundred_credit: "700credit",
-      general_crm: "general-crm",
+      general_crm:          "general-crm",
     };
     const res = await fetch(`/api/integrations/${slugMap[provider]}/connect`, {
       method: "POST",
@@ -562,12 +673,14 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
 
   async function handleDisconnect(provider: DmsProvider) {
     const slugMap: Record<DmsProvider, string> = {
-      cdk_fortellis: "cdk",
-      reynolds: "reynolds",
-      vinsolutions: "vinsolutions",
-      vauto: "vauto",
+      cdk_fortellis:        "cdk",
+      reynolds:             "reynolds",
+      vinsolutions:         "vinsolutions",
+      dealertrack:          "dealertrack",
+      elead:                "elead",
+      vauto:                "vauto",
       seven_hundred_credit: "700credit",
-      general_crm: "general-crm",
+      general_crm:          "general-crm",
     };
     const res = await fetch(`/api/integrations/${slugMap[provider]}/sync`, { method: "DELETE" });
     if (res.ok) {
@@ -644,12 +757,14 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
     setTimeout(() => router.refresh(), 800);
   }
 
-  const cdkConn = getConnection("cdk_fortellis");
+  const cdkConn      = getConnection("cdk_fortellis");
   const reynoldsConn = getConnection("reynolds");
-  const vinConn = getConnection("vinsolutions");
-  const vautoConn = getConnection("vauto");
-  const creditConn = getConnection("seven_hundred_credit");
-  const crmConn = getConnection("general_crm");
+  const vinConn      = getConnection("vinsolutions");
+  const dtConn       = getConnection("dealertrack");
+  const eleadConn    = getConnection("elead");
+  const vautoConn    = getConnection("vauto");
+  const creditConn   = getConnection("seven_hundred_credit");
+  const crmConn      = getConnection("general_crm");
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
@@ -744,44 +859,122 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
 
       {/* CRM providers */}
       <div>
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">CRM Systems</h2>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">CRM Systems</h2>
+        <p className="text-xs text-gray-400 mb-4">
+          Enable <strong className="text-gray-600">Plugin Mode</strong> on any connected CRM to have AutoCDP automatically
+          write campaign events (sends, QR scans, bookings) back as native activities —
+          so your BDC team never has to leave their CRM.
+        </p>
         <div className="space-y-4">
-          <ConnectionCard
-            provider="vinsolutions"
-            name="VinSolutions"
-            description="API Key + Dealer ID • Contacts, Leads, Activities, Email History"
-            logo={<div className="w-8 h-8 flex items-center justify-center"><Database className="w-5 h-5 text-green-600" /></div>}
-            status={getStatus("vinsolutions")}
-            lastSyncAt={vinConn?.last_sync_at}
-            lastError={vinConn?.last_error}
-            syncCounts={latestCounts["vinsolutions"] ?? null}
-            onConnect={() => setOpenModal("vinsolutions")}
-            onSync={() => handleSync("vinsolutions")}
-            onDisconnect={() => handleDisconnect("vinsolutions")}
-            connectLabel="Connect VinSolutions"
-          />
 
-          <ConnectionCard
-            provider="general_crm"
-            name="General CRM (Dealertrack, Elead, DealerSocket)"
-            description="API Key or CSV upload • Leads, Activities — works with most CRMs"
-            logo={<div className="w-8 h-8 flex items-center justify-center"><FileText className="w-5 h-5 text-purple-600" /></div>}
-            status={getStatus("general_crm")}
-            lastSyncAt={crmConn?.last_sync_at}
-            lastError={crmConn?.last_error}
-            syncCounts={latestCounts["general_crm"] ?? null}
-            onConnect={() => setOpenModal("general_crm")}
-            onSync={() => handleSync("general_crm")}
-            onDisconnect={() => handleDisconnect("general_crm")}
-            connectLabel="Connect via API"
-          />
-          <button
-            onClick={() => setOpenModal("csv_upload")}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-purple-300 text-sm font-medium text-purple-600 hover:bg-purple-50 transition-colors"
-          >
-            <FileText className="w-4 h-4" />
-            Or upload a CRM leads CSV (Dealertrack, Elead, etc.)
-          </button>
+          {/* VinSolutions */}
+          <div>
+            <ConnectionCard
+              provider="vinsolutions"
+              name="VinSolutions"
+              description="API Key + Dealer ID • Contacts, Leads, Activities, Email History"
+              logo={<div className="w-8 h-8 flex items-center justify-center"><Database className="w-5 h-5 text-green-600" /></div>}
+              status={getStatus("vinsolutions")}
+              lastSyncAt={vinConn?.last_sync_at}
+              lastError={vinConn?.last_error}
+              syncCounts={latestCounts["vinsolutions"] ?? null}
+              onConnect={() => setOpenModal("vinsolutions")}
+              onSync={() => handleSync("vinsolutions")}
+              onDisconnect={() => handleDisconnect("vinsolutions")}
+              connectLabel="Connect VinSolutions"
+            />
+            {getStatus("vinsolutions") === "active" && (
+              <PluginModePanel
+                provider="vinsolutions"
+                enabled={pluginModeMap["vinsolutions"] ?? false}
+                loading={pluginModeLoading["vinsolutions"] ?? false}
+                onToggle={(v) => handlePluginModeToggle("vinsolutions", v)}
+              />
+            )}
+          </div>
+
+          {/* Dealertrack */}
+          <div>
+            <ConnectionCard
+              provider="dealertrack"
+              name="Dealertrack"
+              description="OAuth 2.0 (Cox Automotive DT Connect) • Leads, Contacts, Activities"
+              logo={<div className="w-8 h-8 flex items-center justify-center"><Database className="w-5 h-5 text-blue-500" /></div>}
+              status={getStatus("dealertrack")}
+              lastSyncAt={dtConn?.last_sync_at}
+              lastError={dtConn?.last_error}
+              syncCounts={latestCounts["dealertrack"] ?? null}
+              onConnect={() => setOpenModal("dealertrack")}
+              onSync={() => handleSync("dealertrack")}
+              onDisconnect={() => handleDisconnect("dealertrack")}
+              connectLabel="Connect Dealertrack"
+            />
+            {getStatus("dealertrack") === "active" && (
+              <PluginModePanel
+                provider="dealertrack"
+                enabled={pluginModeMap["dealertrack"] ?? false}
+                loading={pluginModeLoading["dealertrack"] ?? false}
+                onToggle={(v) => handlePluginModeToggle("dealertrack", v)}
+              />
+            )}
+          </div>
+
+          {/* Elead */}
+          <div>
+            <ConnectionCard
+              provider="elead"
+              name="Elead CRM"
+              description="API Key + Dealer ID • Leads, Contacts, Activities (CDK Global)"
+              logo={<div className="w-8 h-8 flex items-center justify-center"><Database className="w-5 h-5 text-orange-500" /></div>}
+              status={getStatus("elead")}
+              lastSyncAt={eleadConn?.last_sync_at}
+              lastError={eleadConn?.last_error}
+              syncCounts={latestCounts["elead"] ?? null}
+              onConnect={() => setOpenModal("elead")}
+              onSync={() => handleSync("elead")}
+              onDisconnect={() => handleDisconnect("elead")}
+              connectLabel="Connect Elead"
+            />
+            {getStatus("elead") === "active" && (
+              <PluginModePanel
+                provider="elead"
+                enabled={pluginModeMap["elead"] ?? false}
+                loading={pluginModeLoading["elead"] ?? false}
+                onToggle={(v) => handlePluginModeToggle("elead", v)}
+              />
+            )}
+          </div>
+
+          {/* Other CRMs — collapsible fallback */}
+          <details className="group">
+            <summary className="cursor-pointer list-none text-sm font-medium text-gray-500 hover:text-gray-700 flex items-center gap-1.5 py-1 select-none">
+              <span className="group-open:rotate-90 transition-transform inline-block text-[10px]">▶</span>
+              Other CRMs (DealerSocket, DriveCentric, generic API / CSV)
+            </summary>
+            <div className="mt-3 space-y-3 pl-1">
+              <ConnectionCard
+                provider="general_crm"
+                name="General CRM"
+                description="API Key or CSV upload • DealerSocket, DriveCentric, and any other CRM"
+                logo={<div className="w-8 h-8 flex items-center justify-center"><FileText className="w-5 h-5 text-purple-600" /></div>}
+                status={getStatus("general_crm")}
+                lastSyncAt={crmConn?.last_sync_at}
+                lastError={crmConn?.last_error}
+                syncCounts={latestCounts["general_crm"] ?? null}
+                onConnect={() => setOpenModal("general_crm")}
+                onSync={() => handleSync("general_crm")}
+                onDisconnect={() => handleDisconnect("general_crm")}
+                connectLabel="Connect via API"
+              />
+              <button
+                onClick={() => setOpenModal("csv_upload")}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-purple-300 text-sm font-medium text-purple-600 hover:bg-purple-50 transition-colors"
+              >
+                <FileText className="w-4 h-4" />
+                Or upload a CRM leads CSV
+              </button>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -912,11 +1105,35 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
         title="Connect VinSolutions"
         description="Enter your VinSolutions API key and Dealer ID from the VinSolutions admin portal."
         fields={[
-          { name: "apiKey", label: "API Key", placeholder: "vs_live_…", type: "password" },
+          { name: "apiKey",   label: "API Key",   placeholder: "vs_live_…", type: "password" },
           { name: "dealerId", label: "Dealer ID", placeholder: "DLR-12345" },
         ]}
         onClose={() => setOpenModal(null)}
         onConnect={(v) => handleConnect("vinsolutions", v)}
+      />
+
+      <ApiKeyModal
+        open={openModal === "dealertrack"}
+        title="Connect Dealertrack"
+        description="Enter your Cox Automotive DT Connect OAuth credentials. Find these in the Dealertrack Partner Portal under API Integrations → OAuth Clients."
+        fields={[
+          { name: "clientId",     label: "Client ID",     placeholder: "dtc_client_…" },
+          { name: "clientSecret", label: "Client Secret", placeholder: "dtc_secret_…", type: "password" },
+        ]}
+        onClose={() => setOpenModal(null)}
+        onConnect={(v) => handleConnect("dealertrack", v)}
+      />
+
+      <ApiKeyModal
+        open={openModal === "elead"}
+        title="Connect Elead CRM"
+        description="Enter your Elead API key and Dealer ID from the Elead admin portal under Settings → API Access."
+        fields={[
+          { name: "apiKey",   label: "API Key",   placeholder: "el_live_…", type: "password" },
+          { name: "dealerId", label: "Dealer ID", placeholder: "DLR-12345" },
+        ]}
+        onClose={() => setOpenModal(null)}
+        onConnect={(v) => handleConnect("elead", v)}
       />
 
       <ApiKeyModal
