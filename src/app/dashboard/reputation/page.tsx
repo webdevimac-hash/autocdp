@@ -1,105 +1,119 @@
-import { createClient } from "@/lib/supabase/server";
-import { Header } from "@/components/layout/header";
-import { ReputationDashboard } from "@/components/reputation/reputation-dashboard";
-import type {
-  ReputationData,
-  ReviewEntry,
-} from "@/components/reputation/reputation-dashboard";
-import { isDemoMode } from "@/lib/demo";
+/**
+ * /dashboard/reputation — Google Business Profile Reputation Hub
+ *
+ * Pulls live data from the local DB cache (gbp_reviews, gbp_posts, gbp_qanda).
+ * If GBP is not connected, shows a connect prompt.
+ * Server component — passes structured props to the client.
+ */
 
-export const metadata = { title: "Reputation" };
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { ReputationClient } from "./reputation-client";
 
-// ─── Demo fallback ────────────────────────────────────────────────────────
-
-const DEMO_REVIEWS: ReviewEntry[] = [
-  {
-    id: "r1",
-    author: "Marcus T.",
-    initials: "MT",
-    rating: 5,
-    body: "Sarah at Braman Miami was incredible. She handled our trade-in and got us into a new X5 in under 3 hours. The whole team was professional, no pressure.",
-    date_label: "2 days ago",
-    source: "Google",
-    source_tone: "google",
-  },
-  {
-    id: "r2",
-    author: "Jessica R.",
-    initials: "JR",
-    rating: 5,
-    body: "Service was prompt, communication was clear, and they even washed the car. Couldn't ask for more — will definitely be back.",
-    date_label: "4 days ago",
-    source: "DealerRater",
-    source_tone: "dealerrater",
-  },
-  {
-    id: "r3",
-    author: "Kevin P.",
-    initials: "KP",
-    rating: 4,
-    body: "Good experience overall. The finance process took a bit longer than expected, but the sales team was fantastic and very transparent on pricing.",
-    date_label: "1 week ago",
-    source: "Google",
-    source_tone: "google",
-  },
-  {
-    id: "r4",
-    author: "Aisha M.",
-    initials: "AM",
-    rating: 5,
-    body: "Best dealership experience I've had. They followed up via text exactly when they said they would. Felt like a real partnership, not a sales push.",
-    date_label: "1 week ago",
-    source: "Internal",
-    source_tone: "internal",
-  },
-  {
-    id: "r5",
-    author: "Daniel L.",
-    initials: "DL",
-    rating: 3,
-    body: "Got the car I wanted at a fair price, but the wait at delivery was longer than I'd like. Communication via the app afterwards has been great though.",
-    date_label: "2 weeks ago",
-    source: "Yelp",
-    source_tone: "yelp",
-  },
-];
-
-const DEMO_DATA: ReputationData = {
-  total_reviews: 412,
-  comments: 158,
-  average_rating: 4.6,
-  distribution: { 5: 74, 4: 18, 3: 5, 2: 2, 1: 1 },
-  sales:           { value: "92%",  period_label: "Last 30 Days", trend: "up" },
-  services:        { value: "88%",  period_label: "Last 30 Days", trend: "up" },
-  non_sold_visits: { value: "76%",  period_label: "Last 30 Days", trend: "down" },
-  reviews: DEMO_REVIEWS,
-};
-
-// ─── Page ─────────────────────────────────────────────────────────────────
+export const dynamic  = "force-dynamic";
+export const metadata = { title: "Reputation · AutoCDP" };
 
 export default async function ReputationPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const demoMode = await isDemoMode();
+  if (!user) redirect("/login");
 
-  // TODO: When a `reviews` table exists, query it here.
-  //   - Pull last 90 days for the active dealership_id
-  //   - Aggregate distribution from reviews.rating
-  //   - Derive Sales / Services / Non-Sold Visits CSAT from your survey
-  //     scores (or a Google/DealerRater webhook ingest).
-  // For now we render demo data so the page is institutional out-of-box.
-  const data: ReputationData = demoMode ? DEMO_DATA : DEMO_DATA;
+  const svc = createServiceClient();
+
+  // Resolve dealership
+  const { data: ud } = await svc
+    .from("user_dealerships")
+    .select("dealership_id, dealerships(id,name,address,settings)")
+    .eq("user_id", user.id)
+    .maybeSingle() as {
+      data: {
+        dealership_id: string;
+        dealerships: {
+          id: string;
+          name: string;
+          address: { city?: string; state?: string } | null;
+          settings: Record<string, unknown> | null;
+        } | null;
+      } | null;
+    };
+
+  if (!ud?.dealership_id) redirect("/login");
+  const dealershipId   = ud.dealership_id;
+  const dealershipName = ud.dealerships?.name ?? "Your Dealership";
+
+  // Check GBP connection
+  const { data: conn } = await (svc as ReturnType<typeof createServiceClient>)
+    .from("dms_connections" as never)
+    .select("status,metadata" as never)
+    .eq("dealership_id" as never, dealershipId as never)
+    .eq("provider" as never, "google_business_profile" as never)
+    .maybeSingle() as unknown as {
+      data: { status: string; metadata: Record<string, unknown> } | null;
+    };
+
+  const isConnected = conn?.status === "active";
+
+  if (!isConnected) {
+    return (
+      <ReputationClient
+        dealershipId={dealershipId}
+        dealershipName={dealershipName}
+        isConnected={false}
+        connectionMeta={null}
+        reviews={[]}
+        posts={[]}
+        questions={[]}
+        stats={{ total: 0, avgRating: 0, pending: 0, unanswered: 0, postsLive: 0 }}
+      />
+    );
+  }
+
+  // Load data in parallel (all from local cache — fast)
+  const [reviewsRes, postsRes, qaRes] = await Promise.all([
+    (svc as ReturnType<typeof createServiceClient>)
+      .from("gbp_reviews" as never)
+      .select("id,gbp_review_id,reviewer_name,rating,rating_int,comment,create_time,update_time,reply_comment,reply_update_time,reply_is_ai,reply_status" as never)
+      .eq("dealership_id" as never, dealershipId as never)
+      .order("create_time" as never, { ascending: false })
+      .limit(100) as unknown as Promise<{ data: Array<Record<string, unknown>> | null }>,
+
+    (svc as ReturnType<typeof createServiceClient>)
+      .from("gbp_posts" as never)
+      .select("id,gbp_post_id,topic_type,summary,call_to_action_type,call_to_action_url,state,is_ai_generated,create_time,created_at" as never)
+      .eq("dealership_id" as never, dealershipId as never)
+      .order("created_at" as never, { ascending: false })
+      .limit(30) as unknown as Promise<{ data: Array<Record<string, unknown>> | null }>,
+
+    (svc as ReturnType<typeof createServiceClient>)
+      .from("gbp_qanda" as never)
+      .select("id,gbp_question_id,question_text,author_name,question_time,upvote_count,answer_text,answer_author,answer_time,answer_is_ai,answer_status" as never)
+      .eq("dealership_id" as never, dealershipId as never)
+      .order("question_time" as never, { ascending: false })
+      .limit(50) as unknown as Promise<{ data: Array<Record<string, unknown>> | null }>,
+  ]);
+
+  const reviews   = reviewsRes.data   ?? [];
+  const posts     = postsRes.data     ?? [];
+  const questions = qaRes.data        ?? [];
+
+  // Aggregate stats
+  const total     = reviews.length;
+  const sumRating = reviews.reduce((s, r) => s + (Number((r as { rating_int: number }).rating_int) || 0), 0);
+  const avgRating = total > 0 ? +(sumRating / total).toFixed(1) : 0;
+  const pending   = reviews.filter((r) => (r as { reply_status: string }).reply_status === "none").length;
+  const unanswered = questions.filter((q) => (q as { answer_status: string }).answer_status === "unanswered").length;
+  const postsLive  = posts.filter((p) => (p as { state: string }).state === "live").length;
 
   return (
-    <>
-      <Header
-        title="Reputation"
-        subtitle={`${data.total_reviews.toLocaleString()} reviews · avg ${data.average_rating.toFixed(1)} ★`}
-        userEmail={user?.email}
-      />
-      <main className="flex-1">
-        <ReputationDashboard data={data} />
-      </main>
-    </>
+    <ReputationClient
+      dealershipId={dealershipId}
+      dealershipName={dealershipName}
+      isConnected={true}
+      connectionMeta={conn?.metadata ?? null}
+      reviews={reviews}
+      posts={posts}
+      questions={questions}
+      stats={{ total, avgRating, pending, unanswered, postsLive }}
+    />
   );
 }
