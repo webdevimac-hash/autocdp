@@ -5,15 +5,16 @@ import { Header } from "@/components/layout/header";
 import {
   Send, Bot, Upload, Settings, Shield,
   CheckCircle2, XCircle, Clock, Sparkles, Lock, BookOpen,
-  KeyRound, ShieldCheck, Monitor, ArrowLeftRight,
+  KeyRound, ShieldCheck, Monitor, ArrowLeftRight, TrendingUp,
 } from "lucide-react";
 import { formatRelativeDate } from "@/lib/utils";
-import { getDeadWritebacks } from "@/lib/dms/writeback-queue";
+import { getDeadWritebacks, getRecentSucceededWritebacks } from "@/lib/dms/writeback-queue";
 
 export const metadata = { title: "Audit Log" };
 
 function actionIcon(action: string) {
   if (action === "writeback.dead")        return ArrowLeftRight;
+  if (action === "writeback.succeeded")   return TrendingUp;
   if (action.startsWith("campaign.approval.")) return Lock;
   if (action.startsWith("campaign.governance.")) return BookOpen;
   if (action.startsWith("campaign."))  return Send;
@@ -27,6 +28,7 @@ function actionIcon(action: string) {
 function actionLabel(action: string): string {
   const map: Record<string, string> = {
     "writeback.dead":                       "CRM write-back failed (dead-lettered)",
+    "writeback.succeeded":                  "Activity pushed to CRM",
     "campaign.sent":                        "Campaign sent",
     "campaign.dry_run":                     "Campaign dry run",
     "campaign.created":                     "Campaign created",
@@ -79,7 +81,7 @@ export default async function AuditPage() {
   const dealershipId = await getActiveDealershipId(user.id);
   if (!dealershipId) redirect("/onboarding");
 
-  const [auditRes, agentRes, deadWritebacks] = await Promise.all([
+  const [auditRes, agentRes, deadWritebacks, succeededWritebacks] = await Promise.all([
     supabase
       .from("audit_log")
       .select("id, action, entity_type, entity_id, details, created_at, user_id")
@@ -95,6 +97,7 @@ export default async function AuditPage() {
       .limit(100),
 
     getDeadWritebacks(dealershipId, 50).catch(() => []),
+    getRecentSucceededWritebacks(dealershipId, 50).catch(() => []),
   ]);
 
   const auditEntries: AuditEntry[] = (auditRes.data ?? []).map((r) => ({
@@ -136,7 +139,31 @@ export default async function AuditPage() {
     _source: "audit" as const,
   }));
 
-  const allEntries = [...auditEntries, ...agentEntries, ...deadWritebackEntries].sort(
+  // Map succeeded write-backs into AuditEntry shape
+  const succeededWritebackEntries: AuditEntry[] = succeededWritebacks.map((row) => ({
+    id: `succ-${row.id}`,
+    action: "writeback.succeeded",
+    entity_type: "crm_writeback",
+    entity_id: row.customer_id,
+    details: {
+      provider:   row.provider,
+      event_type: row.event_type,
+      native_id:  row.native_id,
+      attempts:   row.attempts,
+      subject:    row.activity_payload?.subject ?? null,
+      channel:    row.activity_payload?.channel ?? null,
+    },
+    created_at: row.succeeded_at ?? row.created_at,
+    user_id: null,
+    _source: "audit" as const,
+  }));
+
+  const allEntries = [
+    ...auditEntries,
+    ...agentEntries,
+    ...deadWritebackEntries,
+    ...succeededWritebackEntries,
+  ].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   ).slice(0, 150);
 
@@ -165,9 +192,10 @@ export default async function AuditPage() {
                   ? `${entry.agent_type} agent — ${entry.status}`
                   : actionLabel(entry.action);
 
-                const isGovernance    = entry.action === "campaign.governance.memories_applied";
-                const isApproval      = entry.action.startsWith("campaign.approval.");
-                const isDeadWriteback = entry.action === "writeback.dead";
+                const isGovernance         = entry.action === "campaign.governance.memories_applied";
+                const isApproval           = entry.action.startsWith("campaign.approval.");
+                const isDeadWriteback      = entry.action === "writeback.dead";
+                const isSucceededWriteback = entry.action === "writeback.succeeded";
 
                 const memoriesUsed = entry.details.memories_used as MemoryRef[] | undefined;
                 const hardCount    = entry.details.hard_constraints as number | undefined;
@@ -181,19 +209,34 @@ export default async function AuditPage() {
                   <div key={`${entry._source}-${entry.id}`} className="flex items-start gap-3 px-5 py-3.5 hover:bg-slate-50/60 transition-colors">
 
                     <div className={`mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                      isDeadWriteback ? "bg-red-50" : isGovernance ? "bg-indigo-50" : isApproval ? "bg-amber-50" : "bg-slate-100"
+                      isDeadWriteback      ? "bg-red-50"
+                      : isSucceededWriteback ? "bg-emerald-50"
+                      : isGovernance       ? "bg-indigo-50"
+                      : isApproval         ? "bg-amber-50"
+                      : "bg-slate-100"
                     }`}>
                       <Icon className={`w-3.5 h-3.5 ${
-                        isDeadWriteback ? "text-red-500" : isGovernance ? "text-indigo-500" : isApproval ? "text-amber-600" : "text-slate-500"
+                        isDeadWriteback      ? "text-red-500"
+                        : isSucceededWriteback ? "text-emerald-500"
+                        : isGovernance       ? "text-indigo-500"
+                        : isApproval         ? "text-amber-600"
+                        : "text-slate-500"
                       }`} />
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-[13px] font-medium capitalize ${isDeadWriteback ? "text-red-700" : "text-slate-900"}`}>{label}</span>
+                        <span className={`text-[13px] font-medium capitalize ${
+                          isDeadWriteback      ? "text-red-700"
+                          : isSucceededWriteback ? "text-emerald-700"
+                          : "text-slate-900"
+                        }`}>{label}</span>
                         {entry._source === "agent" && entry.status && statusIcon(entry.status)}
                         {isDeadWriteback && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">dead-letter</span>
+                        )}
+                        {isSucceededWriteback && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">pushed</span>
                         )}
                         {isGovernance && (
                           <span className="chip chip-indigo text-[10px]">governance</span>
@@ -224,6 +267,25 @@ export default async function AuditPage() {
                           {entry.details.last_error && (
                             <p className="text-[11px] text-red-500 line-clamp-2 font-mono">
                               {String(entry.details.last_error)}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Succeeded write-back details */}
+                      {isSucceededWriteback && (
+                        <div className="mt-1 space-y-0.5">
+                          <p className="text-xs text-slate-500">
+                            <span className="font-semibold text-emerald-700 capitalize">
+                              {String(entry.details.provider ?? "").replace(/_/g, " ")}
+                            </span>
+                            {" "}·{" "}
+                            {String(entry.details.event_type ?? "").replace(/_/g, " ")}
+                            {entry.details.channel ? ` · ${String(entry.details.channel).replace(/_/g, " ")}` : ""}
+                          </p>
+                          {entry.details.subject && (
+                            <p className="text-[11px] text-slate-400 line-clamp-1 italic">
+                              "{String(entry.details.subject)}"
                             </p>
                           )}
                         </div>
@@ -317,7 +379,7 @@ export default async function AuditPage() {
                       )}
 
                       {/* Generic audit details (non-governance, non-approval, non-writeback) */}
-                      {entry._source === "audit" && !isGovernance && !isApproval && !isDeadWriteback && Object.keys(entry.details).length > 0 && (
+                      {entry._source === "audit" && !isGovernance && !isApproval && !isDeadWriteback && !isSucceededWriteback && Object.keys(entry.details).length > 0 && (
                         <p className="text-xs text-slate-400 mt-0.5">
                           {Object.entries(entry.details)
                             .filter(([k, v]) => v != null && !["memories_used"].includes(k))

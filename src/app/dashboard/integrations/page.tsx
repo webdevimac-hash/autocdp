@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { IntegrationsClient } from "./integrations-client";
-import { getQueueStats } from "@/lib/dms/writeback-queue";
+import { getQueueStats, getWritebackSummary } from "@/lib/dms/writeback-queue";
 
 export const dynamic = "force-dynamic";
 
@@ -122,6 +122,10 @@ export default async function IntegrationsPage({
     ? await getQueueStats(dealership.id).catch(() => null)
     : null;
 
+  const writebackSummary = hasCrmPlugin
+    ? await getWritebackSummary(dealership.id).catch(() => [])
+    : [];
+
   const secretConfigured = !!(dealership.settings?.inbound_lead_secret as string | undefined);
   const secret = (dealership.settings?.inbound_lead_secret as string | undefined) ?? "";
   const webhookUrl = `${APP_URL}/api/leads/inbound?dealership=${dealership.slug}${secret ? `&secret=${secret}` : ""}`;
@@ -144,6 +148,7 @@ export default async function IntegrationsPage({
       xtimeUrl={xtimeUrl}
       inventoryInsights={inventoryInsights}
       queueStats={queueStats}
+      writebackSummary={writebackSummary}
       appUrl={APP_URL}
     />
   );

@@ -6,7 +6,7 @@
  */
 
 import { createServiceClient } from "@/lib/supabase/server";
-import type { WritebackEvent } from "./crm-writeback";
+import type { WritebackEvent } from "./field-mapping";
 
 // ---------------------------------------------------------------------------
 // JSONB payload stored in activity_payload column
@@ -216,4 +216,109 @@ export async function getDeadWritebacks(
     .order("created_at", { ascending: false })
     .limit(limit) as unknown as { data: WritebackQueueRow[] | null };
   return data ?? [];
+}
+
+// ---------------------------------------------------------------------------
+// Fetch recent succeeded rows for audit log display
+// ---------------------------------------------------------------------------
+
+export async function getRecentSucceededWritebacks(
+  dealershipId: string,
+  limit = 50
+): Promise<WritebackQueueRow[]> {
+  const svc = createServiceClient();
+  const { data } = await svc
+    .from("crm_writeback_queue")
+    .select("*")
+    .eq("dealership_id", dealershipId)
+    .eq("status", "succeeded")
+    .order("succeeded_at", { ascending: false })
+    .limit(limit) as unknown as { data: WritebackQueueRow[] | null };
+  return data ?? [];
+}
+
+// ---------------------------------------------------------------------------
+// Write-back activity summary — today / yesterday / 7-day / total per provider
+// ---------------------------------------------------------------------------
+
+export interface ProviderWritebackSummary {
+  provider: string;
+  /** Count of succeeded pushes in the calendar day (UTC) */
+  today: number;
+  yesterday: number;
+  week: number;
+  total: number;
+  /** event_type → count for today */
+  todayByEvent: Record<string, number>;
+  lastSucceededAt: string | null;
+}
+
+export async function getWritebackSummary(
+  dealershipId: string
+): Promise<ProviderWritebackSummary[]> {
+  const svc = createServiceClient();
+
+  // Fetch last 30 days of succeeded rows (light: only the columns we need)
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await svc
+    .from("crm_writeback_queue")
+    .select("provider, event_type, succeeded_at")
+    .eq("dealership_id", dealershipId)
+    .eq("status", "succeeded")
+    .gte("succeeded_at", thirtyDaysAgo)
+    .order("succeeded_at", { ascending: false })
+    .limit(5000) as unknown as {
+      data: { provider: string; event_type: string; succeeded_at: string | null }[] | null;
+    };
+
+  // Also get all-time total per provider (separate lightweight query)
+  const { data: totalData } = await svc
+    .from("crm_writeback_queue")
+    .select("provider")
+    .eq("dealership_id", dealershipId)
+    .eq("status", "succeeded")
+    .limit(50000) as unknown as { data: { provider: string }[] | null };
+
+  const rows = data ?? [];
+
+  // Calendar boundaries in UTC
+  const now   = new Date();
+  const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).getTime();
+  const yesterdayStart = todayStart - 86_400_000;
+  const weekStart      = todayStart - 6 * 86_400_000;
+
+  // Aggregate per provider
+  const byProvider = new Map<string, ProviderWritebackSummary>();
+
+  for (const row of rows) {
+    const ts = row.succeeded_at ? new Date(row.succeeded_at).getTime() : 0;
+    if (!byProvider.has(row.provider)) {
+      byProvider.set(row.provider, {
+        provider:        row.provider,
+        today:           0,
+        yesterday:       0,
+        week:            0,
+        total:           0,
+        todayByEvent:    {},
+        lastSucceededAt: row.succeeded_at ?? null, // first seen = most recent (sorted desc)
+      });
+    }
+    const s = byProvider.get(row.provider)!;
+    if (ts >= todayStart)     { s.today++; s.todayByEvent[row.event_type] = (s.todayByEvent[row.event_type] ?? 0) + 1; }
+    if (ts >= yesterdayStart && ts < todayStart) s.yesterday++;
+    if (ts >= weekStart)      s.week++;
+  }
+
+  // All-time totals from the broader query
+  for (const row of totalData ?? []) {
+    if (!byProvider.has(row.provider)) {
+      byProvider.set(row.provider, {
+        provider: row.provider, today: 0, yesterday: 0, week: 0, total: 0,
+        todayByEvent: {}, lastSucceededAt: null,
+      });
+    }
+    byProvider.get(row.provider)!.total++;
+  }
+
+  return [...byProvider.values()].sort((a, b) => b.total - a.total);
 }

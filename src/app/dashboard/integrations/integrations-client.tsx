@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ConnectionCard, type ConnectionStatus } from "@/components/integrations/connection-card";
 import { parseCsvToRows } from "@/lib/csv";
-import { Database, RefreshCw, AlertCircle, CheckCircle2, Info, Car, CreditCard, FileText, Webhook, Copy, Check, ArrowLeftRight, Zap, TriangleAlert, Eye, EyeOff, ChevronDown, ChevronUp, Radio } from "lucide-react";
+import { Database, RefreshCw, AlertCircle, CheckCircle2, Info, Car, CreditCard, FileText, Webhook, Copy, Check, ArrowLeftRight, Zap, TriangleAlert, Eye, EyeOff, ChevronDown, ChevronUp, Radio, TrendingUp, Activity, Calendar } from "lucide-react";
 
 type DmsProvider =
   | "cdk_fortellis"
@@ -41,6 +41,16 @@ interface QueueStats {
   oldestDeadAt: string | null;
 }
 
+interface ProviderWritebackSummary {
+  provider: string;
+  today: number;
+  yesterday: number;
+  week: number;
+  total: number;
+  todayByEvent: Record<string, number>;
+  lastSucceededAt: string | null;
+}
+
 interface Props {
   connections: DmsConnection[];
   latestCounts: Record<string, { customers: number; visits: number; inventory: number }>;
@@ -50,6 +60,7 @@ interface Props {
   xtimeUrl?: string | null;
   inventoryInsights?: InventoryInsights | null;
   queueStats?: QueueStats | null;
+  writebackSummary?: ProviderWritebackSummary[];
   appUrl?: string;
 }
 
@@ -779,7 +790,163 @@ function WebhookInfoPanel({
   );
 }
 
-export function IntegrationsClient({ connections, latestCounts, successParam, errorParam, dealerFunnelStats, xtimeUrl, inventoryInsights, queueStats, appUrl = "https://app.autocdp.com" }: Props) {
+// ---------------------------------------------------------------------------
+// CRM Sync Activity panel — write-back push summary
+// ---------------------------------------------------------------------------
+
+const EVENT_LABELS: Record<string, string> = {
+  campaign_sent: "Campaign sends",
+  qr_scanned:    "QR scans",
+  email_opened:  "Email opens",
+  link_clicked:  "Link clicks",
+  booking_made:  "Bookings",
+};
+
+function fmtRelative(isoStr: string | null): string {
+  if (!isoStr) return "—";
+  const diffMs = Date.now() - new Date(isoStr).getTime();
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin < 1)  return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24)   return `${diffH}h ago`;
+  return `${Math.floor(diffH / 24)}d ago`;
+}
+
+function WritebackActivityPanel({ summary, queueStats }: {
+  summary: ProviderWritebackSummary[];
+  queueStats?: QueueStats | null;
+}) {
+  const totalToday = summary.reduce((s, p) => s + p.today, 0);
+  const totalWeek  = summary.reduce((s, p) => s + p.week,  0);
+  const totalAll   = summary.reduce((s, p) => s + p.total, 0);
+
+  if (totalAll === 0 && !queueStats?.pending) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+        <div className="flex items-center gap-2 mb-2">
+          <Activity className="w-4 h-4 text-slate-400" />
+          <p className="text-[13px] font-semibold text-slate-600">CRM Sync Activity</p>
+        </div>
+        <p className="text-xs text-slate-400">
+          No activities pushed yet. Enable <strong>Plugin Mode</strong> on a connected CRM above to start
+          automatically logging campaign events into your BDC timeline.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-5 space-y-4">
+      {/* Header row */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center">
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+          </div>
+          <p className="text-[13px] font-bold text-emerald-900">CRM Sync Activity</p>
+        </div>
+        <a
+          href="/dashboard/audit"
+          className="text-[11px] font-medium text-emerald-600 hover:text-emerald-800 transition-colors underline underline-offset-2"
+        >
+          View full audit log →
+        </a>
+      </div>
+
+      {/* Top-line stats */}
+      <div className="grid grid-cols-3 gap-3">
+        {([
+          { label: "Today",     value: totalToday, icon: <Calendar   className="w-3 h-3" /> },
+          { label: "This week", value: totalWeek,  icon: <Activity   className="w-3 h-3" /> },
+          { label: "All time",  value: totalAll,   icon: <TrendingUp className="w-3 h-3" /> },
+        ] as Array<{ label: string; value: number; icon: React.ReactNode }>).map(({ label, value, icon }) => (
+          <div key={label} className="rounded-lg bg-white border border-emerald-100 px-3 py-2.5 text-center">
+            <div className="flex items-center justify-center gap-1 text-emerald-500 mb-1">{icon}</div>
+            <p className="text-[22px] font-bold text-emerald-800 tabular-nums leading-none">{value.toLocaleString()}</p>
+            <p className="text-[10px] text-emerald-600 font-medium mt-1">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Per-provider breakdown */}
+      {summary.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">By CRM — Today</p>
+          {summary.map((s) => (
+            <div key={s.provider} className="rounded-lg bg-white border border-emerald-100 px-3.5 py-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-semibold text-slate-800">
+                    {s.provider === "vinsolutions" ? "VinSolutions"
+                     : s.provider === "dealertrack" ? "Dealertrack"
+                     : s.provider === "elead"       ? "Elead CRM"
+                     : s.provider}
+                  </span>
+                  {s.today > 0 && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                      {s.today} today
+                    </span>
+                  )}
+                  {s.today === 0 && (
+                    <span className="text-[10px] text-slate-400">no pushes today</span>
+                  )}
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-slate-400">{s.total.toLocaleString()} total</p>
+                  {s.lastSucceededAt && (
+                    <p className="text-[10px] text-slate-400">last: {fmtRelative(s.lastSucceededAt)}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Today's event breakdown */}
+              {Object.keys(s.todayByEvent).length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(s.todayByEvent).map(([evt, cnt]) => (
+                    <span key={evt} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-100">
+                      {cnt} {EVENT_LABELS[evt] ?? evt.replace(/_/g, " ")}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Week vs yesterday micro-trend */}
+              <div className="flex gap-4 text-[10px] text-slate-400">
+                <span>Yesterday: <strong className="text-slate-600">{s.yesterday}</strong></span>
+                <span>7-day: <strong className="text-slate-600">{s.week}</strong></span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Queue health */}
+      {queueStats && (queueStats.pending > 0 || queueStats.dead > 0) && (
+        <div className="rounded-lg bg-white border border-slate-200 px-3.5 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <ArrowLeftRight className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-[12px] text-slate-600">Retry queue</span>
+          </div>
+          <div className="flex gap-3 text-[11px]">
+            {queueStats.pending > 0 && (
+              <span className="font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                {queueStats.pending} pending
+              </span>
+            )}
+            {queueStats.dead > 0 && (
+              <a href="/dashboard/audit" className="font-medium text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full hover:bg-red-100 transition-colors">
+                {queueStats.dead} failed
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function IntegrationsClient({ connections, latestCounts, successParam, errorParam, dealerFunnelStats, xtimeUrl, inventoryInsights, queueStats, writebackSummary = [], appUrl = "https://app.autocdp.com" }: Props) {
   const router = useRouter();
   const [openModal, setOpenModal] = useState<DmsProvider | "csv_upload" | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -1226,6 +1393,11 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
           </details>
         </div>
       </div>
+
+      {/* CRM Sync Activity — only when at least one CRM plugin is active */}
+      {(writebackSummary.length > 0 || (queueStats && (queueStats.pending > 0 || queueStats.dead > 0))) && (
+        <WritebackActivityPanel summary={writebackSummary} queueStats={queueStats} />
+      )}
 
       {/* Inventory + enrichment */}
       <div>
