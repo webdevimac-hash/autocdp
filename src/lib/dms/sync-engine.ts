@@ -83,6 +83,17 @@ import {
   type GeneralCrmActivity,
 } from "./general-crm";
 import { decryptTokens, encryptTokens } from "./encrypt";
+import {
+  mapVinContact,
+  mapVinLead,
+  mapVinActivity,
+  mapDtContact,
+  mapDtLead,
+  mapDtActivity,
+  mapEleadContact,
+  mapEleadLead,
+  mapEleadActivity,
+} from "./field-mapping";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -628,21 +639,7 @@ async function syncVinSolutionsFull(ctx: SyncContext, jobId: string): Promise<Sy
   >((_, cursor) => fetchVinContacts(apiKey, dealerId, ctx.since, cursor));
 
   for (const batch of chunk(contacts, 100)) {
-    const rows = batch.map((c) => ({
-      dealership_id: ctx.dealershipId,
-      dms_external_id: dmsId(provider, c.contactId),
-      first_name: c.firstName,
-      last_name: c.lastName,
-      email: c.email ?? null,
-      phone: c.phone ?? null,
-      address: {
-        street: c.address?.street ?? null,
-        city: c.address?.city ?? null,
-        state: c.address?.state ?? null,
-        zip: c.address?.zip ?? null,
-      },
-      metadata: { dms_source: { provider, id: c.contactId } },
-    }));
+    const rows = batch.map((c) => mapVinContact(c, ctx.dealershipId));
     const { error } = await supabase
       .from("customers")
       .upsert(rows, { onConflict: "dealership_id,dms_external_id" });
@@ -658,22 +655,7 @@ async function syncVinSolutionsFull(ctx: SyncContext, jobId: string): Promise<Sy
   >((_, cursor) => fetchVinLeads(apiKey, dealerId, ctx.since, cursor));
 
   for (const batch of chunk(leads, 100)) {
-    const rows = batch.map((l) => ({
-      dealership_id: ctx.dealershipId,
-      dms_external_id: dmsId(provider, `lead:${l.leadId}`),
-      first_name: l.firstName,
-      last_name: l.lastName,
-      email: l.email ?? null,
-      phone: l.phone ?? null,
-      address: null,
-      lifecycle_stage: "prospect" as const,
-      metadata: {
-        dms_source: { provider, id: l.leadId },
-        lead_source: l.leadSource ?? null,
-        lead_status: l.leadStatus ?? null,
-        vehicle_interest: l.vehicleInterest ?? null,
-      },
-    }));
+    const rows = batch.map((l) => mapVinLead(l, ctx.dealershipId));
     const { error } = await supabase
       .from("customers")
       .upsert(rows, { onConflict: "dealership_id,dms_external_id" });
@@ -696,17 +678,7 @@ async function syncVinSolutionsFull(ctx: SyncContext, jobId: string): Promise<Sy
       .map((a) => {
         const dbCustId = actCustomerIdMap.get(a.contactId);
         if (!dbCustId) return null;
-        return {
-          dealership_id: ctx.dealershipId,
-          dms_external_id: dmsId(provider, `act:${a.activityId}`),
-          customer_id: dbCustId,
-          visit_date: a.activityDate,
-          service_type: "crm_activity",
-          service_notes: a.subject
-            ? `${a.activityType}: ${a.subject}${a.notes ? ` — ${a.notes}` : ""}`
-            : a.notes ?? null,
-          metadata: { dms_source: { provider, id: a.activityId }, activity_type: a.activityType },
-        };
+        return mapVinActivity(a, dbCustId, ctx.dealershipId);
       })
       .filter(Boolean) as object[];
 
@@ -1009,19 +981,7 @@ async function syncDealertrackFull(ctx: SyncContext, jobId: string): Promise<Syn
   >((_, cursor) => fetchDealertrackContacts(token, ctx.since, cursor));
 
   for (const batch of chunk(contacts, 100)) {
-    const rows = batch.map((c) => ({
-      dealership_id:   ctx.dealershipId,
-      dms_external_id: dmsId(provider, c.contactId),
-      first_name:      c.firstName,
-      last_name:       c.lastName,
-      email:           c.email ?? null,
-      phone:           c.phone ?? null,
-      address: c.address
-        ? { street: c.address.street ?? null, city: c.address.city ?? null,
-            state: c.address.state ?? null, zip: c.address.zip ?? null }
-        : null,
-      metadata: { dms_source: { provider, id: c.contactId } },
-    }));
+    const rows = batch.map((c) => mapDtContact(c, ctx.dealershipId));
     const { error } = await supabase
       .from("customers")
       .upsert(rows, { onConflict: "dealership_id,dms_external_id" });
@@ -1037,25 +997,7 @@ async function syncDealertrackFull(ctx: SyncContext, jobId: string): Promise<Syn
   >((_, cursor) => fetchDealertrackLeads(token, ctx.since, cursor));
 
   for (const batch of chunk(leads, 100)) {
-    const rows = batch.map((l) => ({
-      dealership_id:   ctx.dealershipId,
-      dms_external_id: dmsId(provider, l.leadId),
-      first_name:      l.firstName,
-      last_name:       l.lastName,
-      email:           l.email ?? null,
-      phone:           l.phone ?? null,
-      address: l.address
-        ? { street: l.address.street ?? null, city: l.address.city ?? null,
-            state: l.address.state ?? null, zip: l.address.zip ?? null }
-        : null,
-      lifecycle_stage: "prospect" as const,
-      metadata: {
-        dms_source:       { provider, id: l.leadId },
-        lead_source:      l.leadSource ?? null,
-        lead_status:      l.leadStatus ?? null,
-        vehicle_interest: l.vehicleInterest ?? null,
-      },
-    }));
+    const rows = batch.map((l) => mapDtLead(l, ctx.dealershipId));
     const { error } = await supabase
       .from("customers")
       .upsert(rows, { onConflict: "dealership_id,dms_external_id" });
@@ -1078,15 +1020,7 @@ async function syncDealertrackFull(ctx: SyncContext, jobId: string): Promise<Syn
       .map((a) => {
         const dbCustId = dtCustomerMap.get(a.leadId);
         if (!dbCustId) return null;
-        return {
-          dealership_id:   ctx.dealershipId,
-          dms_external_id: dmsId(provider, `act:${a.activityId}`),
-          customer_id:     dbCustId,
-          visit_date:      a.activityDate,
-          service_type:    "crm_activity",
-          service_notes:   [a.subject, a.notes].filter(Boolean).join(" — ") || null,
-          metadata: { dms_source: { provider, id: a.activityId }, activity_type: a.activityType },
-        };
+        return mapDtActivity(a, dbCustId, ctx.dealershipId);
       })
       .filter(Boolean) as object[];
     if (rows.length === 0) continue;
@@ -1129,19 +1063,7 @@ async function syncEleadFull(ctx: SyncContext, jobId: string): Promise<SyncCount
   >((_, cursor) => fetchEleadContacts(apiKey, dealerId, ctx.since, cursor));
 
   for (const batch of chunk(contacts, 100)) {
-    const rows = batch.map((c) => ({
-      dealership_id:   ctx.dealershipId,
-      dms_external_id: dmsId(provider, c.contactId),
-      first_name:      c.firstName,
-      last_name:       c.lastName,
-      email:           c.email ?? null,
-      phone:           c.phone ?? null,
-      address: c.address
-        ? { street: c.address.street ?? null, city: c.address.city ?? null,
-            state: c.address.state ?? null, zip: c.address.zip ?? null }
-        : null,
-      metadata: { dms_source: { provider, id: c.contactId } },
-    }));
+    const rows = batch.map((c) => mapEleadContact(c, ctx.dealershipId));
     const { error } = await supabase
       .from("customers")
       .upsert(rows, { onConflict: "dealership_id,dms_external_id" });
@@ -1157,25 +1079,7 @@ async function syncEleadFull(ctx: SyncContext, jobId: string): Promise<SyncCount
   >((_, cursor) => fetchEleadLeads(apiKey, dealerId, ctx.since, cursor));
 
   for (const batch of chunk(leads, 100)) {
-    const rows = batch.map((l) => ({
-      dealership_id:   ctx.dealershipId,
-      dms_external_id: dmsId(provider, l.leadId),
-      first_name:      l.firstName,
-      last_name:       l.lastName,
-      email:           l.email ?? null,
-      phone:           l.phone ?? null,
-      address: l.address
-        ? { street: l.address.street ?? null, city: l.address.city ?? null,
-            state: l.address.state ?? null, zip: l.address.zip ?? null }
-        : null,
-      lifecycle_stage: "prospect" as const,
-      metadata: {
-        dms_source:       { provider, id: l.leadId },
-        lead_source:      l.leadSource ?? null,
-        lead_status:      l.leadStatus ?? null,
-        vehicle_interest: l.vehicleInterest ?? null,
-      },
-    }));
+    const rows = batch.map((l) => mapEleadLead(l, ctx.dealershipId));
     const { error } = await supabase
       .from("customers")
       .upsert(rows, { onConflict: "dealership_id,dms_external_id" });
@@ -1198,15 +1102,7 @@ async function syncEleadFull(ctx: SyncContext, jobId: string): Promise<SyncCount
       .map((a) => {
         const dbCustId = elCustomerMap.get(a.leadId);
         if (!dbCustId) return null;
-        return {
-          dealership_id:   ctx.dealershipId,
-          dms_external_id: dmsId(provider, `act:${a.activityId}`),
-          customer_id:     dbCustId,
-          visit_date:      a.activityDate,
-          service_type:    "crm_activity",
-          service_notes:   [a.subject, a.notes].filter(Boolean).join(" — ") || null,
-          metadata: { dms_source: { provider, id: a.activityId }, activity_type: a.activityType },
-        };
+        return mapEleadActivity(a, dbCustId, ctx.dealershipId);
       })
       .filter(Boolean) as object[];
     if (rows.length === 0) continue;

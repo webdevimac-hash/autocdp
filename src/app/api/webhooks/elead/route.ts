@@ -19,6 +19,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { verifyWebhookSignature } from "@/lib/dms/webhook-verify";
+import {
+  webhookUpdateFromElead,
+  lifecycleFromEleadStatus,
+} from "@/lib/dms/field-mapping";
 
 export const dynamic = "force-dynamic";
 
@@ -42,19 +46,6 @@ interface EleadWebhookEvent {
   occurred_at?: string;
   lead?: EleadLeadData & Record<string, unknown>;
 }
-
-const ELEAD_STATUS_TO_LIFECYCLE: Record<string, string> = {
-  new:       "prospect",
-  open:      "prospect",
-  active:    "active",
-  working:   "prospect",
-  quoted:    "prospect",
-  sold:      "sold",
-  closed:    "sold",
-  lost:      "inactive",
-  inactive:  "inactive",
-  service:   "service_customer",
-};
 
 // ---------------------------------------------------------------------------
 // Handler
@@ -140,13 +131,9 @@ async function handleEleadEvent(
       .eq("dealership_id", dealershipId)
       .maybeSingle();
     if (cust) {
-      const tags = Array.isArray(cust.tags) ? cust.tags as string[] : [];
-      if (!tags.includes("tcpa_optout")) {
-        await svc
-          .from("customers")
-          .update({ tags: [...tags, "tcpa_optout"] })
-          .eq("id", cust.id);
-      }
+      const existingTags = Array.isArray(cust.tags) ? cust.tags as string[] : [];
+      const dncUpdate = webhookUpdateFromElead({ dnc: true }, existingTags);
+      await svc.from("customers").update(dncUpdate).eq("id", cust.id);
     }
   }
 
@@ -155,11 +142,13 @@ async function handleEleadEvent(
     case "lead.created":
     case "lead.updated": {
       if (!nativeId) break;
-      const update: Record<string, unknown> = {};
-      if (lead.first_name) update.first_name = lead.first_name;
-      if (lead.last_name)  update.last_name  = lead.last_name;
-      if (lead.email)      update.email      = lead.email;
-      if (lead.phone)      update.phone      = lead.phone;
+      const update = webhookUpdateFromElead({
+        firstName:  lead.first_name,
+        lastName:   lead.last_name,
+        email:      lead.email,
+        phone:      lead.phone,
+        leadStatus: lead.status,
+      });
       if (Object.keys(update).length > 0) {
         await svc
           .from("customers")
@@ -174,14 +163,12 @@ async function handleEleadEvent(
     case "lead.status_changed": {
       if (!nativeId) break;
       const rawStatus = String(lead.status ?? "").toLowerCase();
-      const lifecycle = ELEAD_STATUS_TO_LIFECYCLE[rawStatus] ?? null;
-      if (lifecycle) {
-        await svc
-          .from("customers")
-          .update({ lifecycle_stage: lifecycle })
-          .eq("dms_external_id", `elead:${nativeId}`)
-          .eq("dealership_id", dealershipId);
-      }
+      const lifecycle = lifecycleFromEleadStatus(rawStatus);
+      await svc
+        .from("customers")
+        .update({ lifecycle_stage: lifecycle })
+        .eq("dms_external_id", `elead:${nativeId}`)
+        .eq("dealership_id", dealershipId);
       await logWebhookEvent(svc, dealershipId, "elead", event.event_type, nativeId, rawStatus);
       break;
     }

@@ -32,17 +32,12 @@ import {
   type WritebackQueueRow,
   type QueuedWritebackPayload,
 } from "./writeback-queue";
-
-// ---------------------------------------------------------------------------
-// Public payload type
-// ---------------------------------------------------------------------------
-
-export type WritebackEvent =
-  | "campaign_sent"
-  | "qr_scanned"
-  | "email_opened"
-  | "link_clicked"
-  | "booking_made";
+import {
+  vinActivityType,
+  dtActivityType,
+  eleadActivityType,
+  type WritebackEvent,
+} from "./field-mapping";
 
 export interface WritebackPayload {
   dealershipId: string;
@@ -73,10 +68,11 @@ function channelLabel(channel?: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Activity types — use CRM-native-sounding labels (free-form in all 3 CRMs)
+// Activity type display labels — human-readable for the note subject/body.
+// Provider-native API type codes come from field-mapping.ts.
 // ---------------------------------------------------------------------------
 
-const ACTIVITY_TYPES: Record<WritebackEvent, string> = {
+const ACTIVITY_LABELS: Record<WritebackEvent, string> = {
   campaign_sent: "Marketing Outreach",
   qr_scanned:    "Customer Response",
   email_opened:  "Email Engagement",
@@ -382,7 +378,7 @@ async function _fireWriteback(payload: WritebackPayload): Promise<void> {
 
   const subject  = buildSubject(payload.eventType, payload, firstName);
   const notes    = buildRichNote(payload.eventType, payload, customerName, firstName, now);
-  const actType  = ACTIVITY_TYPES[payload.eventType];
+  const actType  = ACTIVITY_LABELS[payload.eventType];
 
   const actPayload: QueuedWritebackPayload = {
     activityType:  actType,
@@ -406,7 +402,7 @@ async function _fireWriteback(payload: WritebackPayload): Promise<void> {
   }
 
   try {
-    await dispatchWriteback(provider, nativeId, tokens, actPayload);
+    await dispatchWriteback(provider, nativeId, tokens, actPayload, payload.eventType);
   } catch (err) {
     const isRetryable = err instanceof WritebackError ? err.isRetryable : true;
     const errorMsg    = err instanceof Error ? err.message : String(err);
@@ -501,12 +497,16 @@ export async function dispatchWriteback(
   provider: string,
   nativeId: string,
   tokens: Record<string, string>,
-  actPayload: QueuedWritebackPayload
+  actPayload: QueuedWritebackPayload,
+  /** Optional event type for per-provider native activity type resolution */
+  eventType?: string
 ): Promise<void> {
+  const wbEvent = (eventType ?? "campaign_sent") as WritebackEvent;
+
   if (provider === "vinsolutions") {
     await createVinActivity(tokens.apiKey, tokens.dealerId, {
       contactId:     nativeId,
-      activityType:  actPayload.activityType,
+      activityType:  vinActivityType(wbEvent),
       subject:       actPayload.subject,
       notes:         actPayload.notes,
       activityDate:  actPayload.activityDate,
@@ -515,7 +515,7 @@ export async function dispatchWriteback(
   } else if (provider === "dealertrack") {
     const dtToken = await getDealertrackToken(tokens.clientId, tokens.clientSecret);
     await createDealertrackActivity(dtToken, nativeId, {
-      activityType:  actPayload.activityType,
+      activityType:  dtActivityType(wbEvent),
       subject:       actPayload.subject,
       notes:         actPayload.notes,
       activityDate:  actPayload.activityDate,
@@ -523,7 +523,7 @@ export async function dispatchWriteback(
     });
   } else if (provider === "elead") {
     await createEleadActivity(tokens.apiKey, tokens.dealerId, nativeId, {
-      activityType:  actPayload.activityType,
+      activityType:  eleadActivityType(wbEvent),
       subject:       actPayload.subject,
       notes:         actPayload.notes,
       activityDate:  actPayload.activityDate,
@@ -569,7 +569,7 @@ export async function processQueueRow(row: WritebackQueueRow): Promise<void> {
   }
 
   try {
-    await dispatchWriteback(row.provider, row.native_id, tokens, row.activity_payload);
+    await dispatchWriteback(row.provider, row.native_id, tokens, row.activity_payload, row.event_type);
     await markWritebackSucceeded(row.id);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

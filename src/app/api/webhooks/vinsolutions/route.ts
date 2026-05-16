@@ -22,6 +22,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { verifyWebhookSignature } from "@/lib/dms/webhook-verify";
+import {
+  webhookUpdateFromVin,
+  lifecycleFromVinStatus,
+} from "@/lib/dms/field-mapping";
 
 export const dynamic = "force-dynamic";
 
@@ -62,23 +66,6 @@ interface VinWebhookEvent {
   timestamp?: string;
   data?: VinContact & VinLead & VinActivity & Record<string, unknown>;
 }
-
-// ---------------------------------------------------------------------------
-// Lifecycle stage mapping from VinSolutions lead status
-// ---------------------------------------------------------------------------
-
-const VIN_STATUS_TO_LIFECYCLE: Record<string, string> = {
-  new:       "prospect",
-  open:      "prospect",
-  working:   "prospect",
-  active:    "active",
-  sold:      "sold",
-  closed:    "sold",
-  lost:      "inactive",
-  dead:      "inactive",
-  inactive:  "inactive",
-  service:   "service_customer",
-};
 
 // ---------------------------------------------------------------------------
 // Handler
@@ -171,11 +158,13 @@ async function handleVinEvent(
     case "lead.updated": {
       if (!nativeId) break;
       const dmsExtId = `vinsolutions:${nativeId}`;
-      const update: Record<string, unknown> = {};
-      if (data.firstName) update.first_name = data.firstName;
-      if (data.lastName)  update.last_name  = data.lastName;
-      if (data.email)     update.email      = data.email;
-      if (data.phone)     update.phone      = data.phone;
+      const update = webhookUpdateFromVin({
+        firstName: data.firstName,
+        lastName:  data.lastName,
+        email:     data.email,
+        phone:     data.phone,
+        address:   data.address as { street?: string; city?: string; state?: string; zip?: string } | undefined,
+      });
       if (Object.keys(update).length > 0) {
         await svc
           .from("customers")
@@ -190,7 +179,6 @@ async function handleVinEvent(
     case "contact.opted_out": {
       if (!nativeId) break;
       const dmsExtId = `vinsolutions:${nativeId}`;
-      // Fetch existing tags and append tcpa_optout if missing
       const { data: cust } = await svc
         .from("customers")
         .select("id, tags")
@@ -198,13 +186,9 @@ async function handleVinEvent(
         .eq("dealership_id", dealershipId)
         .maybeSingle();
       if (cust) {
-        const tags = Array.isArray(cust.tags) ? cust.tags as string[] : [];
-        if (!tags.includes("tcpa_optout")) {
-          await svc
-            .from("customers")
-            .update({ tags: [...tags, "tcpa_optout"] })
-            .eq("id", cust.id);
-        }
+        const existingTags = Array.isArray(cust.tags) ? cust.tags as string[] : [];
+        const update = webhookUpdateFromVin({ optOut: true }, existingTags);
+        await svc.from("customers").update(update).eq("id", cust.id);
       }
       await logWebhookEvent(svc, dealershipId, "vinsolutions", eventType, nativeId, "opt-out recorded");
       break;
@@ -212,15 +196,13 @@ async function handleVinEvent(
 
     case "lead.status_changed": {
       if (!nativeId) break;
-      const rawStatus  = String(data.leadStatus ?? data.status ?? "").toLowerCase();
-      const lifecycle  = VIN_STATUS_TO_LIFECYCLE[rawStatus] ?? null;
-      if (lifecycle) {
-        await svc
-          .from("customers")
-          .update({ lifecycle_stage: lifecycle })
-          .eq("dms_external_id", `vinsolutions:${nativeId}`)
-          .eq("dealership_id", dealershipId);
-      }
+      const rawStatus = String(data.leadStatus ?? data.status ?? "").toLowerCase();
+      const lifecycle = lifecycleFromVinStatus(rawStatus);
+      await svc
+        .from("customers")
+        .update({ lifecycle_stage: lifecycle })
+        .eq("dms_external_id", `vinsolutions:${nativeId}`)
+        .eq("dealership_id", dealershipId);
       await logWebhookEvent(svc, dealershipId, "vinsolutions", eventType, nativeId, rawStatus);
       break;
     }
