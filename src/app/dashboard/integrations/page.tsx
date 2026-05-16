@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { IntegrationsClient } from "./integrations-client";
+import { getQueueStats } from "@/lib/dms/writeback-queue";
 
 export const dynamic = "force-dynamic";
 
@@ -113,6 +114,14 @@ export default async function IntegrationsPage({
       .contains("tags", ["tcpa_optout"]) as unknown as Promise<{ count: number | null }>,
   ]);
 
+  // CRM write-back queue stats (only relevant if a CRM with Plugin Mode is active)
+  const hasCrmPlugin = (connections ?? []).some(
+    (c) => ["vinsolutions", "dealertrack", "elead"].includes(c.provider as string) && c.status === "active"
+  );
+  const queueStats = hasCrmPlugin
+    ? await getQueueStats(dealership.id).catch(() => null)
+    : null;
+
   const secretConfigured = !!(dealership.settings?.inbound_lead_secret as string | undefined);
   const secret = (dealership.settings?.inbound_lead_secret as string | undefined) ?? "";
   const webhookUrl = `${APP_URL}/api/leads/inbound?dealership=${dealership.slug}${secret ? `&secret=${secret}` : ""}`;
@@ -134,6 +143,7 @@ export default async function IntegrationsPage({
       }}
       xtimeUrl={xtimeUrl}
       inventoryInsights={inventoryInsights}
+      queueStats={queueStats}
     />
   );
 }

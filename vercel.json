@@ -10,6 +10,15 @@
     },
     "src/app/api/campaign/approve/[token]/route.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/cron/retry-writebacks/route.ts": {
+      "maxDuration": 30
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/retry-writebacks",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

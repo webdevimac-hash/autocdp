@@ -12,6 +12,8 @@
  *   — client_id + client_secret stored per-dealership in dms_connections.encrypted_tokens
  */
 
+import { WritebackError, responseToWritebackError } from "./errors";
+
 export const DEALERTRACK_API_BASE =
   process.env.DEALERTRACK_API_BASE ?? "https://api.dealertrack.com/crm/v1";
 
@@ -68,7 +70,9 @@ async function dtFetch<T>(
   options: RequestInit = {},
   retries = 3
 ): Promise<T> {
-  const res = await fetch(`${DEALERTRACK_API_BASE}${path}`, {
+  let res: Response;
+  try {
+    res = await fetch(`${DEALERTRACK_API_BASE}${path}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -77,13 +81,19 @@ async function dtFetch<T>(
       ...(options.headers ?? {}),
     },
   });
+  } catch (networkErr) {
+    throw new WritebackError(
+      `Dealertrack network error on ${options.method ?? "GET"} ${path}: ${String(networkErr)}`,
+      0
+    );
+  }
 
   if (res.status === 429 && retries > 0) {
     const after = parseInt(res.headers.get("Retry-After") ?? "10", 10);
     await new Promise((r) => setTimeout(r, after * 1000));
     return dtFetch(path, token, options, retries - 1);
   }
-  if (!res.ok) throw new Error(`Dealertrack API ${path} → ${res.status}`);
+  if (!res.ok) throw await responseToWritebackError(res, `Dealertrack ${options.method ?? "GET"} ${path}`);
   return res.json() as Promise<T>;
 }
 

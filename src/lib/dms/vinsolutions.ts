@@ -9,11 +9,13 @@
  *   — actual keys stored per-dealership in dms_connections.encrypted_tokens
  */
 
+import { WritebackError, responseToWritebackError } from "./errors";
+
 export const VINSOLUTIONS_API_BASE =
   process.env.VINSOLUTIONS_API_BASE ?? "https://api.vinsolutions.com/v2";
 
 // ---------------------------------------------------------------------------
-// Client
+// Client — read-only (pull) with 429 retry
 // ---------------------------------------------------------------------------
 
 async function vinFetch<T>(
@@ -38,6 +40,51 @@ async function vinFetch<T>(
 
   if (!res.ok) {
     throw new Error(`VinSolutions API ${path} → ${res.status}`);
+  }
+
+  return res.json() as Promise<T>;
+}
+
+// ---------------------------------------------------------------------------
+// Write helper — for push operations, throws WritebackError (not plain Error)
+// so the retry queue can inspect isRetryable.
+// ---------------------------------------------------------------------------
+
+async function vinPush<T>(
+  path: string,
+  apiKey: string,
+  dealerId: string,
+  body: unknown,
+  method: "POST" | "PATCH" | "PUT" = "POST",
+  retries = 2
+): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${VINSOLUTIONS_API_BASE}${path}`, {
+      method,
+      headers: {
+        "X-Api-Key":   apiKey,
+        "X-Dealer-Id": dealerId,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (networkErr) {
+    throw new WritebackError(
+      `VinSolutions network error on ${method} ${path}: ${String(networkErr)}`,
+      0
+    );
+  }
+
+  if (res.status === 429 && retries > 0) {
+    const after = parseInt(res.headers.get("Retry-After") ?? "10", 10);
+    await new Promise((r) => setTimeout(r, after * 1000));
+    return vinPush(path, apiKey, dealerId, body, method, retries - 1);
+  }
+
+  if (!res.ok) {
+    throw await responseToWritebackError(res, `VinSolutions ${method} ${path}`);
   }
 
   return res.json() as Promise<T>;
@@ -199,18 +246,7 @@ export async function createVinActivity(
   dealerId: string,
   payload: VinActivityPayload
 ): Promise<{ activityId: string }> {
-  const res = await fetch(`${VINSOLUTIONS_API_BASE}/activities`, {
-    method: "POST",
-    headers: {
-      "X-Api-Key": apiKey,
-      "X-Dealer-Id": dealerId,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(`VinSolutions POST /activities → ${res.status}`);
-  return res.json() as Promise<{ activityId: string }>;
+  return vinPush<{ activityId: string }>("/activities", apiKey, dealerId, payload);
 }
 
 // ---------------------------------------------------------------------------
@@ -223,21 +259,12 @@ export async function createVinNote(
   contactId: string,
   note: string
 ): Promise<{ noteId: string }> {
-  const res = await fetch(
-    `${VINSOLUTIONS_API_BASE}/contacts/${encodeURIComponent(contactId)}/notes`,
-    {
-      method: "POST",
-      headers: {
-        "X-Api-Key": apiKey,
-        "X-Dealer-Id": dealerId,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({ content: note }),
-    }
+  return vinPush<{ noteId: string }>(
+    `/contacts/${encodeURIComponent(contactId)}/notes`,
+    apiKey,
+    dealerId,
+    { content: note }
   );
-  if (!res.ok) throw new Error(`VinSolutions POST /contacts/${contactId}/notes → ${res.status}`);
-  return res.json() as Promise<{ noteId: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -250,18 +277,11 @@ export async function updateVinLeadStatus(
   leadId: string,
   status: string
 ): Promise<void> {
-  const res = await fetch(
-    `${VINSOLUTIONS_API_BASE}/leads/${encodeURIComponent(leadId)}`,
-    {
-      method: "PATCH",
-      headers: {
-        "X-Api-Key": apiKey,
-        "X-Dealer-Id": dealerId,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({ leadStatus: status }),
-    }
+  await vinPush<unknown>(
+    `/leads/${encodeURIComponent(leadId)}`,
+    apiKey,
+    dealerId,
+    { leadStatus: status },
+    "PATCH"
   );
-  if (!res.ok) throw new Error(`VinSolutions PATCH /leads/${leadId} → ${res.status}`);
 }

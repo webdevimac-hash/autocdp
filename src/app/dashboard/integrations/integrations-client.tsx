@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ConnectionCard, type ConnectionStatus } from "@/components/integrations/connection-card";
 import { parseCsvToRows } from "@/lib/csv";
-import { Database, RefreshCw, AlertCircle, CheckCircle2, Info, Car, CreditCard, FileText, Webhook, Copy, Check, ArrowLeftRight, Zap } from "lucide-react";
+import { Database, RefreshCw, AlertCircle, CheckCircle2, Info, Car, CreditCard, FileText, Webhook, Copy, Check, ArrowLeftRight, Zap, TriangleAlert } from "lucide-react";
 
 type DmsProvider =
   | "cdk_fortellis"
@@ -35,6 +35,12 @@ interface InventoryInsights {
   totalInventoryValue: number;
 }
 
+interface QueueStats {
+  pending: number;
+  dead: number;
+  oldestDeadAt: string | null;
+}
+
 interface Props {
   connections: DmsConnection[];
   latestCounts: Record<string, { customers: number; visits: number; inventory: number }>;
@@ -43,6 +49,7 @@ interface Props {
   dealerFunnelStats?: { total: number; optedOut: number; webhookUrl: string; secretConfigured: boolean };
   xtimeUrl?: string | null;
   inventoryInsights?: InventoryInsights | null;
+  queueStats?: QueueStats | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -504,11 +511,13 @@ function PluginModePanel({
   enabled,
   loading,
   onToggle,
+  deadCount = 0,
 }: {
   provider: string;
   enabled: boolean;
   loading: boolean;
   onToggle: (value: boolean) => void;
+  deadCount?: number;
 }) {
   const label = PROVIDER_LABELS[provider as DmsProvider] ?? provider;
 
@@ -536,12 +545,26 @@ function PluginModePanel({
                 <Zap className="w-2.5 h-2.5" /> ACTIVE
               </span>
             )}
+            {deadCount > 0 && (
+              <span
+                className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200"
+                title="Some write-backs failed permanently. Check the Audit Log for details."
+              >
+                <TriangleAlert className="w-2.5 h-2.5" /> {deadCount} failed
+              </span>
+            )}
           </div>
           <p className="text-[11px] text-gray-500 leading-snug mt-0.5">
             {enabled
               ? `AutoCDP writes campaign sends, QR scans, and bookings back into ${label} as native activities.`
               : `Enable to push AutoCDP campaign results into ${label} automatically — no manual CRM entry needed.`}
           </p>
+          {deadCount > 0 && (
+            <p className="text-[11px] text-red-600 mt-0.5">
+              {deadCount} write-back{deadCount !== 1 ? "s" : ""} could not be delivered after 5 attempts —{" "}
+              <a href="/dashboard/audit" className="underline underline-offset-2 font-medium">view in Audit Log</a>.
+            </p>
+          )}
         </div>
       </div>
       <button
@@ -563,7 +586,7 @@ function PluginModePanel({
   );
 }
 
-export function IntegrationsClient({ connections, latestCounts, successParam, errorParam, dealerFunnelStats, xtimeUrl, inventoryInsights }: Props) {
+export function IntegrationsClient({ connections, latestCounts, successParam, errorParam, dealerFunnelStats, xtimeUrl, inventoryInsights, queueStats }: Props) {
   const router = useRouter();
   const [openModal, setOpenModal] = useState<DmsProvider | "csv_upload" | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -889,6 +912,7 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
                 enabled={pluginModeMap["vinsolutions"] ?? false}
                 loading={pluginModeLoading["vinsolutions"] ?? false}
                 onToggle={(v) => handlePluginModeToggle("vinsolutions", v)}
+                deadCount={(pluginModeMap["vinsolutions"] ?? false) ? (queueStats?.dead ?? 0) : 0}
               />
             )}
           </div>
@@ -915,6 +939,7 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
                 enabled={pluginModeMap["dealertrack"] ?? false}
                 loading={pluginModeLoading["dealertrack"] ?? false}
                 onToggle={(v) => handlePluginModeToggle("dealertrack", v)}
+                deadCount={(pluginModeMap["dealertrack"] ?? false) ? (queueStats?.dead ?? 0) : 0}
               />
             )}
           </div>
@@ -941,6 +966,7 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
                 enabled={pluginModeMap["elead"] ?? false}
                 loading={pluginModeLoading["elead"] ?? false}
                 onToggle={(v) => handlePluginModeToggle("elead", v)}
+                deadCount={(pluginModeMap["elead"] ?? false) ? (queueStats?.dead ?? 0) : 0}
               />
             )}
           </div>

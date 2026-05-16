@@ -5,8 +5,10 @@
  * this module fires a native activity/note into the dealer's CRM so BDC
  * staff see the full history without leaving their CRM.
  *
- * Execution model: always fire-and-forget (never blocks the caller).
- * Errors are logged to console and swallowed — write-back is best-effort.
+ * Execution model: fire-and-forget (never blocks the caller).
+ * On transient failure the write-back is queued and retried with exponential
+ * back-off (up to 5 attempts, max 1-hour gap).  Permanent failures (4xx) are
+ * dead-lettered immediately.
  *
  * Plugin Mode: per-provider opt-in stored in dms_connections.metadata.plugin_mode.
  * Only connections with plugin_mode = true receive write-back events.
@@ -22,6 +24,14 @@ import { decryptTokens } from "./encrypt";
 import { createVinActivity } from "./vinsolutions";
 import { getDealertrackToken, createDealertrackActivity } from "./dealertrack";
 import { createEleadActivity } from "./elead";
+import { WritebackError } from "./errors";
+import {
+  enqueueWriteback,
+  markWritebackSucceeded,
+  markWritebackFailed,
+  type WritebackQueueRow,
+  type QueuedWritebackPayload,
+} from "./writeback-queue";
 
 // ---------------------------------------------------------------------------
 // Public payload type
@@ -97,7 +107,7 @@ export function fireWriteback(payload: WritebackPayload): void {
 }
 
 // ---------------------------------------------------------------------------
-// Internal implementation
+// Internal implementation — resolves CRM identity then dispatches
 // ---------------------------------------------------------------------------
 
 async function _fireWriteback(payload: WritebackPayload): Promise<void> {
@@ -136,45 +146,96 @@ async function _fireWriteback(payload: WritebackPayload): Promise<void> {
   const meta = conn.metadata as Record<string, unknown> | null;
   if (!meta?.plugin_mode) return; // Plugin Mode not enabled — skip silently
 
-  // 3. Decrypt credentials and dispatch to the right adapter
-  const tokens = await decryptTokens<Record<string, string>>(
-    conn.encrypted_tokens as string
-  );
+  // 3. Build the activity payload
+  const now        = new Date().toISOString();
+  const subject    = EVENT_LABELS[payload.eventType];
+  const notes      = buildNoteBody(payload);
+  const actType    = EVENT_TYPES[payload.eventType];
+  const actPayload: QueuedWritebackPayload = {
+    activityType:  actType,
+    subject,
+    notes,
+    activityDate:  now,
+    completedDate: now,
+    channel:       payload.channel,
+  };
 
-  const now     = new Date().toISOString();
-  const subject = EVENT_LABELS[payload.eventType];
-  const notes   = buildNoteBody(payload);
-  const actType = EVENT_TYPES[payload.eventType];
-
-  if (provider === "vinsolutions") {
-    await createVinActivity(tokens.apiKey, tokens.dealerId, {
-      contactId:     nativeId,
-      activityType:  actType,
-      subject,
-      notes,
-      activityDate:  now,
-      completedDate: now,
-    });
-  } else if (provider === "dealertrack") {
-    const dtToken = await getDealertrackToken(tokens.clientId, tokens.clientSecret);
-    await createDealertrackActivity(dtToken, nativeId, {
-      activityType:  actType,
-      subject,
-      notes,
-      activityDate:  now,
-      completedDate: now,
-    });
-  } else if (provider === "elead") {
-    await createEleadActivity(tokens.apiKey, tokens.dealerId, nativeId, {
-      activityType:  actType,
-      subject,
-      notes,
-      activityDate:  now,
-      completedDate: now,
-    });
+  // 4. Decrypt credentials and dispatch — enqueue on failure
+  let tokens: Record<string, string>;
+  try {
+    tokens = await decryptTokens<Record<string, string>>(
+      conn.encrypted_tokens as string
+    );
+  } catch (err) {
+    console.warn("[crm-writeback] Token decrypt failed — cannot dispatch or queue:", err);
+    return;
   }
 
-  // 4. Audit log — never let this block or throw
+  try {
+    await dispatchWriteback(provider, nativeId, tokens, actPayload);
+  } catch (err) {
+    const isRetryable = err instanceof WritebackError ? err.isRetryable : true;
+    const errorMsg    = err instanceof Error ? err.message : String(err);
+
+    if (isRetryable) {
+      console.warn(`[crm-writeback] Transient error — queueing for retry: ${errorMsg}`);
+      await enqueueWriteback({
+        dealershipId: payload.dealershipId,
+        customerId:   payload.customerId,
+        provider,
+        nativeId,
+        eventType:    payload.eventType,
+        payload:      actPayload,
+      });
+    } else {
+      // Permanent 4xx — dead-letter immediately (no retries)
+      console.warn(`[crm-writeback] Permanent error — dead-lettering: ${errorMsg}`);
+      await enqueueWriteback({
+        dealershipId: payload.dealershipId,
+        customerId:   payload.customerId,
+        provider,
+        nativeId,
+        eventType:    payload.eventType,
+        payload:      actPayload,
+      }).then(async () => {
+        // Immediately exhaust attempts so it becomes dead
+        const supabaseSvc = createServiceClient();
+        await supabaseSvc
+          .from("crm_writeback_queue")
+          .update({
+            status:    "dead",
+            attempts:  5,
+            last_error: errorMsg.slice(0, 1000),
+          } as Record<string, unknown>)
+          .eq("dealership_id", payload.dealershipId)
+          .eq("customer_id", payload.customerId)
+          .eq("status", "pending")
+          .order("created_at", { ascending: false })
+          .limit(1);
+      });
+    }
+
+    // Log to sync_logs regardless
+    await supabase
+      .from("sync_logs")
+      .insert({
+        job_id:  `writeback-${payload.communicationId ?? payload.customerId}`,
+        level:   "error",
+        message: `Plugin write-back failed: ${provider} ← ${payload.eventType}`,
+        data: {
+          provider, nativeId,
+          customerId: payload.customerId,
+          eventType:  payload.eventType,
+          error:      errorMsg.slice(0, 500),
+          isRetryable,
+        },
+      })
+      .catch(() => null);
+
+    return;
+  }
+
+  // 5. Audit log — success
   await supabase
     .from("sync_logs")
     .insert({
@@ -190,4 +251,93 @@ async function _fireWriteback(payload: WritebackPayload): Promise<void> {
       },
     })
     .catch(() => null);
+}
+
+// ---------------------------------------------------------------------------
+// dispatchWriteback — shared by the initial attempt and the retry cron worker
+// ---------------------------------------------------------------------------
+
+/**
+ * Actually calls the CRM adapter.  Throws WritebackError on failure.
+ * Exported so the retry cron worker can call it with resolved credentials.
+ */
+export async function dispatchWriteback(
+  provider: string,
+  nativeId: string,
+  tokens: Record<string, string>,
+  actPayload: QueuedWritebackPayload
+): Promise<void> {
+  if (provider === "vinsolutions") {
+    await createVinActivity(tokens.apiKey, tokens.dealerId, {
+      contactId:     nativeId,
+      activityType:  actPayload.activityType,
+      subject:       actPayload.subject,
+      notes:         actPayload.notes,
+      activityDate:  actPayload.activityDate,
+      completedDate: actPayload.completedDate,
+    });
+  } else if (provider === "dealertrack") {
+    const dtToken = await getDealertrackToken(tokens.clientId, tokens.clientSecret);
+    await createDealertrackActivity(dtToken, nativeId, {
+      activityType:  actPayload.activityType,
+      subject:       actPayload.subject,
+      notes:         actPayload.notes,
+      activityDate:  actPayload.activityDate,
+      completedDate: actPayload.completedDate,
+    });
+  } else if (provider === "elead") {
+    await createEleadActivity(tokens.apiKey, tokens.dealerId, nativeId, {
+      activityType:  actPayload.activityType,
+      subject:       actPayload.subject,
+      notes:         actPayload.notes,
+      activityDate:  actPayload.activityDate,
+      completedDate: actPayload.completedDate,
+    });
+  } else {
+    throw new WritebackError(`Unknown CRM provider: ${provider}`, 0);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// processQueueRow — used by the cron worker for a single queue row
+// ---------------------------------------------------------------------------
+
+/**
+ * Retry a single queued write-back row.
+ * Resolves credentials fresh, calls dispatchWriteback, marks success or failure.
+ */
+export async function processQueueRow(row: WritebackQueueRow): Promise<void> {
+  const svc = createServiceClient();
+
+  // Fetch credentials from the live dms_connections record
+  const { data: conn } = await svc
+    .from("dms_connections")
+    .select("encrypted_tokens")
+    .eq("dealership_id", row.dealership_id)
+    .eq("provider", row.provider)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!conn?.encrypted_tokens) {
+    await markWritebackFailed(row, "No active connection found — credentials unavailable");
+    return;
+  }
+
+  let tokens: Record<string, string>;
+  try {
+    tokens = await decryptTokens<Record<string, string>>(
+      conn.encrypted_tokens as string
+    );
+  } catch (err) {
+    await markWritebackFailed(row, `Token decrypt failed: ${String(err)}`);
+    return;
+  }
+
+  try {
+    await dispatchWriteback(row.provider, row.native_id, tokens, row.activity_payload);
+    await markWritebackSucceeded(row.id);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await markWritebackFailed(row, msg);
+  }
 }
