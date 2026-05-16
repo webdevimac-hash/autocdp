@@ -37,6 +37,7 @@ import {
   ClipboardList,
   HeartPulse,
   Sparkle,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -97,6 +98,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Newsletter",     href: "/dashboard/newsletter",     icon: Newspaper },
       { label: "Templates",      href: "/dashboard/templates",      icon: FileText },
       { label: "Analytics",      href: "/dashboard/analytics",      icon: BarChart3 },
+      { label: "Unified ROI",    href: "/dashboard/analytics/unified", icon: TrendingUp },
       { label: "Conquest",       href: "/dashboard/conquest",       icon: Target },
       { label: "Voice",          href: "/dashboard/voice",          icon: Phone },
     ],
