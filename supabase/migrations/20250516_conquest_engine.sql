@@ -111,12 +111,21 @@ CREATE POLICY "service role conquest_audiences"
   ON conquest_audiences FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Deferred FK from conquest_leads.audience_id
-ALTER TABLE conquest_leads
-  ADD CONSTRAINT IF NOT EXISTS fk_conquest_leads_audience
-  FOREIGN KEY (audience_id)
-  REFERENCES conquest_audiences(id)
-  ON DELETE SET NULL
-  DEFERRABLE INITIALLY DEFERRED;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'fk_conquest_leads_audience'
+      AND table_name = 'conquest_leads'
+  ) THEN
+    ALTER TABLE conquest_leads
+      ADD CONSTRAINT fk_conquest_leads_audience
+      FOREIGN KEY (audience_id)
+      REFERENCES conquest_audiences(id)
+      ON DELETE SET NULL
+      DEFERRABLE INITIALLY DEFERRED;
+  END IF;
+END $$;
 
 -- ── 3. retargeting_events ─────────────────────────────────────
 -- High-volume table — one row per pixel-fired website event.
