@@ -1,11 +1,18 @@
 /**
- * Orchestration Agent — Coordinates the 5-agent swarm for end-to-end campaign creation.
+ * Orchestration Agent — Coordinates the 6-agent swarm for end-to-end campaign creation.
  *
  * Two execution modes:
  *   runOrchestrator()          — Original mode: generates preview messages (no mail sent).
  *                                Used by /api/agents/test.
  *   runDirectMailOrchestrator() — Tool-use mode: Claude calls send_direct_mail per customer.
  *                                Used by /api/mail/send for real campaign execution.
+ *
+ * Agent #6 (Digital Marketing) runs as a parallel track — it owns paid digital channels
+ * and is invoked separately via /api/agents/digital-marketing or the daily cron.
+ * The Orchestrator coordinates with it by:
+ *   - Passing inventory signals (aged stock, new arrivals) that should trigger paid campaigns
+ *   - Sharing CRM event data (bulk leads, sold vehicles) for attribution
+ *   - Reading the dm_playbook to align owned-channel creative with paid-channel strategy
  */
 import { getAnthropicClient, MODELS } from "../client";
 import { runDataAgent } from "./data-agent";
@@ -14,6 +21,7 @@ import { runCreativeAgent, loadBestPerformingMailExamples, type BestPerformingEx
 import { runOptimizationAgent } from "./optimization-agent";
 import { runCoopAgent, type CoopAgentOutput } from "./coop-agent";
 import { planCampaignSequence } from "./sequence-planner";
+import { runDigitalMarketingAgent } from "./digital-marketing-agent";
 import {
   SEND_DIRECT_MAIL_TOOL_DEFINITION,
   executeSendDirectMailTool,
@@ -1375,4 +1383,76 @@ export async function runOmnichannelOrchestrator(
       error: errMsg,
     };
   }
+}
+
+// ── Full 6-Agent Swarm Coordinator ───────────────────────────
+//
+// Fires Agent #6 (Digital Marketing) in parallel with the owned-channel swarm
+// when the trigger conditions warrant paid digital analysis/execution.
+// Called by the daily autonomous cron and by the dashboard "Run Full Swarm" action.
+
+export interface FullSwarmInput {
+  context:          OrchestratorInput["context"];
+  campaignGoal:     string;
+  ownedChannel:     CampaignChannel;
+  runDigitalAgent?: boolean;   // default true
+  allowDigitalExecute?: boolean;  // default false — analysis only unless explicitly granted
+  digitalGoal?:     string;
+  approvedActionIds?: string[];
+}
+
+export interface FullSwarmOutput {
+  ownedChannel: OrchestratorOutput | null;
+  digitalMarketing: {
+    agentRunId:       string;
+    playbookVersion?: number;
+    adsCreated:       number;
+    patternsLearned:  number;
+    executiveBrief:   string;
+    status:           string;
+  } | null;
+  status: "completed" | "partial" | "failed";
+}
+
+export async function runFullSwarm(input: FullSwarmInput): Promise<FullSwarmOutput> {
+  const [ownedResult, digitalResult] = await Promise.allSettled([
+    // Owned-channel swarm (agents 1–5)
+    runOrchestrator({
+      context:      input.context,
+      campaignGoal: input.campaignGoal,
+      channel:      input.ownedChannel,
+      maxCustomers: 5,
+    }),
+    // Digital Marketing Agent (#6) — fires in parallel
+    (input.runDigitalAgent ?? true)
+      ? runDigitalMarketingAgent({
+          context:          input.context,
+          mode:             "full_cycle",
+          allowExecute:     input.allowDigitalExecute ?? false,
+          dealerGoal:       input.digitalGoal ?? input.campaignGoal,
+          approvedActionIds: input.approvedActionIds ?? [],
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const owned    = ownedResult.status === "fulfilled" ? ownedResult.value : null;
+  const digitalRaw = digitalResult.status === "fulfilled" ? digitalResult.value : null;
+
+  const digital = digitalRaw
+    ? {
+        agentRunId:      digitalRaw.agentRunId,
+        playbookVersion: digitalRaw.playbookVersion,
+        adsCreated:      digitalRaw.adsCreated,
+        patternsLearned: digitalRaw.patternsLearned,
+        executiveBrief:  digitalRaw.executiveBrief,
+        status:          digitalRaw.status,
+      }
+    : null;
+
+  const bothFailed = !owned && !digital;
+  return {
+    ownedChannel:     owned,
+    digitalMarketing: digital,
+    status:           bothFailed ? "failed" : (owned && digital) ? "completed" : "partial",
+  };
 }

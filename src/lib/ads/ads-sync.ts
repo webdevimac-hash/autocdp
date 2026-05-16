@@ -29,7 +29,7 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
-export type AdsPlatform = "google_ads" | "meta_ads";
+export type AdsPlatform = "google_ads" | "meta_ads" | "tiktok_ads";
 
 export interface AdsSyncResult {
   platform:    AdsPlatform;

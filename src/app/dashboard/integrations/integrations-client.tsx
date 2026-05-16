@@ -52,7 +52,7 @@ interface ProviderWritebackSummary {
 }
 
 interface AdsPerfSummary {
-  platform:    "google_ads" | "meta_ads";
+  platform:    "google_ads" | "meta_ads" | "tiktok_ads";
   accountId:   string;
   last7Days: {
     impressions: number;
@@ -1068,41 +1068,50 @@ function MetaAccountIdModal({ open, onClose, onConnect }: MetaAccountIdModalProp
 }
 
 interface DigitalAdsSectionProps {
-  gadsConn:       DmsConnection | null;
-  metaConn:       DmsConnection | null;
-  adsPerfSummary: AdsPerfSummary[];
-  onGadsSync:     () => Promise<void>;
-  onMetaSync:     () => Promise<void>;
-  onGadsDisconnect:  () => Promise<void>;
-  onMetaDisconnect:  () => Promise<void>;
-  onMetaAccountId:   (id: string) => Promise<void>;
+  gadsConn:         DmsConnection | null;
+  metaConn:         DmsConnection | null;
+  tiktokConn:       DmsConnection | null;
+  adsPerfSummary:   AdsPerfSummary[];
+  onGadsSync:       () => Promise<void>;
+  onMetaSync:       () => Promise<void>;
+  onTiktokSync:     () => Promise<void>;
+  onGadsDisconnect:    () => Promise<void>;
+  onMetaDisconnect:    () => Promise<void>;
+  onTiktokDisconnect:  () => Promise<void>;
+  onMetaAccountId:     (id: string) => Promise<void>;
 }
 
 function DigitalAdsSection({
   gadsConn,
   metaConn,
+  tiktokConn,
   adsPerfSummary,
   onGadsSync,
   onMetaSync,
+  onTiktokSync,
   onGadsDisconnect,
   onMetaDisconnect,
+  onTiktokDisconnect,
   onMetaAccountId,
 }: DigitalAdsSectionProps) {
   const [metaModalOpen, setMetaModalOpen] = useState(false);
   const [syncing, setSyncing]             = useState<Record<string, boolean>>({});
 
-  const gadsSummary = adsPerfSummary.find((s) => s.platform === "google_ads");
-  const metaSummary = adsPerfSummary.find((s) => s.platform === "meta_ads");
+  const gadsSummary   = adsPerfSummary.find((s) => s.platform === "google_ads");
+  const metaSummary   = adsPerfSummary.find((s) => s.platform === "meta_ads");
+  const tiktokSummary = adsPerfSummary.find((s) => s.platform === "tiktok_ads");
 
-  const gadsActive  = gadsConn?.status === "active";
-  const metaActive  = metaConn?.status === "active";
-  const metaPending = metaConn?.status === "pending"; // OAuth done, needs adAccountId
+  const gadsActive   = gadsConn?.status === "active";
+  const metaActive   = metaConn?.status === "active";
+  const metaPending  = metaConn?.status === "pending";
+  const tiktokActive = tiktokConn?.status === "active";
 
-  async function triggerSync(platform: "google" | "meta") {
+  async function triggerSync(platform: "google" | "meta" | "tiktok") {
     setSyncing((s) => ({ ...s, [platform]: true }));
     try {
       if (platform === "google") await onGadsSync();
-      else await onMetaSync();
+      else if (platform === "meta") await onMetaSync();
+      else await onTiktokSync();
     } finally {
       setSyncing((s) => ({ ...s, [platform]: false }));
     }
@@ -1292,6 +1301,18 @@ function DigitalAdsSection({
         syncKey="meta"
         accentClass="bg-indigo-50"
       />
+      <PlatformCard
+        name="TikTok Ads"
+        icon={<Megaphone className="w-5 h-5 text-pink-600" />}
+        active={tiktokActive}
+        conn={tiktokConn}
+        summary={tiktokSummary}
+        oauthHref="/api/integrations/tiktok-ads/auth"
+        onSync={onTiktokSync}
+        onDisconnect={onTiktokDisconnect}
+        syncKey={"tiktok" as "google"}
+        accentClass="bg-pink-50"
+      />
     </>
   );
 }
@@ -1323,9 +1344,14 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
       "google-ads-denied":         "Google Ads access was denied.",
       "google-ads-state-mismatch": "Google Ads OAuth state mismatch — please try again.",
       "google-ads-exchange-failed": "Failed to exchange Google Ads authorization code.",
-      "meta-ads-denied":           "Meta Ads access was denied.",
-      "meta-ads-state-mismatch":   "Meta Ads OAuth state mismatch — please try again.",
-      "meta-ads-exchange-failed":  "Failed to exchange Meta Ads authorization code.",
+      "meta-ads-denied":            "Meta Ads access was denied.",
+      "meta-ads-state-mismatch":    "Meta Ads OAuth state mismatch — please try again.",
+      "meta-ads-exchange-failed":   "Failed to exchange Meta Ads authorization code.",
+      "tiktok-ads-connected":       "TikTok Ads connected! Initial sync is running.",
+      "tiktok-ads-authed":          "TikTok authorized! Select your advertiser account to finish.",
+      "tiktok-ads-denied":          "TikTok Ads access was denied.",
+      "tiktok-ads-state-mismatch":  "TikTok Ads OAuth state mismatch — please try again.",
+      "tiktok-ads-exchange-failed": "Failed to exchange TikTok Ads authorization code.",
     };
     if (successParam && successMessages[successParam]) {
       setToast({ type: "success", message: successMessages[successParam] });
@@ -1538,6 +1564,20 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
     const res = await fetch("/api/integrations/meta-ads/sync", { method: "DELETE" });
     if (!res.ok) { const d = await res.json().catch(() => ({})) as { error?: string }; throw new Error(d.error ?? "Disconnect failed"); }
     setToast({ type: "success", message: "Meta Ads disconnected." });
+    router.refresh();
+  }
+
+  async function handleTiktokSync() {
+    const res = await fetch("/api/integrations/tiktok-ads/sync", { method: "POST" });
+    if (!res.ok) { const d = await res.json() as { error?: string }; throw new Error(d.error ?? "Sync failed"); }
+    setToast({ type: "success", message: "TikTok Ads sync triggered." });
+    setTimeout(() => router.refresh(), 1500);
+  }
+
+  async function handleTiktokDisconnect() {
+    const res = await fetch("/api/integrations/tiktok-ads/sync", { method: "DELETE" });
+    if (!res.ok) { const d = await res.json().catch(() => ({})) as { error?: string }; throw new Error(d.error ?? "Disconnect failed"); }
+    setToast({ type: "success", message: "TikTok Ads disconnected." });
     router.refresh();
   }
 
@@ -1814,11 +1854,14 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
           <DigitalAdsSection
             gadsConn={gadsConn}
             metaConn={metaConn}
+            tiktokConn={getConnection("tiktok_ads")}
             adsPerfSummary={adsPerfSummary}
             onGadsSync={handleGadsSync}
             onMetaSync={handleMetaSync}
+            onTiktokSync={handleTiktokSync}
             onGadsDisconnect={handleGadsDisconnect}
             onMetaDisconnect={handleMetaDisconnect}
+            onTiktokDisconnect={handleTiktokDisconnect}
             onMetaAccountId={handleMetaAccountId}
           />
         </div>
