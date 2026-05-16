@@ -38,6 +38,7 @@ import {
   HeartPulse,
   Sparkle,
   TrendingUp,
+  FlaskConical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -98,7 +99,8 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Newsletter",     href: "/dashboard/newsletter",     icon: Newspaper },
       { label: "Templates",      href: "/dashboard/templates",      icon: FileText },
       { label: "Analytics",      href: "/dashboard/analytics",      icon: BarChart3 },
-      { label: "Unified ROI",    href: "/dashboard/analytics/unified", icon: TrendingUp },
+      { label: "Unified ROI",    href: "/dashboard/analytics/unified",   icon: TrendingUp },
+      { label: "A/B Tests",     href: "/dashboard/campaigns/ab-tests", icon: FlaskConical },
       { label: "Conquest",       href: "/dashboard/conquest",       icon: Target },
       { label: "Voice",          href: "/dashboard/voice",          icon: Phone },
     ],
