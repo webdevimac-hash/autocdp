@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { IntegrationsClient } from "./integrations-client";
 import { getQueueStats, getWritebackSummary } from "@/lib/dms/writeback-queue";
+import { getAdsPerfSummary } from "@/lib/ads/ads-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -126,6 +127,9 @@ export default async function IntegrationsPage({
     ? await getWritebackSummary(dealership.id).catch(() => [])
     : [];
 
+  // Ads performance summary
+  const adsPerfSummary = await getAdsPerfSummary(dealership.id).catch(() => []);
+
   const secretConfigured = !!(dealership.settings?.inbound_lead_secret as string | undefined);
   const secret = (dealership.settings?.inbound_lead_secret as string | undefined) ?? "";
   const webhookUrl = `${APP_URL}/api/leads/inbound?dealership=${dealership.slug}${secret ? `&secret=${secret}` : ""}`;
@@ -149,6 +153,7 @@ export default async function IntegrationsPage({
       inventoryInsights={inventoryInsights}
       queueStats={queueStats}
       writebackSummary={writebackSummary}
+      adsPerfSummary={adsPerfSummary}
       appUrl={APP_URL}
     />
   );

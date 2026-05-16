@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ConnectionCard, type ConnectionStatus } from "@/components/integrations/connection-card";
 import { parseCsvToRows } from "@/lib/csv";
-import { Database, RefreshCw, AlertCircle, CheckCircle2, Info, Car, CreditCard, FileText, Webhook, Copy, Check, ArrowLeftRight, Zap, TriangleAlert, Eye, EyeOff, ChevronDown, ChevronUp, Radio, TrendingUp, Activity, Calendar } from "lucide-react";
+import { Database, RefreshCw, AlertCircle, CheckCircle2, Info, Car, CreditCard, FileText, Webhook, Copy, Check, ArrowLeftRight, Zap, TriangleAlert, Eye, EyeOff, ChevronDown, ChevronUp, Radio, TrendingUp, Activity, Calendar, BarChart2, MousePointerClick, DollarSign, Megaphone } from "lucide-react";
 
 type DmsProvider =
   | "cdk_fortellis"
@@ -51,6 +51,26 @@ interface ProviderWritebackSummary {
   lastSucceededAt: string | null;
 }
 
+interface AdsPerfSummary {
+  platform:    "google_ads" | "meta_ads";
+  accountId:   string;
+  last7Days: {
+    impressions: number;
+    clicks:      number;
+    conversions: number;
+    spendUsd:    number;
+    roas:        number | null;
+  };
+  last30Days: {
+    impressions: number;
+    clicks:      number;
+    conversions: number;
+    spendUsd:    number;
+    roas:        number | null;
+  };
+  lastSyncedAt: string | null;
+}
+
 interface Props {
   connections: DmsConnection[];
   latestCounts: Record<string, { customers: number; visits: number; inventory: number }>;
@@ -61,6 +81,7 @@ interface Props {
   inventoryInsights?: InventoryInsights | null;
   queueStats?: QueueStats | null;
   writebackSummary?: ProviderWritebackSummary[];
+  adsPerfSummary?: AdsPerfSummary[];
   appUrl?: string;
 }
 
@@ -946,7 +967,336 @@ function WritebackActivityPanel({ summary, queueStats }: {
   );
 }
 
-export function IntegrationsClient({ connections, latestCounts, successParam, errorParam, dealerFunnelStats, xtimeUrl, inventoryInsights, queueStats, writebackSummary = [], appUrl = "https://app.autocdp.com" }: Props) {
+// ---------------------------------------------------------------------------
+// Digital Ads Section
+// ---------------------------------------------------------------------------
+
+function fmtNumber(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString();
+}
+
+function AdsStatTile({
+  icon, label, value, sub,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  sub?: string;
+}) {
+  return (
+    <div className="flex-1 min-w-[100px] bg-white border border-gray-100 rounded-xl px-3.5 py-3 space-y-1">
+      <div className="flex items-center gap-1.5 text-gray-400">
+        {icon}
+        <span className="text-[11px]">{label}</span>
+      </div>
+      <div className="text-lg font-bold text-gray-900 leading-tight">{value}</div>
+      {sub && <div className="text-[10px] text-gray-400">{sub}</div>}
+    </div>
+  );
+}
+
+interface MetaAccountIdModalProps {
+  open: boolean;
+  onClose: () => void;
+  onConnect: (adAccountId: string) => Promise<void>;
+}
+
+function MetaAccountIdModal({ open, onClose, onConnect }: MetaAccountIdModalProps) {
+  const [adAccountId, setAdAccountId] = useState("");
+  const [loading, setLoading]         = useState(false);
+  const [err, setErr]                 = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setErr("");
+    try {
+      await onConnect(adAccountId.trim());
+      setAdAccountId("");
+      onClose();
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : "Connection failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">Enter Meta Ad Account ID</h2>
+        <p className="text-sm text-gray-500 mb-5">
+          Your Facebook ad account ID starts with <code className="font-mono text-xs bg-gray-100 px-1 rounded">act_</code>.
+          Find it in Facebook Business Manager → Ad Accounts.
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Ad Account ID</label>
+            <input
+              type="text"
+              value={adAccountId}
+              onChange={(e) => setAdAccountId(e.target.value)}
+              placeholder="act_123456789"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+          </div>
+          {err && (
+            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {err}
+            </div>
+          )}
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose}
+              className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+              Cancel
+            </button>
+            <button type="submit" disabled={loading || !adAccountId.trim()}
+              className="flex-1 px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+              {loading ? "Connecting…" : "Connect"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+interface DigitalAdsSectionProps {
+  gadsConn:       DmsConnection | null;
+  metaConn:       DmsConnection | null;
+  adsPerfSummary: AdsPerfSummary[];
+  onGadsSync:     () => Promise<void>;
+  onMetaSync:     () => Promise<void>;
+  onGadsDisconnect:  () => Promise<void>;
+  onMetaDisconnect:  () => Promise<void>;
+  onMetaAccountId:   (id: string) => Promise<void>;
+}
+
+function DigitalAdsSection({
+  gadsConn,
+  metaConn,
+  adsPerfSummary,
+  onGadsSync,
+  onMetaSync,
+  onGadsDisconnect,
+  onMetaDisconnect,
+  onMetaAccountId,
+}: DigitalAdsSectionProps) {
+  const [metaModalOpen, setMetaModalOpen] = useState(false);
+  const [syncing, setSyncing]             = useState<Record<string, boolean>>({});
+
+  const gadsSummary = adsPerfSummary.find((s) => s.platform === "google_ads");
+  const metaSummary = adsPerfSummary.find((s) => s.platform === "meta_ads");
+
+  const gadsActive  = gadsConn?.status === "active";
+  const metaActive  = metaConn?.status === "active";
+  const metaPending = metaConn?.status === "pending"; // OAuth done, needs adAccountId
+
+  async function triggerSync(platform: "google" | "meta") {
+    setSyncing((s) => ({ ...s, [platform]: true }));
+    try {
+      if (platform === "google") await onGadsSync();
+      else await onMetaSync();
+    } finally {
+      setSyncing((s) => ({ ...s, [platform]: false }));
+    }
+  }
+
+  function PlatformCard({
+    name,
+    icon,
+    active,
+    pending,
+    conn,
+    summary,
+    oauthHref,
+    onSync,
+    onDisconnect,
+    onSetAccount,
+    syncKey,
+    accentClass,
+  }: {
+    name:          string;
+    icon:          React.ReactNode;
+    active:        boolean;
+    pending?:      boolean;
+    conn:          DmsConnection | null;
+    summary?:      AdsPerfSummary;
+    oauthHref:     string;
+    onSync:        () => Promise<void>;
+    onDisconnect:  () => Promise<void>;
+    onSetAccount?: () => void;
+    syncKey:       "google" | "meta";
+    accentClass:   string;
+  }) {
+    return (
+      <div className={`rounded-xl border bg-white shadow-sm p-5 space-y-4 ${active ? "border-gray-200" : "border-dashed border-gray-300"}`}>
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${accentClass}`}>
+              {icon}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-gray-900">{name}</span>
+                {active && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">Active</span>
+                )}
+                {pending && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-medium">Needs account ID</span>
+                )}
+                {!active && !pending && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">Not connected</span>
+                )}
+              </div>
+              {conn?.last_sync_at && (
+                <div className="text-[10px] text-gray-400 mt-0.5">
+                  Last sync: {fmtRelative(conn.last_sync_at)}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {active && (
+              <button
+                onClick={() => triggerSync(syncKey)}
+                disabled={syncing[syncKey]}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                <RefreshCw className={`w-3 h-3 ${syncing[syncKey] ? "animate-spin" : ""}`} />
+                Sync
+              </button>
+            )}
+            {pending && onSetAccount && (
+              <button
+                onClick={onSetAccount}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors"
+              >
+                Set Account ID
+              </button>
+            )}
+            {!active && !pending && (
+              <a
+                href={oauthHref}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition-colors"
+              >
+                Connect
+              </a>
+            )}
+            {(active || pending) && (
+              <button
+                onClick={onDisconnect}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+              >
+                Disconnect
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Last error */}
+        {conn?.last_error && (
+          <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+            {conn.last_error}
+          </div>
+        )}
+
+        {/* Performance summary */}
+        {active && summary && (
+          <div className="space-y-3">
+            <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Last 7 days</p>
+            <div className="flex flex-wrap gap-2">
+              <AdsStatTile
+                icon={<BarChart2 className="w-3 h-3" />}
+                label="Impressions"
+                value={fmtNumber(summary.last7Days.impressions)}
+              />
+              <AdsStatTile
+                icon={<MousePointerClick className="w-3 h-3" />}
+                label="Clicks"
+                value={fmtNumber(summary.last7Days.clicks)}
+                sub={summary.last7Days.impressions > 0
+                  ? `${((summary.last7Days.clicks / summary.last7Days.impressions) * 100).toFixed(2)}% CTR`
+                  : undefined}
+              />
+              <AdsStatTile
+                icon={<DollarSign className="w-3 h-3" />}
+                label="Spend"
+                value={`$${summary.last7Days.spendUsd.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+                sub={summary.last7Days.clicks > 0
+                  ? `$${(summary.last7Days.spendUsd / summary.last7Days.clicks).toFixed(2)} CPC`
+                  : undefined}
+              />
+              {summary.last7Days.roas != null && (
+                <AdsStatTile
+                  icon={<TrendingUp className="w-3 h-3" />}
+                  label="ROAS"
+                  value={`${summary.last7Days.roas.toFixed(2)}×`}
+                  sub={`${fmtNumber(summary.last7Days.conversions)} conv`}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!active && !pending && (
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Connect to pull impressions, clicks, spend, and ROAS. The AI swarm can then push
+            AI-generated ad creatives and optimize budgets automatically.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <MetaAccountIdModal
+        open={metaModalOpen}
+        onClose={() => setMetaModalOpen(false)}
+        onConnect={onMetaAccountId}
+      />
+      <PlatformCard
+        name="Google Ads"
+        icon={<Megaphone className="w-5 h-5 text-blue-600" />}
+        active={gadsActive}
+        conn={gadsConn}
+        summary={gadsSummary}
+        oauthHref="/api/integrations/google-ads/auth"
+        onSync={onGadsSync}
+        onDisconnect={onGadsDisconnect}
+        syncKey="google"
+        accentClass="bg-blue-50"
+      />
+      <PlatformCard
+        name="Meta Ads"
+        icon={<Megaphone className="w-5 h-5 text-indigo-600" />}
+        active={metaActive}
+        pending={metaPending}
+        conn={metaConn}
+        summary={metaSummary}
+        oauthHref="/api/integrations/meta-ads/auth"
+        onSync={onMetaSync}
+        onDisconnect={onMetaDisconnect}
+        onSetAccount={() => setMetaModalOpen(true)}
+        syncKey="meta"
+        accentClass="bg-indigo-50"
+      />
+    </>
+  );
+}
+
+export function IntegrationsClient({ connections, latestCounts, successParam, errorParam, dealerFunnelStats, xtimeUrl, inventoryInsights, queueStats, writebackSummary = [], adsPerfSummary = [], appUrl = "https://app.autocdp.com" }: Props) {
   const router = useRouter();
   const [openModal, setOpenModal] = useState<DmsProvider | "csv_upload" | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -960,15 +1310,27 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
   const [pluginModeLoading, setPluginModeLoading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (successParam === "cdk_connected") {
-      setToast({ type: "success", message: "CDK Fortellis connected! Initial sync is running in the background." });
+    const successMessages: Record<string, string> = {
+      cdk_connected:          "CDK Fortellis connected! Initial sync is running in the background.",
+      "google-ads-connected": "Google Ads connected! Initial sync is running.",
+      "google-ads-authed":    "Google Ads authorized. Select your customer account to finish setup.",
+      "meta-ads-authed":      "Meta authorized! Enter your Ad Account ID to finish connecting.",
+    };
+    const errorMessages: Record<string, string> = {
+      missing_params:              "OAuth callback was missing required parameters.",
+      invalid_state:               "OAuth state mismatch — please try again.",
+      token_exchange_failed:       "Failed to exchange authorization code. Please reconnect.",
+      "google-ads-denied":         "Google Ads access was denied.",
+      "google-ads-state-mismatch": "Google Ads OAuth state mismatch — please try again.",
+      "google-ads-exchange-failed": "Failed to exchange Google Ads authorization code.",
+      "meta-ads-denied":           "Meta Ads access was denied.",
+      "meta-ads-state-mismatch":   "Meta Ads OAuth state mismatch — please try again.",
+      "meta-ads-exchange-failed":  "Failed to exchange Meta Ads authorization code.",
+    };
+    if (successParam && successMessages[successParam]) {
+      setToast({ type: "success", message: successMessages[successParam] });
     } else if (errorParam) {
-      const messages: Record<string, string> = {
-        missing_params: "OAuth callback was missing required parameters.",
-        invalid_state: "OAuth state mismatch — please try again.",
-        token_exchange_failed: "Failed to exchange authorization code. Please reconnect.",
-      };
-      setToast({ type: "error", message: messages[errorParam] ?? `Connection error: ${errorParam}` });
+      setToast({ type: "error", message: errorMessages[errorParam] ?? `Connection error: ${errorParam}` });
     }
   }, [successParam, errorParam]);
 
@@ -1148,6 +1510,47 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
   const vautoConn    = getConnection("vauto");
   const creditConn   = getConnection("seven_hundred_credit");
   const crmConn      = getConnection("general_crm");
+  const gadsConn     = getConnection("google_ads");
+  const metaConn     = getConnection("meta_ads");
+
+  async function handleGadsSync() {
+    const res = await fetch("/api/integrations/google-ads/sync", { method: "POST" });
+    if (!res.ok) { const d = await res.json() as { error?: string }; throw new Error(d.error ?? "Sync failed"); }
+    setToast({ type: "success", message: "Google Ads sync triggered." });
+    setTimeout(() => router.refresh(), 1500);
+  }
+
+  async function handleMetaSync() {
+    const res = await fetch("/api/integrations/meta-ads/sync", { method: "POST" });
+    if (!res.ok) { const d = await res.json() as { error?: string }; throw new Error(d.error ?? "Sync failed"); }
+    setToast({ type: "success", message: "Meta Ads sync triggered." });
+    setTimeout(() => router.refresh(), 1500);
+  }
+
+  async function handleGadsDisconnect() {
+    const res = await fetch("/api/integrations/google-ads/sync", { method: "DELETE" });
+    if (!res.ok) { const d = await res.json().catch(() => ({})) as { error?: string }; throw new Error(d.error ?? "Disconnect failed"); }
+    setToast({ type: "success", message: "Google Ads disconnected." });
+    router.refresh();
+  }
+
+  async function handleMetaDisconnect() {
+    const res = await fetch("/api/integrations/meta-ads/sync", { method: "DELETE" });
+    if (!res.ok) { const d = await res.json().catch(() => ({})) as { error?: string }; throw new Error(d.error ?? "Disconnect failed"); }
+    setToast({ type: "success", message: "Meta Ads disconnected." });
+    router.refresh();
+  }
+
+  async function handleMetaAccountId(adAccountId: string) {
+    const res = await fetch("/api/integrations/meta-ads/connect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ adAccountId }),
+    });
+    if (!res.ok) { const d = await res.json() as { error?: string }; throw new Error(d.error ?? "Connection failed"); }
+    setToast({ type: "success", message: "Meta Ads connected! Initial sync is running." });
+    setTimeout(() => router.refresh(), 1000);
+  }
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
@@ -1398,6 +1801,28 @@ export function IntegrationsClient({ connections, latestCounts, successParam, er
       {(writebackSummary.length > 0 || (queueStats && (queueStats.pending > 0 || queueStats.dead > 0))) && (
         <WritebackActivityPanel summary={writebackSummary} queueStats={queueStats} />
       )}
+
+      {/* Digital Ads */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Digital Advertising</h2>
+          {(gadsConn?.status === "active" || metaConn?.status === "active") && (
+            <span className="text-[11px] text-gray-400">Swarm pushes creatives &amp; optimizes budgets automatically</span>
+          )}
+        </div>
+        <div className="space-y-4">
+          <DigitalAdsSection
+            gadsConn={gadsConn}
+            metaConn={metaConn}
+            adsPerfSummary={adsPerfSummary}
+            onGadsSync={handleGadsSync}
+            onMetaSync={handleMetaSync}
+            onGadsDisconnect={handleGadsDisconnect}
+            onMetaDisconnect={handleMetaDisconnect}
+            onMetaAccountId={handleMetaAccountId}
+          />
+        </div>
+      </div>
 
       {/* Inventory + enrichment */}
       <div>
