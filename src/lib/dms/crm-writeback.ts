@@ -46,50 +46,278 @@ export type WritebackEvent =
 
 export interface WritebackPayload {
   dealershipId: string;
-  customerId: string;         // AutoCDP customer UUID
+  customerId: string;       // AutoCDP customer UUID
   eventType: WritebackEvent;
   channel?: "direct_mail" | "sms" | "email";
   campaignGoal?: string;
-  copyExcerpt?: string;       // First 300 chars of generated copy
+  campaignName?: string;    // optional human-readable campaign name
+  copyExcerpt?: string;     // first ~300 chars of generated copy
   offer?: string | null;
   communicationId?: string;
   bookingUrl?: string | null;
+  qrScanUrl?: string | null; // landing URL the QR pointed to
 }
 
 // ---------------------------------------------------------------------------
-// Human-readable event labels
+// Channel labels — convert internal keys to human-readable strings
 // ---------------------------------------------------------------------------
 
-const EVENT_LABELS: Record<WritebackEvent, string> = {
-  campaign_sent: "AutoCDP — Campaign Sent",
-  qr_scanned:    "AutoCDP — QR Code Scanned",
-  email_opened:  "AutoCDP — Email Opened",
-  link_clicked:  "AutoCDP — Link Clicked",
-  booking_made:  "AutoCDP — Appointment Booked",
+const CHANNEL_LABELS: Record<string, string> = {
+  direct_mail: "Direct Mail",
+  sms:         "SMS Text Message",
+  email:       "Email Campaign",
 };
 
-const EVENT_TYPES: Record<WritebackEvent, string> = {
-  campaign_sent: "AutoCDP Campaign",
-  qr_scanned:    "AutoCDP Scan",
-  email_opened:  "AutoCDP Email",
-  link_clicked:  "AutoCDP Click",
-  booking_made:  "AutoCDP Booking",
+function channelLabel(channel?: string): string {
+  return channel ? (CHANNEL_LABELS[channel] ?? channel) : "Campaign";
+}
+
+// ---------------------------------------------------------------------------
+// Activity types — use CRM-native-sounding labels (free-form in all 3 CRMs)
+// ---------------------------------------------------------------------------
+
+const ACTIVITY_TYPES: Record<WritebackEvent, string> = {
+  campaign_sent: "Marketing Outreach",
+  qr_scanned:    "Customer Response",
+  email_opened:  "Email Engagement",
+  link_clicked:  "Digital Engagement",
+  booking_made:  "Appointment Request",
 };
 
 // ---------------------------------------------------------------------------
-// Build the CRM note body
+// Subject lines — specific one-liners that look great in a CRM timeline
 // ---------------------------------------------------------------------------
 
-function buildNoteBody(payload: WritebackPayload): string {
-  const lines: string[] = [];
-  lines.push(`[AutoCDP Plugin] ${EVENT_LABELS[payload.eventType]}`);
-  if (payload.channel)       lines.push(`Channel: ${payload.channel.replace("_", " ")}`);
-  if (payload.campaignGoal)  lines.push(`Goal: ${payload.campaignGoal}`);
-  if (payload.offer)         lines.push(`Offer: ${payload.offer}`);
-  if (payload.copyExcerpt)   lines.push(`\nMessage excerpt:\n${payload.copyExcerpt}`);
-  if (payload.bookingUrl)    lines.push(`\nBooking link: ${payload.bookingUrl}`);
-  if (payload.communicationId) lines.push(`\nCommunication ID: ${payload.communicationId}`);
+function buildSubject(
+  eventType: WritebackEvent,
+  payload: WritebackPayload,
+  firstName: string
+): string {
+  const ch  = channelLabel(payload.channel);
+  const goal = payload.campaignGoal ? ` — ${payload.campaignGoal}` : "";
+  const offer = payload.offer ? ` — ${payload.offer}` : "";
+
+  switch (eventType) {
+    case "campaign_sent":
+      return payload.offer
+        ? `${ch} Delivered to ${firstName}${offer}`
+        : `${ch} Delivered to ${firstName}${goal}`;
+
+    case "qr_scanned":
+      return payload.offer
+        ? `QR Scanned — ${firstName} Interested in ${payload.offer}`
+        : `QR Scanned — ${firstName} Responded to ${ch}`;
+
+    case "email_opened":
+      return payload.offer
+        ? `Email Opened — ${firstName} Viewed ${payload.offer}`
+        : `Email Opened — ${firstName} Engaged with ${ch}`;
+
+    case "link_clicked":
+      return payload.offer
+        ? `Link Clicked — ${firstName} Interested in ${payload.offer}`
+        : `Link Clicked — ${firstName} Clicked Through ${ch}`;
+
+    case "booking_made":
+      return payload.campaignGoal
+        ? `Appointment Booked — ${firstName} · ${payload.campaignGoal}`
+        : `Appointment Booked — ${firstName} via AutoCDP Campaign`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rich note body — event-specific branded templates
+// ---------------------------------------------------------------------------
+
+const DIVIDER  = "─".repeat(47);
+const HDIVIDER = "═".repeat(47);
+
+function fmt(date: string): string {
+  try {
+    return new Date(date).toLocaleString("en-US", {
+      month: "short", day: "numeric", year: "numeric",
+      hour: "numeric", minute: "2-digit", timeZoneName: "short",
+    });
+  } catch { return date; }
+}
+
+function fmtDate(date: string): string {
+  try {
+    return new Date(date).toLocaleDateString("en-US", {
+      month: "short", day: "numeric", year: "numeric",
+    });
+  } catch { return date; }
+}
+
+function campaignBlock(payload: WritebackPayload): string {
+  const lines: string[] = ["📋 CAMPAIGN DETAILS"];
+  if (payload.channel)      lines.push(`   Channel:  ${channelLabel(payload.channel)}`);
+  if (payload.campaignGoal) lines.push(`   Goal:     ${payload.campaignGoal}`);
+  if (payload.offer)        lines.push(`   Offer:    ${payload.offer}`);
+  if (payload.campaignName) lines.push(`   Campaign: ${payload.campaignName}`);
   return lines.join("\n");
+}
+
+function buildRichNote(
+  eventType: WritebackEvent,
+  payload: WritebackPayload,
+  customerName: string,
+  firstName: string,
+  now: string
+): string {
+  const refLine = payload.communicationId
+    ? `Ref: ${payload.communicationId} · `
+    : "";
+
+  const footer = [
+    DIVIDER,
+    `${refLine}Sent via AutoCDP · autocdp.com`,
+  ].join("\n");
+
+  switch (eventType) {
+
+    // ── CAMPAIGN SENT ────────────────────────────────────────────────────────
+    case "campaign_sent": {
+      const parts: string[] = [
+        HDIVIDER,
+        `  📬 ${channelLabel(payload.channel).toUpperCase()} DELIVERED`,
+        HDIVIDER,
+        `Customer: ${customerName}`,
+        `Sent:     ${fmt(now)}`,
+        "",
+        campaignBlock(payload),
+      ];
+
+      if (payload.copyExcerpt) {
+        parts.push(
+          "",
+          "✉ MESSAGE EXCERPT",
+          `   "${payload.copyExcerpt.trim().slice(0, 280)}${payload.copyExcerpt.length > 280 ? "…" : ""}"`,
+        );
+      }
+
+      parts.push(
+        "",
+        "💡 NEXT STEP",
+        `   If ${firstName} contacts the dealership, reference this campaign.`,
+        "   Log any inbound calls or replies as a follow-up activity.",
+        "",
+        footer,
+      );
+      return parts.join("\n");
+    }
+
+    // ── QR SCANNED ──────────────────────────────────────────────────────────
+    case "qr_scanned": {
+      const parts: string[] = [
+        HDIVIDER,
+        "  📲 QR CODE SCANNED — CUSTOMER ENGAGED",
+        HDIVIDER,
+        `Customer: ${customerName}`,
+        `Scanned:  ${fmt(now)}`,
+        "",
+        "⚡ FOLLOW UP WITHIN 24 HOURS",
+        `   ${firstName} just scanned the QR code from your campaign.`,
+        "   They are actively considering — strike while interest is hot.",
+        "",
+        campaignBlock(payload),
+      ];
+
+      if (payload.qrScanUrl) {
+        parts.push("", `🔗 QR DESTINATION`, `   ${payload.qrScanUrl}`);
+      }
+
+      parts.push(
+        "",
+        "💬 SUGGESTED OPENER",
+        `   "Hi ${firstName}, I'm following up on the ${channelLabel(payload.channel).toLowerCase()}`,
+        `   we sent about ${payload.offer ?? payload.campaignGoal ?? "our latest offer"}.`,
+        `   Did you get a chance to look it over?"`,
+        "",
+        footer,
+      );
+      return parts.join("\n");
+    }
+
+    // ── EMAIL OPENED ────────────────────────────────────────────────────────
+    case "email_opened": {
+      const parts: string[] = [
+        HDIVIDER,
+        "  📧 EMAIL OPENED — CUSTOMER SAW YOUR MESSAGE",
+        HDIVIDER,
+        `Customer: ${customerName}`,
+        `Opened:   ${fmt(now)}`,
+        "",
+        campaignBlock(payload),
+        "",
+        "💡 NEXT STEP",
+        `   ${firstName} opened this email but has not yet responded.`,
+        "   Consider a follow-up call or text if no action within 48 hours.",
+        "",
+        footer,
+      ];
+      return parts.join("\n");
+    }
+
+    // ── LINK CLICKED ────────────────────────────────────────────────────────
+    case "link_clicked": {
+      const parts: string[] = [
+        HDIVIDER,
+        "  🖱 LINK CLICKED — STRONG BUYING SIGNAL",
+        HDIVIDER,
+        `Customer: ${customerName}`,
+        `Clicked:  ${fmt(now)}`,
+        "",
+        `⚡ ${firstName} clicked through your campaign — they are interested.`,
+        "   Reach out soon to convert this engagement into an appointment.",
+        "",
+        campaignBlock(payload),
+        "",
+        "💬 SUGGESTED OPENER",
+        `   "Hi ${firstName}, I noticed you checked out our`,
+        `   ${payload.offer ?? payload.campaignGoal ?? "offer"} — any questions I can answer?"`,
+        "",
+        footer,
+      ];
+      return parts.join("\n");
+    }
+
+    // ── BOOKING MADE ────────────────────────────────────────────────────────
+    case "booking_made": {
+      const parts: string[] = [
+        HDIVIDER,
+        "  ✅ APPOINTMENT BOOKED — ACTION REQUIRED",
+        HDIVIDER,
+        `Customer: ${customerName}`,
+        `Booked:   ${fmt(now)}`,
+        "",
+        `🎯 ${firstName} converted from your AutoCDP campaign!`,
+        "   Confirm this appointment in your scheduling system.",
+        "",
+        campaignBlock(payload),
+      ];
+
+      if (payload.bookingUrl) {
+        parts.push(
+          "",
+          "🔗 BOOKING LINK",
+          `   ${payload.bookingUrl}`,
+        );
+      }
+
+      parts.push(
+        "",
+        "📌 ACTION CHECKLIST",
+        `   □ Confirm ${firstName}'s appointment in scheduler`,
+        "   □ Send confirmation text or email to customer",
+        "   □ Assign to service advisor / sales associate",
+        "   □ Prepare any relevant vehicle history notes",
+        "",
+        footer,
+      );
+      return parts.join("\n");
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -146,11 +374,16 @@ async function _fireWriteback(payload: WritebackPayload): Promise<void> {
   const meta = conn.metadata as Record<string, unknown> | null;
   if (!meta?.plugin_mode) return; // Plugin Mode not enabled — skip silently
 
-  // 3. Build the activity payload
-  const now        = new Date().toISOString();
-  const subject    = EVENT_LABELS[payload.eventType];
-  const notes      = buildNoteBody(payload);
-  const actType    = EVENT_TYPES[payload.eventType];
+  // 3. Build the rich activity payload
+  const firstName    = (customer.first_name as string | null) ?? "Customer";
+  const lastName     = (customer.last_name  as string | null) ?? "";
+  const customerName = [firstName, lastName].filter(Boolean).join(" ");
+  const now          = new Date().toISOString();
+
+  const subject  = buildSubject(payload.eventType, payload, firstName);
+  const notes    = buildRichNote(payload.eventType, payload, customerName, firstName, now);
+  const actType  = ACTIVITY_TYPES[payload.eventType];
+
   const actPayload: QueuedWritebackPayload = {
     activityType:  actType,
     subject,
@@ -158,6 +391,7 @@ async function _fireWriteback(payload: WritebackPayload): Promise<void> {
     activityDate:  now,
     completedDate: now,
     channel:       payload.channel,
+    customerName,
   };
 
   // 4. Decrypt credentials and dispatch — enqueue on failure
@@ -198,13 +432,12 @@ async function _fireWriteback(payload: WritebackPayload): Promise<void> {
         eventType:    payload.eventType,
         payload:      actPayload,
       }).then(async () => {
-        // Immediately exhaust attempts so it becomes dead
         const supabaseSvc = createServiceClient();
         await supabaseSvc
           .from("crm_writeback_queue")
           .update({
-            status:    "dead",
-            attempts:  5,
+            status:     "dead",
+            attempts:   5,
             last_error: errorMsg.slice(0, 1000),
           } as Record<string, unknown>)
           .eq("dealership_id", payload.dealershipId)
@@ -241,13 +474,16 @@ async function _fireWriteback(payload: WritebackPayload): Promise<void> {
     .insert({
       job_id:  `writeback-${payload.communicationId ?? payload.customerId}`,
       level:   "info",
-      message: `Plugin write-back: ${provider} ← ${payload.eventType}`,
+      message: `Plugin write-back: ${provider} ← ${payload.eventType} · ${subject}`,
       data: {
         provider,
         nativeId,
-        customerId: payload.customerId,
-        eventType:  payload.eventType,
-        channel:    payload.channel ?? null,
+        customerId:   payload.customerId,
+        customerName,
+        eventType:    payload.eventType,
+        activityType: actType,
+        subject,
+        channel:      payload.channel ?? null,
       },
     })
     .catch(() => null);
@@ -309,7 +545,6 @@ export async function dispatchWriteback(
 export async function processQueueRow(row: WritebackQueueRow): Promise<void> {
   const svc = createServiceClient();
 
-  // Fetch credentials from the live dms_connections record
   const { data: conn } = await svc
     .from("dms_connections")
     .select("encrypted_tokens")

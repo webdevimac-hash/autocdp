@@ -18,8 +18,10 @@ export interface QueuedWritebackPayload {
   notes: string;
   activityDate: string;
   completedDate: string;
-  /** Copy of encrypted_tokens — NOT stored; resolved fresh on each attempt */
+  /** Human-readable channel label — stored for retry worker context */
   channel?: string;
+  /** Customer display name — stored so retry notes remain personalised */
+  customerName?: string;
 }
 
 // ---------------------------------------------------------------------------
